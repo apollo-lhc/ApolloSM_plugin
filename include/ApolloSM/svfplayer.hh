@@ -18,6 +18,13 @@ private:
     uint32_t lock;
   } sXVC;
 
+  // Signal handler
+  void SetupSignalHandler();
+  void RemoveSignalHandler();
+  struct sigaction saBusError;
+  struct sigaction saBusError_old;
+
+
   /* Defined in svfplayer.cc */
   int  setup();
   int  shutdown();

@@ -45,6 +45,7 @@ int tmsval, tdival, indx;
 
 void SVFPlayer::tck() {
   if(SIGBUS == sigsetjmp(env,1)){    
+    RemoveSignalHandler();
     std::exception * e = new std::runtime_error("Caught SIGBUS in svp player");
     throw *e;
   }else{ 
@@ -100,6 +101,7 @@ int SVFPlayer::setup() {
 int SVFPlayer::shutdown() {
 
   if(SIGBUS == sigsetjmp(env,1)){    
+    RemoveSignalHandler();
     std::exception * e = new std::runtime_error("Caught SIGBUS in svp player");
     throw *e;
   }else{ 

@@ -12,8 +12,8 @@
 
 using namespace BUTool;
 
-APOLLOSMDevice::APOLLOSMDevice(std::vector<std::string> arg)
-  : CommandList<APOLLOSMDevice>("AolloSM"),
+ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
+  : CommandList<ApolloSMDevice>("AolloSM"),
     IPBusRegHelper(),
     stream(NULL){
   
@@ -25,76 +25,78 @@ APOLLOSMDevice::APOLLOSMDevice(std::vector<std::string> arg)
   LoadCommandList();
 }
 
-APOLLOSMDevice::~APOLLOSMDevice(){
+ApolloSMDevice::~ApolloSMDevice(){
   if(NULL != SM){
     delete SM;
   }
 }
 
   
-void APOLLOSMDevice::LoadCommandList(){
+void ApolloSMDevice::LoadCommandList(){
     // general commands (Launcher_commands)
-    AddCommand("read",&APOLLOSMDevice::Read,
+    AddCommand("read",&ApolloSMDevice::Read,
 	       "Read from ApolloSM\n"          \
 	       "Usage: \n"                     \
 	       "  read addr <count> <FLAGS>\n" \
 	       "Flags: \n"                     \
 	       "  D:  64bit words\n"           \
 	       "  N:  suppress zero words\n",
-	       &APOLLOSMDevice::RegisterAutoComplete);
+	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("r","read");
 
-    AddCommand("readFIFO",&APOLLOSMDevice::ReadFIFO,
+    AddCommand("readFIFO",&ApolloSMDevice::ReadFIFO,
 	       "Read from a FIFO\n"      \
 	       "Usage: \n"               \
 	       "  readFIFO addr count\n",
-	       &APOLLOSMDevice::RegisterAutoComplete);
+	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("rf","readFIFO");
 
-    AddCommand("readoffset",&APOLLOSMDevice::ReadOffset,
+    AddCommand("readoffset",&ApolloSMDevice::ReadOffset,
 	       "Read from an offset to an address\n" \
 	       "Usage: \n"                           \
 	       "  readoffset addr offset <count>\n",
-	       &APOLLOSMDevice::RegisterAutoComplete);
+	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("ro","readoffset");
 
 
 
-    AddCommand("write",&APOLLOSMDevice::Write,
+    AddCommand("write",&ApolloSMDevice::Write,
 	       "Write to ApolloSM\n"           \
 	       "Usage: \n"                     \
 	       "  write addr <data> <count> \n",
-	       &APOLLOSMDevice::RegisterAutoComplete);
+	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("w","write");
 
-    AddCommand("writeFIFO",&APOLLOSMDevice::WriteFIFO,
+    AddCommand("writeFIFO",&ApolloSMDevice::WriteFIFO,
 	       "Write to ApolloSM FIFO\n"      \
 	       "Usage: \n"                     \
 	       "  writeFIFO addr data count\n",
-	       &APOLLOSMDevice::RegisterAutoComplete);
+	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("wf","writeFIFO");
 
-    AddCommand("writeoffset",&APOLLOSMDevice::WriteOffset,
+    AddCommand("writeoffset",&ApolloSMDevice::WriteOffset,
 	       "Write from an offset to an address\n"   \
 	       "Usage: \n"                              \
 	       "  writeoffset addr offset data count\n",
-	       &APOLLOSMDevice::RegisterAutoComplete);
+	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("wo","writeoffset");
 
 
-    AddCommand("nodes", &APOLLOSMDevice::ListRegs, 
+    AddCommand("nodes", &ApolloSMDevice::ListRegs, 
 	       "List matching address table items\n",
-	       &APOLLOSMDevice::RegisterAutoComplete);
+	       &ApolloSMDevice::RegisterAutoComplete);
 
-    AddCommand("ExampleCommand",&APOLLOSMDevice::ExampleCommand,
-	       "An example of a command");
+    AddCommand("status",&ApolloSMDevice::StatusDisplay,
+	       "Display tables of Apollo Status\n"  \
+	       "Usave: \n"                          \
+	       "  status level <table name>\n");
 
 }
 
 
 
 //If there is a file currently open, it closes it                                                             
-void APOLLOSMDevice::setStream(const char* file) {
+void ApolloSMDevice::setStream(const char* file) {
   if (stream != NULL) {
     stream->close();
     delete stream;
@@ -106,7 +108,7 @@ void APOLLOSMDevice::setStream(const char* file) {
 }
 
 //Closes the stream                                                                                           
-void APOLLOSMDevice::closeStream() {
+void ApolloSMDevice::closeStream() {
   if (stream != NULL) {
     stream->close();
     delete stream;
@@ -116,19 +118,25 @@ void APOLLOSMDevice::closeStream() {
 }
 
 
+CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> strArg,std::vector<uint64_t> intArg){
 
-CommandReturn::status APOLLOSMDevice::ExampleCommand(std::vector<std::string> strArg,std::vector<uint64_t> intArg){
-  if(1 != strArg.size()){
-    //This command takes exactly one argument
-    return CommandReturn::BAD_ARGS;
-  }
-
-  if(!isdigit(strArg[0][0])){
-    //The argument must be a number
-    return CommandReturn::BAD_ARGS;
-  }
-
-  uint32_t foo = SM->ExampleFunction(uint32_t(intArg[0]));
-  printf("Got: 0x%08X\n",foo);
+  std::string table("");
+  switch (strArg.size()) {
+    case 0:
+      return CommandReturn::BAD_ARGS;
+      break;
+    default: //fallthrough
+    case 2:
+      table = strArg[1];
+      //fallthrough
+    case 1:
+      if(!isdigit(strArg[0][0])){
+	return CommandReturn::BAD_ARGS;
+      }else if ((intArg[0] < 1) || (intArg[0] > 9)) {
+	return CommandReturn::BAD_ARGS;
+      }      
+      break;
+    }
+  SM->GenerateStatusDisplay(intArg[0],std::cout,table);
   return CommandReturn::OK;
 }

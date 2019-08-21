@@ -19,10 +19,10 @@
 
 namespace BUTool{
   
-  class APOLLOSMDevice: public CommandList<APOLLOSMDevice>, private IPBusRegHelper{
+  class ApolloSMDevice: public CommandList<ApolloSMDevice>, private IPBusRegHelper{
   public:
-    APOLLOSMDevice(std::vector<std::string> arg); 
-    ~APOLLOSMDevice();
+    ApolloSMDevice(std::vector<std::string> arg); 
+    ~ApolloSMDevice();
 
 
 
@@ -54,20 +54,20 @@ namespace BUTool{
     CommandReturn::status OpenFile(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status CloseFile(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status MrWuRegisterDump(std::vector<std::string>,std::vector<uint64_t>);
-    CommandReturn::status ExampleCommand(std::vector<std::string>,std::vector<uint64_t>);
+    CommandReturn::status StatusDisplay(std::vector<std::string>,std::vector<uint64_t>);
 
     //Add new command (sub command) auto-complete files here
     std::string autoComplete_Help(std::vector<std::string> const &,std::string const &,int);
 
 
   };
-  RegisterDevice(APOLLOSMDevice,
+  RegisterDevice(ApolloSMDevice,
 		 "ApolloSM",
 		 "file/SM_SN",
 		 "a",
 		 "ApolloSM",
 		 "\"connection file\"  or \"SM_SN\""
-		 ); //Register APOLLOSMDevice with the DeviceFactory  
+		 ); //Register ApolloSMDevice with the DeviceFactory  
 }
 
 #endif

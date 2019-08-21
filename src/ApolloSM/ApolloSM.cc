@@ -1,10 +1,18 @@
 #include <ApolloSM/ApolloSM.hh>
 
-ApolloSM::ApolloSM():IPBusConnection("ApolloSM"){  
+ApolloSM::ApolloSM():IPBusConnection("ApolloSM"),statusDisplay(NULL){  
+  statusDisplay= new IPBusStatus(GetHWInterface());
 }
 
-uint32_t ApolloSM::ExampleFunction(uint32_t number){
-  //do something here
-  uint32_t data = RegReadAddress(number);
-  return ~data; //invert bits
+ApolloSM::~ApolloSM(){
+  if(statusDisplay != NULL){
+    delete statusDisplay;
+  }
 }
+
+void ApolloSM::GenerateStatusDisplay(size_t level,
+				     std::ostream & stream=std::cout,
+				     std::string const & singleTable = std::string("")){
+  statusDisplay->Report(level,stream,singleTable);
+}
+

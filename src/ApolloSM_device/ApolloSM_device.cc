@@ -13,7 +13,7 @@
 using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
-  : CommandList<ApolloSMDevice>("AolloSM"),
+  : CommandList<ApolloSMDevice>("ApolloSM"),
     IPBusRegHelper(),
     stream(NULL){
   

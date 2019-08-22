@@ -76,17 +76,14 @@ void ApolloSM::UartComm() {
 
   while(interactiveLoop) {
 
-    //Mike    
-    if(RegReadRegister("CM.CM1.UART.RD_FIFO_FULL")) {printf("Buffer full\n");} //if(RD_FULL&hw[readAddr]) {printf("Buffer full\n");}
+
+    if(RegReadRegister("CM.CM1.UART.RD_FIFO_FULL")) {printf("Buffer full\n");} 
 
     // read
-    //Mike not right, look at example above
-    if(RegReadRegister("CM.CM1.UART.RD_DATA")) { //if(RD_AVAILABLE & hw[readAddr]) {
-      //while(RD_AVAILABLE & hw[readAddr]) {
-      printf("%C", 0xFF& RegReadRegister("CM.CM1.UART.RD_DATA")); //printf("%c", 0xFF&hw[readAddr]);
+    while(RegReadRegister("CM.CM1.UART.RD_VALID")) { 
+      printf("%c", RegReadRegister("CM.CM1.UART.RD_DATA"));
       fflush(stdout);
-      RegWriteRegister("CM.CM1.UART.RD_ACK", 1); //hw[readAddr] = ACK;
-      //}
+      RegWriteRegister("CM.CM1.UART.RD_VALID", 1);
     }
 
     // If writebuffer half full or full, the command is not sent. This would mean that any typed commands will not show up
@@ -102,7 +99,7 @@ void ApolloSM::UartComm() {
 
       //Mike
       if('\n' == writeByte) {
-	RegWriteRegister("CM.CM!.UART.WR_DATA", '\r'); //hw[writeAddr] = '\r';
+	RegWriteRegister("CM.CM1.UART.WR_DATA", '\r'); //hw[writeAddr] = '\r';
       } else {
 	RegWriteRegister("CM.CM1.UART.WR_DATA", writeByte); //hw[writeAddr] = writeByte;
       }

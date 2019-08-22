@@ -89,11 +89,14 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("status",&ApolloSMDevice::StatusDisplay,
 	       "Display tables of Apollo Status\n"  \
 	       "Usave: \n"                          \
-	       "  status level <table name>\n");
+	       "  status level <table name>\n");  
 
+    AddCommand("UartComm",&ApolloSMDevice::UartComm,
+	       "The function used for communicating with the command module uart\n");
+
+    AddCommand("UartIO",&ApolloSMDevice::UartIO,
+	       "Manages the IO for the command module Uart\n");
 }
-
-
 
 //If there is a file currently open, it closes it                                                             
 void ApolloSMDevice::setStream(const char* file) {
@@ -140,3 +143,29 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
   SM->GenerateStatusDisplay(intArg[0],std::cout,table);
   return CommandReturn::OK;
 }
+
+
+CommandReturn::status ApolloSMDevice::UartComm(std::vector<std::string>,std::vector<uint64_t>){
+  SM->UartComm();
+  return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::UartIO(std::vector<std::string> strArg,std::vector<uint64_t>){
+  if(0 == strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  //make one string to send
+  std::string sendline;
+  for(int i = 0; i < (int)strArg.size(); i++) {
+    sendline.append(strArg[i]);
+    sendline.push_back(' ');
+  }
+  //get rid of last space
+  sendline.pop_back();
+  sendline.push_back('\n');
+
+  printf("Recieved:\n%s\n", (SM->UartIO(sendline)).c_str());
+
+  return CommandReturn::OK;;
+} 

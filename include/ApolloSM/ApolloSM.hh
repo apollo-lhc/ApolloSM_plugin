@@ -17,6 +17,14 @@ public:
   void GenerateStatusDisplay(size_t level,
 			     std::ostream & stream,
 			     std::string const & singleTable);
+
+  void UartComm();
+
+  std::string UartIO(std::string sendline);
+
+  //void LoadCommandList();
+
+  
 private:  
   IPBusStatus * statusDisplay;
 };

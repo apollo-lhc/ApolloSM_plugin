@@ -13,7 +13,7 @@
 using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
-  : CommandList<ApolloSMDevice>("AolloSM"),
+  : CommandList<ApolloSMDevice>("ApolloSM"),
     IPBusRegHelper(),
     stream(NULL){
   
@@ -88,8 +88,13 @@ void ApolloSMDevice::LoadCommandList(){
 
     AddCommand("status",&ApolloSMDevice::StatusDisplay,
 	       "Display tables of Apollo Status\n"  \
-	       "Usave: \n"                          \
-	       "  status level <table name>\n");  
+	       "Usage: \n"                          \
+	       "  status level <table name>\n");
+    
+    AddCommand("cmpwrup",&ApolloSMDevice::CMPowerUP,
+	       "Power up a command module\n"\
+	       "Usage: \n" \
+	       "  cmpwrup <iCM> <wait(s)>\n");
 
     AddCommand("UartComm",&ApolloSMDevice::UartComm,
 	       "The function used for communicating with the command module uart\n");
@@ -124,9 +129,9 @@ void ApolloSMDevice::closeStream() {
 CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> strArg,std::vector<uint64_t> intArg){
 
   std::string table("");
+  int statusLevel = 1;
   switch (strArg.size()) {
     case 0:
-      return CommandReturn::BAD_ARGS;
       break;
     default: //fallthrough
     case 2:
@@ -138,9 +143,37 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
       }else if ((intArg[0] < 1) || (intArg[0] > 9)) {
 	return CommandReturn::BAD_ARGS;
       }      
+      statusLevel = intArg[0];
       break;
     }
-  SM->GenerateStatusDisplay(intArg[0],std::cout,table);
+  SM->GenerateStatusDisplay(statusLevel,std::cout,table);
+  return CommandReturn::OK;
+}
+
+
+CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strArg*/,std::vector<uint64_t> intArg){
+
+  int wait_time = 1; //1 second
+  int CM_ID = 1;
+  switch (intArg.size()){
+  case 2:
+    wait_time = intArg[1];
+    //fallthrough
+  case 1:
+    CM_ID = intArg[0];
+    break;
+  case 0:
+    break;
+  default:
+    return CommandReturn::BAD_ARGS;
+    break;
+  }
+  bool success = SM->PowerUpCM(CM_ID,wait_time);
+  if(success){
+    printf("CM %d is powered up\n",CM_ID);
+  }else{
+    printf("CM %d failed to powered up in time\n",CM_ID);
+  }
   return CommandReturn::OK;
 }
 

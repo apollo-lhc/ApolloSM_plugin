@@ -60,6 +60,10 @@ namespace BUTool{
     std::string autoComplete_Help(std::vector<std::string> const &,std::string const &,int);
 
 
+    //Command Module
+    CommandReturn::status CMPowerUP(std::vector<std::string>,std::vector<uint64_t>);
+
+
   };
   RegisterDevice(ApolloSMDevice,
 		 "ApolloSM",

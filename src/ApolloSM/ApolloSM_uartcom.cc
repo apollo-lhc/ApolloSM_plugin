@@ -7,12 +7,6 @@
 #include <signal.h>
 
 //Definitions
-#define RD_AVAILABLE 0x1000
-#define RD_HALF_FULL 0x2000
-#define RD_FULL 0x4000
-#define WR_HALF_FULL 0x2000
-#define WR_FULL 0x4000
-#define WR_FULL_FULL (WR_FULL | WR_HALF_FULL)
 #define STDIN 0
 
 // For Ctrl-C handling
@@ -27,13 +21,7 @@ void static signal_handler(int const signum) {
   return;
 }
 
-// To catch Ctrl-C and break out of talking through SOL
-struct sigaction sa;
-
-// To restore old handling of Ctrl-C
-struct sigaction oldsa;
 //---------------------------------------------------------------------------
-
 bool SetNonBlocking(int &fd, bool value) {
   // Get the previous flags
   int currentFlags = fcntl(fd, F_GETFL, 0);
@@ -49,8 +37,15 @@ bool SetNonBlocking(int &fd, bool value) {
   return(true);
 }
 
+
+
 // The function where all the talking to and reading from command module happens
-void ApolloSM::UartComm() {
+void ApolloSM::UART_Terminal() {
+  // To catch Ctrl-C and break out of talking through SOL
+  struct sigaction sa;
+  
+  // To restore old handling of Ctrl-C
+  struct sigaction oldsa;
 
   // Instantiate sigaction struct member with signal handler function
   sa.sa_handler = signal_handler;
@@ -69,47 +64,39 @@ void ApolloSM::UartComm() {
   initscr();
   cbreak();
   noecho();
-
+  
+  //Set STDIN to non-blocking
   int commandfd = STDIN;
-
   SetNonBlocking(commandfd, true);
 
   while(interactiveLoop) {
-
-
+    
     if(RegReadRegister("CM.CM1.UART.RD_FIFO_FULL")) {printf("Buffer full\n");} 
 
-    // read
+    // read data from UART (keep this FIFO empty)
     while(RegReadRegister("CM.CM1.UART.RD_VALID")) { 
       printf("%c", RegReadRegister("CM.CM1.UART.RD_DATA"));
       fflush(stdout);
       RegWriteRegister("CM.CM1.UART.RD_VALID", 1);
     }
 
-    // If writebuffer half full or full, the command is not sent. This would mean that any typed commands will not show up
-    //    if(!(WR_FULL_FULL & hw[writeAddr]) && (0 < read(fd, &writeByte, sizeof(writeByte)))) {
+    //Read from user
     n = read(commandfd, &writeByte, sizeof(writeByte));
-
     if(0 < n) {
-      // Group separator
+      // Group separator (user wants to break out of interactive mode)
       if(29 == writeByte) {
 	interactiveLoop = false;
 	continue;
       }
 
-      //Mike
       if('\n' == writeByte) {
-	RegWriteRegister("CM.CM1.UART.WR_DATA", '\r'); //hw[writeAddr] = '\r';
+	RegWriteRegister("CM.CM1.UART.WR_DATA", '\r'); 
       } else {
 	RegWriteRegister("CM.CM1.UART.WR_DATA", writeByte); //hw[writeAddr] = writeByte;
       }
-    } /*else if(0 > n) {
-	BUException::IO_ERROR e;
-	e.Append(strerror(errno));
-	// May need to endwin() here
-	endwin();
-	throw e;
-	}*/
+    } else {
+      //Check errno for EWOULDBLOCK (everything OK) and everythign else (BAD end loop)
+    }
   }
 
   printf("Closing command module comm...\n");
@@ -125,7 +112,7 @@ void ApolloSM::UartComm() {
   return;
 }
 
-std::string ApolloSM::UartIO(std::string sendline) {
+std::string ApolloSM::UART_CMD(std::string sendline) {
   // To check number of chars sent
   int i = 0;
 

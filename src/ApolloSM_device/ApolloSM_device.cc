@@ -96,11 +96,15 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Usage: \n" \
 	       "  cmpwrup <iCM> <wait(s)>\n");
 
-    AddCommand("UartComm",&ApolloSMDevice::UartComm,
-	       "The function used for communicating with the command module uart\n");
+    AddCommand("uart_term",&ApolloSMDevice::UART_Term,
+	       "The function used for communicating with the command module uart\n"\
+	       "Usage: \n"\
+	       "  uart_term \n");
 
-    AddCommand("UartIO",&ApolloSMDevice::UartIO,
-	       "Manages the IO for the command module Uart\n");
+    AddCommand("uart_cmd",&ApolloSMDevice::UART_CMD,
+	       "Manages the IO for the command module Uart\n"\
+	       "Usage: \n"\
+	       "  uart_cmd CMD_STRING\n");
 }
 
 //If there is a file currently open, it closes it                                                             
@@ -153,7 +157,7 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
 
 CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strArg*/,std::vector<uint64_t> intArg){
 
-  int wait_time = 1; //1 second
+  int wait_time = 5; //1 second
   int CM_ID = 1;
   switch (intArg.size()){
   case 2:
@@ -178,12 +182,12 @@ CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strAr
 }
 
 
-CommandReturn::status ApolloSMDevice::UartComm(std::vector<std::string>,std::vector<uint64_t>){
-  SM->UartComm();
+CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string>,std::vector<uint64_t>){
+  SM->UART_Terminal();
   return CommandReturn::OK;
 }
 
-CommandReturn::status ApolloSMDevice::UartIO(std::vector<std::string> strArg,std::vector<uint64_t>){
+CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,std::vector<uint64_t>){
   if(0 == strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
@@ -198,7 +202,7 @@ CommandReturn::status ApolloSMDevice::UartIO(std::vector<std::string> strArg,std
   sendline.pop_back();
   sendline.push_back('\n');
 
-  printf("Recieved:\n%s\n", (SM->UartIO(sendline)).c_str());
+  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(sendline)).c_str());
 
   return CommandReturn::OK;;
 } 

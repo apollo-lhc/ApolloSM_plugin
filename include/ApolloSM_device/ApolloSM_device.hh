@@ -56,9 +56,8 @@ namespace BUTool{
     CommandReturn::status MrWuRegisterDump(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status StatusDisplay(std::vector<std::string>,std::vector<uint64_t>);
 
-    //Mike
-    CommandReturn::status UartComm(std::vector<std::string>,std::vector<uint64_t>);
-    CommandReturn::status UartIO(std::vector<std::string>,std::vector<uint64_t>);
+    CommandReturn::status UART_Term(std::vector<std::string>,std::vector<uint64_t>);
+    CommandReturn::status UART_CMD(std::vector<std::string>,std::vector<uint64_t>);
 
 
     

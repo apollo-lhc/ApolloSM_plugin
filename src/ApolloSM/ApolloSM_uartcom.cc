@@ -41,6 +41,10 @@ bool SetNonBlocking(int &fd, bool value) {
 
 // The function where all the talking to and reading from command module happens
 void ApolloSM::UART_Terminal() {
+  //get nodes for read/write
+  uhal::Node const & nRD_FIFO_FULL = GetNode("CM.CM1.UART.RD_FIFO_FULL");
+  uhal::Node const & nRD_VALID = GetNode("CM.CM1.UART.RD_VALID");
+
   // To catch Ctrl-C and break out of talking through SOL
   struct sigaction sa;
   
@@ -71,13 +75,13 @@ void ApolloSM::UART_Terminal() {
 
   while(interactiveLoop) {
     
-    if(RegReadRegister("CM.CM1.UART.RD_FIFO_FULL")) {printf("Buffer full\n");} 
+    if(RegReadNode(nRD_FIFO_FULL)) {printf("Buffer full\n");} 
 
     // read data from UART (keep this FIFO empty)
-    while(RegReadRegister("CM.CM1.UART.RD_VALID")) { 
+    while(RegReadNode(nRD_VALID)) { 
       printf("%c", RegReadRegister("CM.CM1.UART.RD_DATA"));
       fflush(stdout);
-      RegWriteRegister("CM.CM1.UART.RD_VALID", 1);
+      RegWriteNode(nRD_VALID,1);
     }
 
     //Read from user

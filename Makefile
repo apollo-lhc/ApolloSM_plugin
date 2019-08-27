@@ -12,6 +12,13 @@ LIBRARY_APOLLO_SM = lib/libBUTool_ApolloSM.so
 LIBRARY_APOLLO_SM_SOURCES = $(wildcard src/ApolloSM/*.cc)
 LIBRARY_APOLLO_SM_OBJECT_FILES = $(patsubst src/%.cc,obj/%.o,${LIBRARY_APOLLO_SM_SOURCES})
 
+EXE_APOLLO_SM_STANDALONE = bin/standalone
+EXE_APOLLO_SM_STANDALONE_SOURCE = $(wildcard src/standalone/*.cxx)
+EXE_APOLLO_SM_STANDALONE_SOURCES = $(wildcard src/standalone/*.cc)
+EXE_APOLLO_SM_STANDALONE_OBJECT_FILES = $(patsubst src/%.cxx,obj/%.o,${EXE_APOLLO_SM_STANDALONE_SOURCE})
+EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLLO_SM_STANDALONE_SOURCES})
+
+
 
 INCLUDE_PATH = \
 							-Iinclude  \
@@ -30,7 +37,8 @@ ifdef BOOST_LIB
 LIBRARY_PATH +=-L$(BOOST_LIB)
 endif
 
-LIBRARIES =    	-lToolException	\
+LIBRARIES =    	-lcurses \
+		-lToolException	\
 		-lBUTool_IPBusIO \
 		-lBUTool_IPBusStatus \
 		-lboost_regex
@@ -43,6 +51,10 @@ CXX_FLAGS = -std=c++11 -g -O3 -rdynamic -Wall -MMD -MP -fPIC ${INCLUDE_PATH} -We
 CXX_FLAGS +=-fno-omit-frame-pointer -Wno-ignored-qualifiers -Werror=return-type -Wextra -Wno-long-long -Winit-self -Wno-unused-local-typedefs  -Woverloaded-virtual ${COMPILETIME_ROOT} ${FALLTHROUGH_FLAGS}
 
 LINK_LIBRARY_FLAGS = -shared -fPIC -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} -Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT}
+
+LINK_EXE_FLAGS = -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
+	         -L${COMPILETIME_ROOT}/lib/ -lBUTool_Helpers \
+		 -Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT} 
 
 
 
@@ -62,7 +74,8 @@ UHAL_INCLUDE_PATH = \
 UHAL_LIBRARY_PATH = \
 								-L$(IPBUS_PATH)/uhal/uhal/lib \
 	         					-L$(IPBUS_PATH)/uhal/log/lib \
-	         					-L$(IPBUS_PATH)/uhal/grammars/lib 
+	         					-L$(IPBUS_PATH)/uhal/grammars/lib \
+							-L$(IPBUS_PATH)/extern/pugixml/pugixml-1.2/ 
 else
 UHAL_INCLUDE_PATH = \
 	         					-isystem$(CACTUS_ROOT)/include 
@@ -74,7 +87,6 @@ endif
 UHAL_CXX_FLAGHS = ${UHAL_INCLUDE_PATH}
 
 UHAL_LIBRARY_FLAGS = ${UHAL_LIBRARY_PATH}
-
 
 
 
@@ -92,7 +104,7 @@ _cleanall:
 all: _all
 build: _all
 buildall: _all
-_all: _cactus_env ${LIBRARY_APOLLO_SM_DEVICE} ${LIBRARY_APOLLO_SM}
+_all: _cactus_env ${LIBRARY_APOLLO_SM_DEVICE} ${LIBRARY_APOLLO_SM} ${EXE_APOLLO_SM_STANDALONE}
 
 _cactus_env:
 ifdef IPBUS_PATH
@@ -113,9 +125,18 @@ ${LIBRARY_APOLLO_SM_DEVICE}: ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES} ${IPBUS_RE
 ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusIO.so
 	${CXX} ${LINK_LIBRARY_FLAGS}  ${LIBRARY_APOLLO_SM_OBJECT_FILES} -o $@
 
+${EXE_APOLLO_SM_STANDALONE}: ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} -o $@
+
 
 
 obj/%.o : src/%.cc
+	mkdir -p $(dir $@)
+	mkdir -p {lib,obj}
+	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
+
+obj/%.o : src/%.cxx
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@

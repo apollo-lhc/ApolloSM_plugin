@@ -22,9 +22,9 @@ public:
 			     std::ostream & stream,
 			     std::string const & singleTable);
 
-  void UART_Terminal();
+  void UART_Terminal(std::string baseNode);
 
-  std::string UART_CMD(std::string sendline);
+  std::string UART_CMD(std::string baseNode, std::string sendline);
 
   bool PowerUpCM(int CM_ID,int wait = -1);
 

@@ -40,10 +40,14 @@ bool SetNonBlocking(int &fd, bool value) {
 
 
 // The function where all the talking to and reading from command module happens
-void ApolloSM::UART_Terminal() {
+void ApolloSM::UART_Terminal(std::string baseNode) {
+  baseNode.append(".UART.");
+
   //get nodes for read/write
-  uhal::Node const & nRD_FIFO_FULL = GetNode("CM.CM1.UART.RD_FIFO_FULL");
-  uhal::Node const & nRD_VALID = GetNode("CM.CM1.UART.RD_VALID");
+  uhal::Node const & nRD_FIFO_FULL = GetNode(baseNode.append("RD_FIFO_FULL"));
+  uhal::Node const & nRD_VALID = GetNode(baseNode.append("RD_VALID"));
+  uhal::Node const & nRD_DATA = GetNode(baseNode.append("RD_DATA"));
+  uhal::Node const & nWR_DATA = GetNode(baseNode.append("WR_DATA"));;
 
   // To catch Ctrl-C and break out of talking through SOL
   struct sigaction sa;
@@ -79,7 +83,7 @@ void ApolloSM::UART_Terminal() {
 
     // read data from UART (keep this FIFO empty)
     while(RegReadNode(nRD_VALID)) { 
-      printf("%c", RegReadRegister("CM.CM1.UART.RD_DATA"));
+      printf("%c", RegReadNode(nRD_DATA));
       fflush(stdout);
       RegWriteNode(nRD_VALID,1);
     }
@@ -94,9 +98,9 @@ void ApolloSM::UART_Terminal() {
       }
 
       if('\n' == writeByte) {
-	RegWriteRegister("CM.CM1.UART.WR_DATA", '\r'); 
+	RegWriteNode(nWR_DATA, '\r'); 
       } else {
-	RegWriteRegister("CM.CM1.UART.WR_DATA", writeByte); //hw[writeAddr] = writeByte;
+	RegWriteNode(nWR_DATA, writeByte); 
       }
     } else {
       //Check errno for EWOULDBLOCK (everything OK) and everythign else (BAD end loop)
@@ -116,7 +120,15 @@ void ApolloSM::UART_Terminal() {
   return;
 }
 
-std::string ApolloSM::UART_CMD(std::string sendline) {
+std::string ApolloSM::UART_CMD(std::string baseNode, std::string sendline) {
+  baseNode.append(".UART.");
+  
+  //get nodes for read/write
+  uhal::Node const & nWR_FIFO_FULL = GetNode(baseNode.append("WR_FIFO_FULL"));
+  uhal::Node const & nRD_DATA = GetNode(baseNode.append("RD_DATA"));
+  uhal::Node const & nWR_DATA = GetNode(baseNode.append("WR_DATA"));
+  uhal::Node const & nRD_ACK = GetNode(baseNode.append("RD_ACK"));
+
   // To check number of chars sent
   int i = 0;
 
@@ -128,25 +140,23 @@ std::string ApolloSM::UART_CMD(std::string sendline) {
   // read until prompt character
   while(true) {
     // read if there are characters to read
-    //Mike
-    if(RegReadRegister("CM.CM1.UART.RD_DATA")) { //if(RD_AVAILABLE & hw[readAddr]) {
-      readChar = 0xFF&RegReadRegister("CM.CM1.UART.RD_DATA"); //readChar = 0xFF&hw[readAddr]; 
+    if(RegReadNode(nRD_DATA)) {
+      readChar = 0xFF&RegReadNode(nRD_DATA);
       // Currently, we tell the difference between a regular '>' and the prompt character, also '>',
       // by checking if the previous character was a newline
       if(('>' == readChar) && ('\n' == last)) {
-	RegWriteRegister("CM.CM1.UART.RD_ACK", 1); //hw[readAddr] = ACK;
+	RegWriteNode(nRD_ACK, 1);
 	break;
       }
       last = readChar;
       recvline.push_back(readChar);
-      RegWriteRegister("CM.CM1.UART.RD_ACK", 1); //hw[readAddr] = ACK;
+      RegWriteNode(nRD_ACK, 1);
     }
 
-    //Mike
     // write if there are characters to write
     // If writebuffer is not half full or full, send one char of message
-    if(!RegReadRegister("CM.CM1.UART.WR_FIFO_FULL") && ((int)sendline.size() != i)) { //if(!(WR_FULL_FULL & hw[writeAddr]) && ((int)sendline.size() != i)) {
-      RegWriteRegister("CM.CM1.UART.WR_DATA", sendline[i]); //hw[writeAddr] = sendline[i];
+    if(!RegReadNode(nWR_FIFO_FULL) && ((int)sendline.size() != i)) {
+      RegWriteNode(nWR_DATA, sendline[i]);
       i++;
     }
   }

@@ -182,19 +182,45 @@ CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strAr
 }
 
 
-CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string>,std::vector<uint64_t>){
-  SM->UART_Terminal();
+CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string> strArg,std::vector<uint64_t>){
+  if(1 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  if(0 == strArg[0].compare("CM1")) {
+    SM->UART_Terminal("CM.CM1");    
+  } else if(0 == strArg[0].compare("CM2")) {
+    SM->UART_Terminal("CM.CM2");
+  } else if(0 == strArg[0].compare("ESM")) {
+    SM->UART_Terminal("SERV.SWITCH");
+  } else {
+    return CommandReturn::BAD_ARGS;
+  }
+  
   return CommandReturn::OK;
 }
 
 CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,std::vector<uint64_t>){
-  if(0 == strArg.size()) {
+  // Need at least the base node and one string to send
+  if(2 > strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  std::string baseNode;
+
+  if(0 == strArg[0].compare("CM1")) {
+    baseNode.append("CM.CM1");    
+  } else if(0 == strArg[0].compare("CM2")) {
+    baseNode.append("CM.CM2");
+  } else if(0 == strArg[0].compare("ESM")) {
+    baseNode.append("SERV.SWITCH");
+  } else {
     return CommandReturn::BAD_ARGS;
   }
 
   //make one string to send
   std::string sendline;
-  for(int i = 0; i < (int)strArg.size(); i++) {
+  for(int i = 1; i < (int)strArg.size(); i++) {
     sendline.append(strArg[i]);
     sendline.push_back(' ');
   }
@@ -202,7 +228,7 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   sendline.pop_back();
   sendline.push_back('\n');
 
-  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(sendline)).c_str());
+  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(baseNode, sendline)).c_str());
 
   return CommandReturn::OK;;
 } 

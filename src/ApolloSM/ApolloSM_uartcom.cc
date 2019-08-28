@@ -44,10 +44,10 @@ void ApolloSM::UART_Terminal(std::string baseNode) {
   baseNode.append(".UART.");
 
   //get nodes for read/write
-  uhal::Node const & nRD_FIFO_FULL = GetNode(baseNode.append("RD_FIFO_FULL"));
-  uhal::Node const & nRD_VALID = GetNode(baseNode.append("RD_VALID"));
-  uhal::Node const & nRD_DATA = GetNode(baseNode.append("RD_DATA"));
-  uhal::Node const & nWR_DATA = GetNode(baseNode.append("WR_DATA"));;
+  uhal::Node const & nRD_FIFO_FULL = GetNode(baseNode+"RD_FIFO_FULL");
+  uhal::Node const & nRD_VALID     = GetNode(baseNode+"RD_VALID");
+  uhal::Node const & nRD_DATA      = GetNode(baseNode+"RD_DATA");
+  uhal::Node const & nWR_DATA      = GetNode(baseNode+"WR_DATA");;
 
   // To catch Ctrl-C and break out of talking through SOL
   struct sigaction sa;
@@ -97,8 +97,14 @@ void ApolloSM::UART_Terminal(std::string baseNode) {
 	continue;
       }
 
-      if('\n' == writeByte) {
+      //RegWriteNode(nWR_DATA, writeByte); 
+      if(0xd == writeByte) {
 	RegWriteNode(nWR_DATA, '\r'); 
+	RegWriteNode(nWR_DATA, '\n'); 
+      } else if(127 == n) {
+	RegWriteNode(nWR_DATA, 8);
+      } else if( 0xa == writeByte ){
+	// do nothing
       } else {
 	RegWriteNode(nWR_DATA, writeByte); 
       }

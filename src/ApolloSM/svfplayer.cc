@@ -86,8 +86,6 @@ int SVFPlayer::set_frequency(int v) {return (v * 0);}
 
 int SVFPlayer::setup(std::string const & XVCReg) {
 
-  fprintf(stderr, "%s", XVCReg.c_str()); //delete this line
-    
   //Setting nodes
   nTDI = &GetNode(XVCReg+".TDI_VECTOR");
   nTDO = &GetNode(XVCReg+".TDO_VECTOR");

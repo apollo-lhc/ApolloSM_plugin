@@ -37,7 +37,7 @@ static void tck() {
 
   //if tms and tdi full
   if(indx == 31) {
-    /*
+    
     //assign registers
     WriteRegNode(*nLength, length32);
     WriteRegNode(*nTMS, tms32);
@@ -46,7 +46,7 @@ static void tck() {
 
     //wait for read
     while(ReadRegNode(*nGO)) {}
-    */
+    
     //reset local registers
     length32 = 0UL;
     tms32 = 0UL;
@@ -88,14 +88,14 @@ int SVFPlayer::setup(std::string const & XVCReg) {
 
   fprintf(stderr, "%s", XVCReg.c_str()); //delete this line
   
-  /*
+  
   //Setting nodes
   nTDI = &GetNode(XVCReg+".TDI_VECTOR");
   nTDO = &GetNode(XVCReg+".TDO_VECTOR");
   nTMS = &GetNode(XVCReg+".TMS_VECTOR");
   nLength = &GetNode(XVCReg+".LENGTH");
   nGO = &GetNode(XVCReg+".GO");
-  */
+  
   //Setting up AXI
   tms32 = 0UL;
   tdi32 = 0UL;
@@ -109,7 +109,7 @@ int SVFPlayer::setup(std::string const & XVCReg) {
 
 int SVFPlayer::shutdown() {
 
-  /*
+  
   //assign registers
   WriteRegNode(*nLength, length32);
   WriteRegNode(*nTMS, tms32);
@@ -118,7 +118,7 @@ int SVFPlayer::shutdown() {
   
   //wait for read
   while(ReadRegNode(*nGO)) {}
-  */
+  
   //reset local registers
   length32 = 0UL;
   tms32 = 0UL;

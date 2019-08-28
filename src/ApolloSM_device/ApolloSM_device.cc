@@ -101,6 +101,10 @@ void ApolloSMDevice::LoadCommandList(){
 
     AddCommand("UartIO",&ApolloSMDevice::UartIO,
 	       "Manages the IO for the command module Uart\n");
+
+    AddCommand("svfplayer",&ApolloSMDevice::svfplayer,
+	       "Converts an SVF file to jtag commands in AXI format\n");
+
 }
 
 //If there is a file currently open, it closes it                                                             
@@ -202,3 +206,11 @@ CommandReturn::status ApolloSMDevice::UartIO(std::vector<std::string> strArg,std
 
   return CommandReturn::OK;;
 } 
+
+CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  if(0 == strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  return CommandReturn::OK;
+}

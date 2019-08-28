@@ -29,7 +29,7 @@ int tmsval, tdival, indx;
 //for progress bar
 int percent, tenth, size, filecount;
 
-static void tck() {
+void SVFPlayer::tck() {
   //write tms & tdi, then update length
   tms32 ^= (-tmsval ^ tms32) & (1UL << indx);
   tdi32 ^= (-tdival ^ tdi32) & (1UL << indx);

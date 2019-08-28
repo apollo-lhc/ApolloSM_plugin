@@ -25,7 +25,8 @@ private:
   void pulse_sck();
   void set_trst(int v);
   int set_frequency(int v);
-
+  void tck();
+  
   /* defined in svfplayer_svf.cc */
   int read_command(char **buffer_p, int *len_p);
   int token2tapstate(const char *str1);

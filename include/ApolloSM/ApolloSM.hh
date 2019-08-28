@@ -26,6 +26,8 @@ public:
 
   std::string UartIO(std::string sendline);
 
+  int svfplayer(std::string const & svfFile, std::string const & XVCReg);
+  
   bool PowerUpCM(int CM_ID,int wait = -1);
 
 private:  

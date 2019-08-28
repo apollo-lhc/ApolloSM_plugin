@@ -207,10 +207,10 @@ CommandReturn::status ApolloSMDevice::UartIO(std::vector<std::string> strArg,std
   return CommandReturn::OK;;
 } 
 
-CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string> strArg, std::vector<uint64_t>) {
-  if(0 == strArg.size()) {
-    return CommandReturn::BAD_ARGS;
-  }
+CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string>, std::vector<uint64_t>) {
 
+  //Fill
+  
   return CommandReturn::OK;
+
 }

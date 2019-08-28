@@ -39,13 +39,13 @@ static void tck() {
   if(indx == 31) {
     
     //assign registers
-    WriteRegNode(*nLength, length32);
-    WriteRegNode(*nTMS, tms32);
-    WriteRegNode(*nTDI, tdi32);
-    WriteRegNode(*nGO, 1UL);
+    RegWriteNode(*nLength, length32);
+    RegWriteNode(*nTMS, tms32);
+    RegWriteNode(*nTDI, tdi32);
+    RegWriteNode(*nGO, 1UL);
 
     //wait for read
-    while(ReadRegNode(*nGO)) {}
+    while(RegReadNode(*nGO)) {}
     
     //reset local registers
     length32 = 0UL;
@@ -111,13 +111,13 @@ int SVFPlayer::shutdown() {
 
   
   //assign registers
-  WriteRegNode(*nLength, length32);
-  WriteRegNode(*nTMS, tms32);
-  WriteRegNode(*nTDI, tdi32);
-  WriteRegNode(*nGO, 1);
+  RegWriteNode(*nLength, length32);
+  RegWriteNode(*nTMS, tms32);
+  RegWriteNode(*nTDI, tdi32);
+  RegWriteNode(*nGO, 1);
   
   //wait for read
-  while(ReadRegNode(*nGO)) {}
+  while(RegReadNode(*nGO)) {}
   
   //reset local registers
   length32 = 0UL;

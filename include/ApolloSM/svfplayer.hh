@@ -1,13 +1,20 @@
 #include <IPBusIO/IPBusIO.hh>
 #include "libxsvf.hh"
-// maybe need or not???? #include <ApolloSM/ApolloSM.hh>
-//#include <stdio.h>
+//maybe
+#include <IPBusIO/IPBusConnection.hh>
+#include <IPBusStatus/IPBusStatus.hh>
+#include <BUException/ExceptionBase.hh>
+#include <ApolloSM/ApolloSM.hh>
+#include <stdio.h>
 
 
 
 
 
-class SVFPlayer:public IPBusIO {
+
+
+
+class SVFPlayer : public IPBusIO {
 public:
   SVFPlayer(uhal::HwInterface * const * _hw);  
   int play(std::string const & svfFile , std::string const & XVCReg);

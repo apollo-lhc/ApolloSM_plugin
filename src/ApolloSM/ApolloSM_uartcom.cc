@@ -128,35 +128,61 @@ std::string ApolloSM::UART_CMD(std::string baseNode, std::string sendline, char 
   uhal::Node const & nWR_DATA      = GetNode(baseNode+"WR_DATA");
   uhal::Node const & nRD_VALID     = GetNode(baseNode+"RD_VALID");
 
-  // To check number of chars sent
-  int i = 0;
-
   char readChar;
   char last = 0;
 
   std::string recvline;
 
+  //remove any '\n's
+  size_t pos = std::string::npos;
+  while((pos = sendline.find('\n')) != std::string::npos){
+    sendline.erase(sendline.begin()+pos);
+  }
+  //remote any '\r's
+  while((pos = sendline.find('\r')) != std::string::npos){
+    sendline.erase(sendline.begin()+pos);
+  }
+
+  //make sure the buffer is clear
+  while(RegReadNode(nRD_VALID)){
+    RegWriteNode(nRD_VALID,1);
+  }
+
+  //Write the command
+  for(size_t i = 0; i < sendline.size();i++){
+    while(RegReadNode(nWR_FIFO_FULL)){} //Wait for FIFO to be not full
+    RegWriteNode(nWR_DATA,sendline[i]);
+    
+    //wait for character to be echoed back
+    while(!RegReadNode(nRD_VALID)){
+    }
+    if(sendline[i] != char(RegReadNode(nRD_DATA))){
+      printf("Error: mismatched character %c %c\n",sendline[i],char(RegReadNode(nRD_DATA)));
+    }
+    RegWriteNode(nRD_VALID,1); //ack this char    
+  }
+  
+  //Press enter
+  RegWriteNode(nWR_DATA,13);
+  RegWriteNode(nWR_DATA,10);
+
+
   // read until prompt character
-  while(true) {
+  int readTries = 1000;
+  while(readTries) {
+    readTries--;
     // read if there are characters to read
     if(RegReadNode(nRD_VALID)) {
       readChar = 0xFF&RegReadNode(nRD_DATA);
+      RegWriteNode(nRD_VALID, 1);
+      readTries = 1000;
       // Currently, we tell the difference between a regular '>' and the prompt character, also '>',
       // by checking if the previous character was a newline
-      if((promptChar == readChar) && ('\n' == last)) {
-	RegWriteNode(nRD_VALID, 1);
+      if((promptChar == readChar) && (('\n' == last) || ('\r' == last))) {
 	break;
       }
       last = readChar;
       recvline.push_back(readChar);
-      RegWriteNode(nRD_VALID, 1);
-    }
-
-    // write if there are characters to write
-    // If writebuffer is not half full or full, send one char of message
-    if(!RegReadNode(nWR_FIFO_FULL) && ((int)sendline.size() != i)) {
-      RegWriteNode(nWR_DATA, sendline[i]);
-      i++;
     }
   }
 

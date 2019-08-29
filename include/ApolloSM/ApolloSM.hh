@@ -27,6 +27,7 @@ public:
   std::string UART_CMD(std::string baseNode, std::string sendline, char const promptChar = '%');
 
   bool PowerUpCM(int CM_ID,int wait = -1);
+  bool PowerDownCM(int CM_ID,int wait = -1);
 
 private:  
   IPBusStatus * statusDisplay;

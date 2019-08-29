@@ -133,6 +133,11 @@ std::string ApolloSM::UART_CMD(std::string baseNode, std::string sendline, char 
 
   std::string recvline;
 
+  //Press enter
+  RegWriteNode(nWR_DATA,13);
+  RegWriteNode(nWR_DATA,10);
+  usleep(10000);
+
   //remove any '\n's
   size_t pos = std::string::npos;
   while((pos = sendline.find('\n')) != std::string::npos){

@@ -234,7 +234,6 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   }
   //get rid of last space
   sendline.pop_back();
-  sendline.push_back('\n');
 
   printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(baseNode, sendline,promptChar)).c_str());
 

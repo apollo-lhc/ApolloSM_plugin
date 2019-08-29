@@ -206,8 +206,10 @@ int SVFPlayer::play(std::string const & svfFile , std::string const & XVCReg) {
     return -1;
   } else {
     fprintf(stderr, "JTAG shtdown succesful.\n");
+#ifndef DEBUG
     fprintf(stderr, "Ran %d significant tdi bits.\n", bitcount_tdi);
     fprintf(stderr, "Recieved %d significant tdo bits.\n", bitcount_tdo);
+#endif
   }
   return rc;
 }

@@ -29,6 +29,7 @@ public:
   int svfplayer(std::string const & svfFile, std::string const & XVCReg);
   
   bool PowerUpCM(int CM_ID,int wait = -1);
+  bool PowerDownCM(int CM_ID,int wait = -1);
 
 private:  
   IPBusStatus * statusDisplay;

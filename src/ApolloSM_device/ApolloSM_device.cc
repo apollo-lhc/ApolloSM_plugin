@@ -96,6 +96,11 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Usage: \n" \
 	       "  cmpwrup <iCM> <wait(s)>\n");
 
+    AddCommand("cmpwrdown",&ApolloSMDevice::CMPowerDown,
+	       "Power up a command module\n"\
+	       "Usage: \n" \
+	       "  cmpwrdown <iCM> <wait(s)>\n");
+    
     AddCommand("svfplayer",&ApolloSMDevice::svfplayer,
 	       "Converts an SVF file to jtag commands in AXI format\n" \
 	       "Usage: \n" \
@@ -186,6 +191,32 @@ CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strAr
   return CommandReturn::OK;
 }
 
+CommandReturn::status ApolloSMDevice::CMPowerDown(std::vector<std::string> /*strArg*/,std::vector<uint64_t> intArg){
+
+  int wait_time = 5; //1 second
+  int CM_ID = 1;
+  switch (intArg.size()){
+  case 2:
+    wait_time = intArg[1];
+    //fallthrough
+  case 1:
+    CM_ID = intArg[0];
+    break;
+  case 0:
+    break;
+  default:
+    return CommandReturn::BAD_ARGS;
+    break;
+  }
+  bool success = SM->PowerDownCM(CM_ID,wait_time);
+  if(success){
+    printf("CM %d is powered down\n",CM_ID);
+  }else{
+    printf("CM %d failed to powered down in time (forced off)\n",CM_ID);
+  }
+  return CommandReturn::OK;
+}
+
 
 CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string> strArg,std::vector<uint64_t>){
   if(1 != strArg.size()) {
@@ -247,10 +278,6 @@ CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string> strArg,
   }
 
   SM->svfplayer(strArg[0],strArg[1]);
-  
-  //Fill
-
-  
   
   return CommandReturn::OK;
 }

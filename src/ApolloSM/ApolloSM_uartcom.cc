@@ -71,37 +71,40 @@ void ApolloSM::UART_Terminal(std::string baseNode) {
   noecho();
   timeout(0);
 
-  while(interactiveLoop) {
+  try{
+    while(interactiveLoop) {
     
-    if(RegReadNode(nRD_FIFO_FULL)) {printf("Buffer full\n");} 
+      if(RegReadNode(nRD_FIFO_FULL)) {printf("Buffer full\n");} 
 
-    // read data from UART (keep this FIFO empty)
-    while(RegReadNode(nRD_VALID)) { 
-      char outChar = RegReadNode(nRD_DATA);
-      printf("%c",outChar);
-      if(10 == outChar){
-	printf("%c",13);
+      // read data from UART (keep this FIFO empty)
+      while(RegReadNode(nRD_VALID)) { 
+	char outChar = RegReadNode(nRD_DATA);
+	printf("%c",outChar);
+	if(10 == outChar){
+	  printf("%c",13);
+	}
+	RegWriteNode(nRD_VALID,1);
       }
-      RegWriteNode(nRD_VALID,1);
-    }
-    fflush(stdout);
+      fflush(stdout);
 
-    //Read from user
-    int foo = getch();
-    if(ERR != foo){
-      if(29 == foo){
-	interactiveLoop = false;
-	continue;	
-      }else if (10 == foo){	
-	RegWriteNode(nWR_DATA,13);
-	RegWriteNode(nWR_DATA,10);
-      }else if (KEY_BACKSPACE == foo){
-	RegWriteNode(nWR_DATA,8); //bs
-      }else{
-	RegWriteNode(nWR_DATA,foo);
+      //Read from user
+      int userInput = getch();
+      if(ERR != userInput){
+	if(29 == userInput){
+	  interactiveLoop = false;
+	  continue;	
+	}else if (10 == userInput){	
+	  RegWriteNode(nWR_DATA,13);
+	  RegWriteNode(nWR_DATA,10);
+	}else if (127 == userInput){
+	  RegWriteNode(nWR_DATA,8); //bs
+	  printf("%c ",8); //Draw backspace by backspace, space, (backspace from remote echo)
+	}else{
+	  RegWriteNode(nWR_DATA,0xFF&userInput);
+	}
       }
     }
-  }
+  }catch (std::exception &e){}
 
   printf("Closing command module comm...\n");
 
@@ -116,14 +119,14 @@ void ApolloSM::UART_Terminal(std::string baseNode) {
   return;
 }
 
-std::string ApolloSM::UART_CMD(std::string baseNode, std::string sendline) {
+std::string ApolloSM::UART_CMD(std::string baseNode, std::string sendline, char const promptChar) {
   baseNode.append(".UART.");
   
   //get nodes for read/write
-  uhal::Node const & nWR_FIFO_FULL = GetNode(baseNode.append("WR_FIFO_FULL"));
-  uhal::Node const & nRD_DATA = GetNode(baseNode.append("RD_DATA"));
-  uhal::Node const & nWR_DATA = GetNode(baseNode.append("WR_DATA"));
-  uhal::Node const & nRD_ACK = GetNode(baseNode.append("RD_ACK"));
+  uhal::Node const & nWR_FIFO_FULL = GetNode(baseNode+"WR_FIFO_FULL");
+  uhal::Node const & nRD_DATA      = GetNode(baseNode+"RD_DATA");
+  uhal::Node const & nWR_DATA      = GetNode(baseNode+"WR_DATA");
+  uhal::Node const & nRD_VALID     = GetNode(baseNode+"RD_VALID");
 
   // To check number of chars sent
   int i = 0;
@@ -136,17 +139,17 @@ std::string ApolloSM::UART_CMD(std::string baseNode, std::string sendline) {
   // read until prompt character
   while(true) {
     // read if there are characters to read
-    if(RegReadNode(nRD_DATA)) {
+    if(RegReadNode(nRD_VALID)) {
       readChar = 0xFF&RegReadNode(nRD_DATA);
       // Currently, we tell the difference between a regular '>' and the prompt character, also '>',
       // by checking if the previous character was a newline
-      if(('>' == readChar) && ('\n' == last)) {
-	RegWriteNode(nRD_ACK, 1);
+      if((promptChar == readChar) && ('\n' == last)) {
+	RegWriteNode(nRD_VALID, 1);
 	break;
       }
       last = readChar;
       recvline.push_back(readChar);
-      RegWriteNode(nRD_ACK, 1);
+      RegWriteNode(nRD_VALID, 1);
     }
 
     // write if there are characters to write

@@ -207,13 +207,16 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   }
 
   std::string baseNode;
-
+  char promptChar;
   if(0 == strArg[0].compare("CM1")) {
     baseNode.append("CM.CM1");    
+    promptChar = '%';
   } else if(0 == strArg[0].compare("CM2")) {
     baseNode.append("CM.CM2");
+    promptChar = '%';
   } else if(0 == strArg[0].compare("ESM")) {
     baseNode.append("SERV.SWITCH");
+    promptChar = '>';
   } else {
     return CommandReturn::BAD_ARGS;
   }
@@ -228,7 +231,7 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   sendline.pop_back();
   sendline.push_back('\n');
 
-  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(baseNode, sendline)).c_str());
+  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(baseNode, sendline,promptChar)).c_str());
 
-  return CommandReturn::OK;;
+  return CommandReturn::OK;
 } 

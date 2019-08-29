@@ -24,7 +24,7 @@ public:
 
   void UART_Terminal(std::string baseNode);
 
-  std::string UART_CMD(std::string baseNode, std::string sendline);
+  std::string UART_CMD(std::string baseNode, std::string sendline, char const promptChar = '%');
 
   bool PowerUpCM(int CM_ID,int wait = -1);
 

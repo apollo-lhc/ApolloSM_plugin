@@ -546,7 +546,7 @@ int SVFPlayer::svf()
 	  }
 	}
 	if (min_time >= 0 || tck_count >= 0) {
-	  udelay(min_time >= 0 ? min_time : 0, 0, tck_count >= 0 ? tck_count : 0);
+	  //	  udelay(min_time >= 0 ? min_time : 0, 0, tck_count >= 0 ? tck_count : 0);
 	}
 	if(tap_walk((libxsvf_tap_state)state_endrun) < 0)
 	  goto error;

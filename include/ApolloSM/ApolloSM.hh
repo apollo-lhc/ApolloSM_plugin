@@ -22,9 +22,9 @@ public:
 			     std::ostream & stream,
 			     std::string const & singleTable);
 
-  void UartComm();
+  void UART_Terminal(std::string baseNode);
 
-  std::string UartIO(std::string sendline);
+  std::string UART_CMD(std::string baseNode, std::string sendline, char const promptChar = '%');
 
   int svfplayer(std::string const & svfFile, std::string const & XVCReg);
   

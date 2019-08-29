@@ -7,12 +7,6 @@
 #include <signal.h>
 
 //Definitions
-#define RD_AVAILABLE 0x1000
-#define RD_HALF_FULL 0x2000
-#define RD_FULL 0x4000
-#define WR_HALF_FULL 0x2000
-#define WR_FULL 0x4000
-#define WR_FULL_FULL (WR_FULL | WR_HALF_FULL)
 #define STDIN 0
 
 // For Ctrl-C handling
@@ -27,13 +21,7 @@ void static signal_handler(int const signum) {
   return;
 }
 
-// To catch Ctrl-C and break out of talking through SOL
-struct sigaction sa;
-
-// To restore old handling of Ctrl-C
-struct sigaction oldsa;
 //---------------------------------------------------------------------------
-
 bool SetNonBlocking(int &fd, bool value) {
   // Get the previous flags
   int currentFlags = fcntl(fd, F_GETFL, 0);
@@ -49,8 +37,23 @@ bool SetNonBlocking(int &fd, bool value) {
   return(true);
 }
 
+
+
 // The function where all the talking to and reading from command module happens
-void ApolloSM::UartComm() {
+void ApolloSM::UART_Terminal(std::string baseNode) {
+  baseNode.append(".UART.");
+
+  //get nodes for read/write
+  uhal::Node const & nRD_FIFO_FULL = GetNode(baseNode+"RD_FIFO_FULL");
+  uhal::Node const & nRD_VALID     = GetNode(baseNode+"RD_VALID");
+  uhal::Node const & nRD_DATA      = GetNode(baseNode+"RD_DATA");
+  uhal::Node const & nWR_DATA      = GetNode(baseNode+"WR_DATA");;
+
+  // To catch Ctrl-C and break out of talking through SOL
+  struct sigaction sa;
+  
+  // To restore old handling of Ctrl-C
+  struct sigaction oldsa;
 
   // Instantiate sigaction struct member with signal handler function
   sa.sa_handler = signal_handler;
@@ -61,59 +64,47 @@ void ApolloSM::UartComm() {
   printf("Opening command module comm...\n");
   printf("Press Ctrl-] to close\n");
 
-  char writeByte;
-
-  int n;
 
   // Enter curses mode
   initscr();
   cbreak();
   noecho();
+  timeout(0);
 
-  int commandfd = STDIN;
+  try{
+    while(interactiveLoop) {
+    
+      if(RegReadNode(nRD_FIFO_FULL)) {printf("Buffer full\n");} 
 
-  SetNonBlocking(commandfd, true);
-
-  while(interactiveLoop) {
-
-    //Mike    
-    if(RegReadRegister("CM.CM1.UART.RD_FIFO_FULL")) {printf("Buffer full\n");} //if(RD_FULL&hw[readAddr]) {printf("Buffer full\n");}
-
-    // read
-    //Mike not right, look at example above
-    if(RegReadRegister("CM.CM1.UART.RD_DATA")) { //if(RD_AVAILABLE & hw[readAddr]) {
-      //while(RD_AVAILABLE & hw[readAddr]) {
-      printf("%C", 0xFF& RegReadRegister("CM.CM1.UART.RD_DATA")); //printf("%c", 0xFF&hw[readAddr]);
+      // read data from UART (keep this FIFO empty)
+      while(RegReadNode(nRD_VALID)) { 
+	char outChar = RegReadNode(nRD_DATA);
+	printf("%c",outChar);
+	if(10 == outChar){
+	  printf("%c",13);
+	}
+	RegWriteNode(nRD_VALID,1);
+      }
       fflush(stdout);
-      RegWriteRegister("CM.CM1.UART.RD_ACK", 1); //hw[readAddr] = ACK;
-      //}
+
+      //Read from user
+      int userInput = getch();
+      if(ERR != userInput){
+	if(29 == userInput){
+	  interactiveLoop = false;
+	  continue;	
+	}else if (10 == userInput){	
+	  RegWriteNode(nWR_DATA,13);
+	  RegWriteNode(nWR_DATA,10);
+	}else if (127 == userInput){
+	  RegWriteNode(nWR_DATA,8); //bs
+	  printf("%c ",8); //Draw backspace by backspace, space, (backspace from remote echo)
+	}else{
+	  RegWriteNode(nWR_DATA,0xFF&userInput);
+	}
+      }
     }
-
-    // If writebuffer half full or full, the command is not sent. This would mean that any typed commands will not show up
-    //    if(!(WR_FULL_FULL & hw[writeAddr]) && (0 < read(fd, &writeByte, sizeof(writeByte)))) {
-    n = read(commandfd, &writeByte, sizeof(writeByte));
-
-    if(0 < n) {
-      // Group separator
-      if(29 == writeByte) {
-	interactiveLoop = false;
-	continue;
-      }
-
-      //Mike
-      if('\n' == writeByte) {
-	RegWriteRegister("CM.CM!.UART.WR_DATA", '\r'); //hw[writeAddr] = '\r';
-      } else {
-	RegWriteRegister("CM.CM1.UART.WR_DATA", writeByte); //hw[writeAddr] = writeByte;
-      }
-    } /*else if(0 > n) {
-	BUException::IO_ERROR e;
-	e.Append(strerror(errno));
-	// May need to endwin() here
-	endwin();
-	throw e;
-	}*/
-  }
+  }catch (std::exception &e){}
 
   printf("Closing command module comm...\n");
 
@@ -128,7 +119,15 @@ void ApolloSM::UartComm() {
   return;
 }
 
-std::string ApolloSM::UartIO(std::string sendline) {
+std::string ApolloSM::UART_CMD(std::string baseNode, std::string sendline, char const promptChar) {
+  baseNode.append(".UART.");
+  
+  //get nodes for read/write
+  uhal::Node const & nWR_FIFO_FULL = GetNode(baseNode+"WR_FIFO_FULL");
+  uhal::Node const & nRD_DATA      = GetNode(baseNode+"RD_DATA");
+  uhal::Node const & nWR_DATA      = GetNode(baseNode+"WR_DATA");
+  uhal::Node const & nRD_VALID     = GetNode(baseNode+"RD_VALID");
+
   // To check number of chars sent
   int i = 0;
 
@@ -140,25 +139,23 @@ std::string ApolloSM::UartIO(std::string sendline) {
   // read until prompt character
   while(true) {
     // read if there are characters to read
-    //Mike
-    if(RegReadRegister("CM.CM1.UART.RD_DATA")) { //if(RD_AVAILABLE & hw[readAddr]) {
-      readChar = 0xFF&RegReadRegister("CM.CM1.UART.RD_DATA"); //readChar = 0xFF&hw[readAddr]; 
+    if(RegReadNode(nRD_VALID)) {
+      readChar = 0xFF&RegReadNode(nRD_DATA);
       // Currently, we tell the difference between a regular '>' and the prompt character, also '>',
       // by checking if the previous character was a newline
-      if(('>' == readChar) && ('\n' == last)) {
-	RegWriteRegister("CM.CM1.UART.RD_ACK", 1); //hw[readAddr] = ACK;
+      if((promptChar == readChar) && ('\n' == last)) {
+	RegWriteNode(nRD_VALID, 1);
 	break;
       }
       last = readChar;
       recvline.push_back(readChar);
-      RegWriteRegister("CM.CM1.UART.RD_ACK", 1); //hw[readAddr] = ACK;
+      RegWriteNode(nRD_VALID, 1);
     }
 
-    //Mike
     // write if there are characters to write
     // If writebuffer is not half full or full, send one char of message
-    if(!RegReadRegister("CM.CM1.UART.WR_FIFO_FULL") && ((int)sendline.size() != i)) { //if(!(WR_FULL_FULL & hw[writeAddr]) && ((int)sendline.size() != i)) {
-      RegWriteRegister("CM.CM1.UART.WR_DATA", sendline[i]); //hw[writeAddr] = sendline[i];
+    if(!RegReadNode(nWR_FIFO_FULL) && ((int)sendline.size() != i)) {
+      RegWriteNode(nWR_DATA, sendline[i]);
       i++;
     }
   }

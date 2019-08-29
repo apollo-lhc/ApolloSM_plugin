@@ -96,15 +96,20 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Usage: \n" \
 	       "  cmpwrup <iCM> <wait(s)>\n");
 
-    AddCommand("UartComm",&ApolloSMDevice::UartComm,
-	       "The function used for communicating with the command module uart\n");
-
-    AddCommand("UartIO",&ApolloSMDevice::UartIO,
-	       "Manages the IO for the command module Uart\n");
-
     AddCommand("svfplayer",&ApolloSMDevice::svfplayer,
-	       "Converts an SVF file to jtag commands in AXI format\n");
+	       "Converts an SVF file to jtag commands in AXI format\n" \
+	       "Usage: \n" \
+	       "  svfplayer svf-file XVC-device\n");
 
+    AddCommand("uart_term",&ApolloSMDevice::UART_Term,
+	       "The function used for communicating with the command module uart\n"\
+	       "Usage: \n"\
+	       "  uart_term \n");
+
+    AddCommand("uart_cmd",&ApolloSMDevice::UART_CMD,
+	       "Manages the IO for the command module Uart\n"\
+	       "Usage: \n"\
+	       "  uart_cmd CMD_STRING\n");
 }
 
 //If there is a file currently open, it closes it                                                             
@@ -157,7 +162,7 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
 
 CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strArg*/,std::vector<uint64_t> intArg){
 
-  int wait_time = 1; //1 second
+  int wait_time = 5; //1 second
   int CM_ID = 1;
   switch (intArg.size()){
   case 2:
@@ -182,19 +187,48 @@ CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strAr
 }
 
 
-CommandReturn::status ApolloSMDevice::UartComm(std::vector<std::string>,std::vector<uint64_t>){
-  SM->UartComm();
+CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string> strArg,std::vector<uint64_t>){
+  if(1 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  if(0 == strArg[0].compare("CM1")) {
+    SM->UART_Terminal("CM.CM1");    
+  } else if(0 == strArg[0].compare("CM2")) {
+    SM->UART_Terminal("CM.CM2");
+  } else if(0 == strArg[0].compare("ESM")) {
+    SM->UART_Terminal("SERV.SWITCH");
+  } else {
+    return CommandReturn::BAD_ARGS;
+  }
+  
   return CommandReturn::OK;
 }
 
-CommandReturn::status ApolloSMDevice::UartIO(std::vector<std::string> strArg,std::vector<uint64_t>){
-  if(0 == strArg.size()) {
+CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,std::vector<uint64_t>){
+  // Need at least the base node and one string to send
+  if(2 > strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  std::string baseNode;
+  char promptChar;
+  if(0 == strArg[0].compare("CM1")) {
+    baseNode.append("CM.CM1");    
+    promptChar = '%';
+  } else if(0 == strArg[0].compare("CM2")) {
+    baseNode.append("CM.CM2");
+    promptChar = '%';
+  } else if(0 == strArg[0].compare("ESM")) {
+    baseNode.append("SERV.SWITCH");
+    promptChar = '>';
+  } else {
     return CommandReturn::BAD_ARGS;
   }
 
   //make one string to send
   std::string sendline;
-  for(int i = 0; i < (int)strArg.size(); i++) {
+  for(int i = 1; i < (int)strArg.size(); i++) {
     sendline.append(strArg[i]);
     sendline.push_back(' ');
   }
@@ -202,15 +236,22 @@ CommandReturn::status ApolloSMDevice::UartIO(std::vector<std::string> strArg,std
   sendline.pop_back();
   sendline.push_back('\n');
 
-  printf("Recieved:\n%s\n", (SM->UartIO(sendline)).c_str());
+  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(baseNode, sendline,promptChar)).c_str());
 
-  return CommandReturn::OK;;
+  return CommandReturn::OK;
 } 
 
-CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string>, std::vector<uint64_t>) {
+CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string> strArg, std::vector<uint64_t>) {
 
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  SM->svfplayer(strArg[0],strArg[1]);
+  
   //Fill
+
+  
   
   return CommandReturn::OK;
-
 }

@@ -326,7 +326,7 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
   return -1;
 }
 
-int SVFPlayer::svf()
+int SVFPlayer::svf_reader()
 { 
   char *command_buffer = NULL;
   int command_buffer_len = 0;

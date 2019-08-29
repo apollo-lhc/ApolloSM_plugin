@@ -34,7 +34,7 @@ private:
   const char * bitdata_parse(const char *p, struct bitdata_s *bd, int offset);
   int getbit(unsigned char *data, int n);
   int bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate);
-  int svf();
+  int svf_reader();
 
   /* defined in svfplayer_tap.cc */
   void tap_transition(int v);

@@ -17,7 +17,7 @@
 #include <fcntl.h>
  
 /*DEBUGGING*/
-//#define DEBUG
+#define DEBUG
 #ifndef DEBUG
 int counter = 0;
 int lines = 32;
@@ -26,8 +26,6 @@ int lines = 32;
 //Defining variables for AXI
 uint32_t tms32, tdi32, length32, tdo32;
 int tmsval, tdival, indx;
-//for progress bar
-int percent, tenth, size, filecount;
 
 void SVFPlayer::tck() {
   //write tms & tdi, then update length
@@ -148,13 +146,6 @@ void SVFPlayer::udelay(long usecs, int tms, long num_tck) {
 
 //Runs for reading file
 int SVFPlayer::getbyte() {
-  //For progess bar
-  filecount++;
-  if ((filecount % tenth) == 0) {
-    percent++;
-    fprintf(stderr, "Progress: %d%%\n",(percent * 10));
-  }
-  //only line needed for this to work
   return fgetc(f);
 }
 
@@ -183,17 +174,6 @@ int SVFPlayer::pulse_tck(int tms, int tdi, int tdo, int rmask, int sync) {
 }
 
 int SVFPlayer::play(std::string const & svfFile , std::string const & XVCReg) {
-
-  //For progress bar
-  filecount = 0;
-  percent = 0;
-  size = 0;
-  tenth = 0;
-  FILE *temp = fopen(svfFile.c_str(), "rb");
-  fseek(temp,0,SEEK_END);
-  size = ftell(temp);
-  fclose(temp);
-  tenth = size / 10;
   
   //Giving credit to original creator
   fprintf(stderr, "\nxsvftool-gpio, part of Lib(X)SVF (http://www.clifford.at/libxsvf/).\n");
@@ -217,7 +197,7 @@ int SVFPlayer::play(std::string const & svfFile , std::string const & XVCReg) {
   } else {fprintf(stderr, "JTAG setup succesful\n");}
 
   //Run svf player
-  int rc = svf();
+  int rc = svf_reader();
   tap_walk(LIBXSVF_TAP_RESET); //Reset tap
   
   //Run shutdown

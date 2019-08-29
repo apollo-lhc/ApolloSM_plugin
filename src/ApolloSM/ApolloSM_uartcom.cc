@@ -64,18 +64,12 @@ void ApolloSM::UART_Terminal(std::string baseNode) {
   printf("Opening command module comm...\n");
   printf("Press Ctrl-] to close\n");
 
-  char writeByte;
-
-  int n;
 
   // Enter curses mode
   initscr();
   cbreak();
   noecho();
-  
-  //Set STDIN to non-blocking
-  int commandfd = STDIN;
-  SetNonBlocking(commandfd, true);
+  timeout(0);
 
   while(interactiveLoop) {
     
@@ -83,33 +77,29 @@ void ApolloSM::UART_Terminal(std::string baseNode) {
 
     // read data from UART (keep this FIFO empty)
     while(RegReadNode(nRD_VALID)) { 
-      printf("%c", RegReadNode(nRD_DATA));
-      fflush(stdout);
+      char outChar = RegReadNode(nRD_DATA);
+      printf("%c",outChar);
+      if(10 == outChar){
+	printf("%c",13);
+      }
       RegWriteNode(nRD_VALID,1);
     }
+    fflush(stdout);
 
     //Read from user
-    n = read(commandfd, &writeByte, sizeof(writeByte));
-    if(0 < n) {
-      // Group separator (user wants to break out of interactive mode)
-      if(29 == writeByte) {
+    int foo = getch();
+    if(ERR != foo){
+      if(29 == foo){
 	interactiveLoop = false;
-	continue;
+	continue;	
+      }else if (10 == foo){	
+	RegWriteNode(nWR_DATA,13);
+	RegWriteNode(nWR_DATA,10);
+      }else if (KEY_BACKSPACE == foo){
+	RegWriteNode(nWR_DATA,8); //bs
+      }else{
+	RegWriteNode(nWR_DATA,foo);
       }
-
-      //RegWriteNode(nWR_DATA, writeByte); 
-      if(0xd == writeByte) {
-	RegWriteNode(nWR_DATA, '\r'); 
-	RegWriteNode(nWR_DATA, '\n'); 
-      } else if(127 == n) {
-	RegWriteNode(nWR_DATA, 8);
-      } else if( 0xa == writeByte ){
-	// do nothing
-      } else {
-	RegWriteNode(nWR_DATA, writeByte); 
-      }
-    } else {
-      //Check errno for EWOULDBLOCK (everything OK) and everythign else (BAD end loop)
     }
   }
 

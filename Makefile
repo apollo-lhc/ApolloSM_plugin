@@ -12,10 +12,11 @@ LIBRARY_APOLLO_SM = lib/libBUTool_ApolloSM.so
 LIBRARY_APOLLO_SM_SOURCES = $(wildcard src/ApolloSM/*.cc)
 LIBRARY_APOLLO_SM_OBJECT_FILES = $(patsubst src/%.cc,obj/%.o,${LIBRARY_APOLLO_SM_SOURCES})
 
-EXE_APOLLO_SM_STANDALONE = bin/standalone
+EXE_APOLLO_SM_STANDALONE = bin/
 EXE_APOLLO_SM_STANDALONE_SOURCE = $(wildcard src/standalone/*.cxx)
+EXE_APOLLO_SM_STANDALONE_BIN = $(patsubst src/standalone/%.cxx,bin/%,${EXE_APOLLO_SM_STANDALONE_SOURCE})
 EXE_APOLLO_SM_STANDALONE_SOURCES = $(wildcard src/standalone/*.cc)
-EXE_APOLLO_SM_STANDALONE_OBJECT_FILES = $(patsubst src/%.cxx,obj/%.o,${EXE_APOLLO_SM_STANDALONE_SOURCE})
+#EXE_APOLLO_SM_STANDALONE_OBJECT_FILES = $(patsubst src/%.cxx,obj/%.o,${EXE_APOLLO_SM_STANDALONE_SOURCE})
 EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLLO_SM_STANDALONE_SOURCES})
 
 
@@ -104,7 +105,7 @@ _cleanall:
 all: _all
 build: _all
 buildall: _all
-_all: _cactus_env ${LIBRARY_APOLLO_SM_DEVICE} ${LIBRARY_APOLLO_SM} ${EXE_APOLLO_SM_STANDALONE}
+_all: _cactus_env ${LIBRARY_APOLLO_SM_DEVICE} ${LIBRARY_APOLLO_SM} ${EXE_APOLLO_SM_STANDALONE_BIN} #${EXE_APOLLO_SM_STANDALONE}
 
 _cactus_env:
 ifdef IPBUS_PATH
@@ -125,9 +126,9 @@ ${LIBRARY_APOLLO_SM_DEVICE}: ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES} ${IPBUS_RE
 ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusIO.so
 	${CXX} ${LINK_LIBRARY_FLAGS}  ${LIBRARY_APOLLO_SM_OBJECT_FILES} -o $@
 
-${EXE_APOLLO_SM_STANDALONE}: ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
-	mkdir -p bin
-	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} -o $@
+#${EXE_APOLLO_SM_STANDALONE}: ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
+#	mkdir -p bin
+#	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} -o $@
 
 
 
@@ -140,6 +141,14 @@ obj/%.o : src/%.cxx
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
+
+bin/% : obj/standalone/%.o
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} $^ -o $@
+#	mkdir -p $(dir $@)
+#	mkdir -p {lib,obj}
+#	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
+
 
 -include $(LIBRARY_OBJECT_FILES:.o=.d)
 

@@ -20,8 +20,6 @@ void ApolloSM::GenerateStatusDisplay(size_t level,
 
 void ApolloSM::GenerateHTMLStatus(size_t level, std::string filename) {
 
-  //Give file .html tag
-  std::string filenameHTML = filename + ".html";
   //Create file
   std::ofstream HTML;
   HTML.open(filenameHTML);

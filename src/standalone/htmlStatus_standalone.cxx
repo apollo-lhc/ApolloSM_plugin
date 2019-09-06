@@ -12,7 +12,7 @@ int main(int, char**) {
   arg.push_back("connections.xml");
   SM->Connect(arg);
 
-  SM->GenerateHTMLStatus(1,"testfile");
+  SM->GenerateHTMLStatus(1,"index.html");
   
   //Close ApolloSM class and END
   if(NULL != SM) {

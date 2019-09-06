@@ -1,4 +1,5 @@
 #include <ApolloSM/ApolloSM.hh>
+#include <fstream> //std::ofstream
 
 ApolloSM::ApolloSM():IPBusConnection("ApolloSM"),statusDisplay(NULL){  
   statusDisplay= new IPBusStatus(GetHWInterface());
@@ -15,6 +16,23 @@ void ApolloSM::GenerateStatusDisplay(size_t level,
 				     std::string const & singleTable = std::string("")){
   statusDisplay->Report(level,stream,singleTable);
 }
+
+
+void ApolloSM::GenerateHTMLStatus(size_t level, std::string filename) {
+
+  //Give file .html tag
+  std::string filenameHTML = filename + ".html";
+  //Create file
+  std::ofstream HTML;
+  HTML.open(filenameHTML);
+  //Set statusDisplay to HTML
+  statusDisplay->SetHTML();
+  statusDisplay->Report(level, HTML, "");
+  //Unset HTML
+  statusDisplay->UnsetHTML();
+
+}
+
 
 bool ApolloSM::PowerUpCM(int CM_ID, int wait /*seconds*/){
   const uint32_t RUNNING_STATE = 4;

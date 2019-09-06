@@ -22,6 +22,8 @@ public:
 			     std::ostream & stream,
 			     std::string const & singleTable);
 
+  void GenerateHTMLStatus(size_t level, std::string filename);
+  
   void UART_Terminal(std::string baseNode);
 
   std::string UART_CMD(std::string baseNode, std::string sendline, char const promptChar = '%');

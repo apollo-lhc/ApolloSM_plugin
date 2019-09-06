@@ -241,11 +241,17 @@ const char * SVFPlayer::bitdata_parse(const char *p, struct bitdata_s *bd, int o
 
       i = bd->alloced_bytes*2 - hexdigits;
       for (j=0; j<hexdigits; j++, i++, p++) {
-	if (i%2 == 0) {
-	  d[i/2] |= hex(*p) << 4;
+//	if (i%2 == 0) {
+//	  d[i/2] |= hex(*p) << 4;
+//	} else {
+//	  d[i/2] |= hex(*p);
+//	}
+	if ((i&0x1) == 0x0) {
+	  d[i>>1] |= hex(*p) << 4;
 	} else {
-	  d[i/2] |= hex(*p);
+	  d[i>>1] |= hex(*p);
 	}
+
       }
 
       if (*p != ')')
@@ -288,12 +294,14 @@ const char * SVFPlayer::bitdata_parse(const char *p, struct bitdata_s *bd, int o
 
 int SVFPlayer::getbit(unsigned char *data, int n)
 {
-  return (data[n/8] & (1 << (7 - n%8))) ? 1 : 0;
+  //  return (data[n/8] & (1 << (7 - n%8))) ? 1 : 0;
+  return (data[(n>>3)] & (1 << (7 - (n&0x7)))) ? 1 : 0;
 }
 
 int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
 {
-  int left_padding = (8 - bd->len % 8) % 8;
+  //  int left_padding = (8 - bd->len % 8) % 8;
+  int left_padding = (8 - (bd->len & 0x7)) & 0x7;
   int tdo_error = 0;
   int tms = 0;
   int i;

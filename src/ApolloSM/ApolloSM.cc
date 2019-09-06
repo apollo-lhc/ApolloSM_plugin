@@ -20,15 +20,18 @@ void ApolloSM::GenerateStatusDisplay(size_t level,
 
 void ApolloSM::GenerateHTMLStatus(size_t level, std::string filename) {
 
-  //Create file
+  //SETUP
   std::ofstream HTML;
-  HTML.open(filenameHTML);
-  //Set statusDisplay to HTML
+  HTML.open(filename);
   statusDisplay->SetHTML();
-  statusDisplay->Report(level, HTML, "");
-  //Unset HTML
-  statusDisplay->UnsetHTML();
 
+  //Get report
+  statusDisplay->Report(level, HTML, "");
+
+  //END
+  HTML.close();
+  statusDisplay->UnsetHTML();
+  
 }
 
 

@@ -18,7 +18,7 @@ Set the following enviornment variable
 Build with make.sh
 Modify and run coplibs.sh to copy the uHAL libraries to the zynq
 
-Now check-out BUTool (http://gauss.bu.edu/svn/butool/branches/makefile_refactor)
+Now check-out BUTool (http://gauss.bu.edu/svn/butool/trunk)
   Then put this (ApolloSM) code and butool-ipbus-helpers in the plugins directory.
   check out http://gauss.bu.edu/svn/butool-ipbus-helpers/trunk as butool-ipbus-helpers
 

@@ -22,7 +22,7 @@ public:
 			     std::ostream & stream,
 			     std::string const & singleTable);
 
-  void GenerateHTMLStatus(size_t level, std::string filename);
+  std::string GenerateHTMLStatus(std::string filename, size_t level, std::string);
   
   void UART_Terminal(std::string baseNode);
 

@@ -106,6 +106,11 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Usage: \n" \
 	       "  svfplayer svf-file XVC-device\n");
 
+    AddCommand("GenerateHTMLStatus",&ApolloSMDevice::GenerateHTMLStatus,
+	       "Creates a status table as an html file\n" \
+	       "Usage: \n" \
+	       "  GenerateHTMLStatus filename <level> <type>\n");
+    
     AddCommand("uart_term",&ApolloSMDevice::UART_Term,
 	       "The function used for communicating with the command module uart\n"\
 	       "Usage: \n"\
@@ -280,4 +285,23 @@ CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string> strArg,
   SM->svfplayer(strArg[0],strArg[1]);
   
   return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::GenerateHTMLStatus(std::vector<std::string> strArg, std::vector<uint64_t> level) {
+  if (strArg.size() < 1) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  std::string strOut;
+
+  //Grab a possible level
+  size_t verbosity;
+  if (level.size() == 1) {verbosity = level[0];}
+  else {verbosity = 1;}
+
+  if (strArg.size() == 1) {strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,"HTML");}
+  else {strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,strArg[1]);}
+
+  if (strOut == "ERROR") {return CommandReturn::BAD_ARGS;}
+  else {return CommandReturn::OK;}
 }

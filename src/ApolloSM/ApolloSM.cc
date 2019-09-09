@@ -18,22 +18,41 @@ void ApolloSM::GenerateStatusDisplay(size_t level,
 }
 
 
-void ApolloSM::GenerateHTMLStatus(size_t level, std::string filename) {
+std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = size_t(1), std::string type = std::string("HTML")) {
 
   //SETUP
   std::ofstream HTML;
   HTML.open(filename);
-  statusDisplay->SetHTML();
+  if(!HTML.is_open()) {
+    fprintf(stderr, "Failed to open file\n");
+    return "ERROR";
+  }
+  std::string BareReport; //For ReportBare
+
+  //Setting Status Display
+  if (type == "HTML") {statusDisplay->SetHTML();}
+  else if(type == "Bare") {}
+  else {
+    fprintf(stderr, "ERROR: invalid HTML type\n");
+    fprintf(stderr, "Valid HTML types are; HTML, Bare, or "" for HTML\n");
+    return "ERROR";
+  }
 
   //Get report
-  statusDisplay->Report(level, HTML, "");
+  if (type == "HTML") {statusDisplay->Report(level, HTML, "");}
+  else {
+    BareReport = statusDisplay->ReportBare(level, "");
+    HTML.close();
+    return BareReport;
+  }
 
   //END
   HTML.close();
-  statusDisplay->UnsetHTML();
-  
+  if (type == "HTML") {
+    statusDisplay->UnsetHTML();
+  }
+  return "GOOD";
 }
-
 
 bool ApolloSM::PowerUpCM(int CM_ID, int wait /*seconds*/){
   const uint32_t RUNNING_STATE = 4;

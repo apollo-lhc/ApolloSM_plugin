@@ -59,8 +59,7 @@ namespace BUTool{
     CommandReturn::status svfplayer(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status UART_Term(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status UART_CMD(std::vector<std::string>,std::vector<uint64_t>);
-
-
+    CommandReturn::status GenerateHTMLStatus(std::vector<std::string>,std::vector<uint64_t>);
     
     //Add new command (sub command) auto-complete files here
     std::string autoComplete_Help(std::vector<std::string> const &,std::string const &,int);

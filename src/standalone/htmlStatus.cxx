@@ -8,18 +8,24 @@
 
 int main(int argc, char** argv) {
 
-  //Create ApolloSM class
-  ApolloSM * SM = NULL;
-  SM = new ApolloSM();
-  std::vector<std::string> arg;
-  arg.push_back("connections.xml");
-  SM->Connect(arg);
-  std::string strOut;
+  
+  std::string file;
+  size_t verbosity;
+  std::string type;
+  std::string connection_file;
 
   try {
     TCLAP::CmdLine cmd("Apollo XVC.",
 		       ' ',
 		       "XVC");
+    TCLAP::ValueArg<std::string> conn_file("c", //one char flag
+					  "connection_file", // full flag name
+					  "connection file", //description
+					  true, //required
+					  std::string(""), //Default
+					  "string", //type
+					  cmd);
+
 
     TCLAP::ValueArg<std::string> filename("f", //one char flag
 					  "file", // full flag name
@@ -47,18 +53,29 @@ int main(int argc, char** argv) {
     
     //Parse the command line arguments
     cmd.parse(argc, argv);
-    std::string file = filename.getValue();
-    size_t verbosity = level.getValue();
-    std::string type = bare.getValue();
+    file = filename.getValue();
+    verbosity = level.getValue();
+    type = bare.getValue();
+    connection_file = conn_file.getValue();
     fprintf(stderr, "running: verbosity=%d filename=\"%s\"\n", verbosity, file.c_str());
     
-    //Generate HTML Status
-    strOut = SM->GenerateHTMLStatus(file, verbosity, type);
 
   }catch (TCLAP::ArgException &e) {
     fprintf(stderr, "Failed to Parse Command Line, running default: verbosity=1 filename=\"index.html\"\n");
-    strOut = SM->GenerateHTMLStatus("index.html", 1, "HTML");
+    return -1;
   }
+
+
+  //Create ApolloSM class
+  ApolloSM * SM = NULL;
+  SM = new ApolloSM();
+  std::vector<std::string> arg;
+  arg.push_back(connection_file);
+  SM->Connect(arg);
+
+  std::string strOut;
+  //Generate HTML Status
+  strOut = SM->GenerateHTMLStatus(file, verbosity, type);
 
   //Close ApolloSM and END
   if(NULL != SM) {delete SM;}

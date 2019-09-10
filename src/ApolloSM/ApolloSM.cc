@@ -42,15 +42,13 @@ std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = si
   if (type == "HTML") {statusDisplay->Report(level, HTML, "");}
   else {
     BareReport = statusDisplay->ReportBare(level, "");
+    HTML.write(BareReport.c_str(),BareReport.size());
     HTML.close();
-    return BareReport;
   }
 
   //END
   HTML.close();
-  if (type == "HTML") {
-    statusDisplay->UnsetHTML();
-  }
+  statusDisplay->UnsetHTML();
   return "GOOD";
 }
 

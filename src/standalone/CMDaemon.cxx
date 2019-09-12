@@ -181,8 +181,13 @@ int main(int, char**) {
     // start time
     clock_gettime(CLOCK_REALTIME, &startTS);
 
-    temps = sendAndParse(SM);
-    sendTemps(SM, temps);
+    if(SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD")){
+      temps = sendAndParse(SM);
+      sendTemps(SM, temps);
+    }else{
+      temps = {0,0,0,0};
+      sendTemps(SM, temps);
+    }
 
     // end time
     clock_gettime(CLOCK_REALTIME, &stopTS);

@@ -118,10 +118,10 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
 
   // TO DO use RegWriteRegister
 
-  (SM)->RegWriteRegister("SLAVE_I2C.S2.1", temps.MCUTemp);
-  (SM)->RegWriteRegister("SLAVE_I2C.S3.1", temps.FIREFLYTemp);
-  (SM)->RegWriteRegister("SLAVE_I2C.S4.1", temps.FPGATemp);
-  (SM)->RegWriteRegister("SLAVE_I2C.S5.1", temps.REGTemp);
+  (SM)->RegWriteRegister("SLAVE_I2C.S2.0", temps.MCUTemp);
+  (SM)->RegWriteRegister("SLAVE_I2C.S3.0", temps.FIREFLYTemp);
+  (SM)->RegWriteRegister("SLAVE_I2C.S4.0", temps.FPGATemp);
+  (SM)->RegWriteRegister("SLAVE_I2C.S5.0", temps.REGTemp);
 
 //(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S2.1"), temps.MCUTemp);
 //(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S3.1"), temps.FIREFLYTemp);

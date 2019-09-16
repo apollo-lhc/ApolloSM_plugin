@@ -175,11 +175,15 @@ int main(int, char**) {
 
   // ====================================================================================================
 
-  temperatures temps;
+  temperatures temps;  
+
+  //Set the power-up done bit to 1 for the IPMC to read
+  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
 
   while(loop) {
     // start time
     clock_gettime(CLOCK_REALTIME, &startTS);
+
 
     if(SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD")){
       temps = sendAndParse(SM);
@@ -210,7 +214,8 @@ int main(int, char**) {
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &oldsa, NULL);
   //sigaction(SIGUSR1, &oldsa, NULL);
-  
+
+  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE:",0)  ;
   printf("Successful kill\n");
   
   return 0;

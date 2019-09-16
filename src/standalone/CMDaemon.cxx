@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
-//#include <syslog.h>
+#include <syslog.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 
@@ -28,10 +28,6 @@ struct temperatures {
 bool volatile loop;
 
 void static signal_handler(int const signum) {
-  //fprintf(stderr, "hello\n");
-  //printf("SIGUSR1 is: %d\n", SIGUSR1);
-  //printf("signum is: %d\n", signum);
-  //  if(SIGUSR1 == signum) {
   if(SIGINT == signum) {
     loop = false;
   }
@@ -125,11 +121,6 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
   (SM)->RegWriteRegister("SLAVE_I2C.S3.0", temps.FIREFLYTemp);
   (SM)->RegWriteRegister("SLAVE_I2C.S4.0", temps.FPGATemp);
   (SM)->RegWriteRegister("SLAVE_I2C.S5.0", temps.REGTemp);
-
-//(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S2.1"), temps.MCUTemp);
-//(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S3.1"), temps.FIREFLYTemp);
-//(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S4.1"), temps.FPGATemp);
-//(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S5.1"), temps.REGTemp);
 }
 
 // ====================================================================================================
@@ -161,7 +152,6 @@ int main(int, char**) {
   sa.sa_handler = signal_handler;
   sigemptyset(&sa.sa_mask);
   sigaction(SIGINT, &sa, &oldsa);
-  //sigaction(SIGUSR1, &sa, &oldsa);
   loop = true;
 
   // ====================================================================================================
@@ -171,8 +161,6 @@ int main(int, char**) {
 
   // second to microsecond
   long stous = 1000000;
-  // nanosecond to microsecond
-  //long nstous = 1000;
   // 10 seconds in microseconds  
   long sleepTime = 10*stous;
 
@@ -194,23 +182,23 @@ int main(int, char**) {
   // Parent process has now terminated and forked child process will continue
   // PID of child process was 0
 
-  // Since child process is daemon, umask needs to be set so files and logs can be written
-  //umask(0);
-  
+  // Since the child process is a daemon, the umask needs to be set so files and logs can be written to
+  umask(0);
   // Open system logs for child process
-  //openlog("CMDaemon", LOG_NOWAIT | LOG_PID, LOG_USER);
+  openlog("CMDaemon", LOG_NOWAIT | LOG_PID, LOG_USER);
+  syslog(LOG_NOTICE, "Successfully started CMDaemon");
 
   // Generate a session ID for child process
   sid = setsid();
   // Check valid SID
   if(0 > sid) {
-    //syslog(LOG_ERR, "Could not generate session ID for child process\n");
+    syslog(LOG_ERR, "Could not generate session ID for child process");
     exit(EXIT_FAILURE);
   }
 
   // Change current working directory to a directory guaranteed to exist
   if(0 > chdir("/")) {
-    //syslog(LOG_ERR, "Could not change working directory to /\n");
+    syslog(LOG_ERR, "Could not change working directory to /");
     exit(EXIT_FAILURE);
   }
 
@@ -230,7 +218,6 @@ int main(int, char**) {
     // start time
     clock_gettime(CLOCK_REALTIME, &startTS);
 
-
     if(SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD")){
       temps = sendAndParse(SM);
       sendTemps(SM, temps);
@@ -241,13 +228,9 @@ int main(int, char**) {
 
     // end time
     clock_gettime(CLOCK_REALTIME, &stopTS);
-    //printf("%d\n", clock_gettime(CLOCK_MONOTONIC, &stopTS));
       
     // sleep for 10 seconds minus how long it took to read and send temperature
-    //    usleep(sleepTime - (stopTS.tv_sec - startTS.tv_sec)*stous - (stopTS.tv_nsec - startTS.tv_nsec)/nstous);
     usleep(sleepTime - elapsed(startTS.tv_sec, startTS.tv_nsec, stopTS.tv_sec, stopTS.tv_nsec));
-    //usleep(10000000);
-    //printf("Done sleeping\n");
   }
   
   // ====================================================================================================
@@ -260,10 +243,18 @@ int main(int, char**) {
     
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &oldsa, NULL);
-  //sigaction(SIGUSR1, &oldsa, NULL);
 
-  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE:",0)  ;
-  printf("Successful kill\n");
+  // ====================================================================================================
+
+  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE:",0);
+  
+  // ====================================================================================================
+  
+  syslog(LOG_NOTICE, "Successful kill");
+  closelog();
+  //  exit(EXIT_SUCCESS);
+
+  // ====================================================================================================
   
   return 0;
 }

@@ -1,12 +1,15 @@
-#include <stdio.h>
+//#include <stdio.h>
 #include <ApolloSM/ApolloSM.hh>
 #include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
 #include <boost/tokenizer.hpp>
-#include <unistd.h> // usleep
+#include <unistd.h>
 #include <signal.h>
 #include <time.h>
+//#include <syslog.h>
+#include <sys/stat.h>
+#include <stdlib.h>
 
 // ====================================================================================================
 // Definitions
@@ -174,6 +177,49 @@ int main(int, char**) {
   long sleepTime = 10*stous;
 
   // ====================================================================================================
+  // For daemonizing
+  // Process and session ids
+  pid_t pid, sid;
+
+  // Fork current process
+  pid = fork();
+  // Parent process continues with a process ID greater than 0
+  if(0 < pid) {
+    exit(EXIT_SUCCESS);
+  }
+  // Process ID lower than 0 indicates failure in either process
+  else if(0 > pid) {
+    exit(EXIT_FAILURE);
+  }
+  // Parent process has now terminated and forked child process will continue
+  // PID of child process was 0
+
+  // Since child process is daemon, umask needs to be set so files and logs can be written
+  //umask(0);
+  
+  // Open system logs for child process
+  //openlog("CMDaemon", LOG_NOWAIT | LOG_PID, LOG_USER);
+
+  // Generate a session ID for child process
+  sid = setsid();
+  // Check valid SID
+  if(0 > sid) {
+    //syslog(LOG_ERR, "Could not generate session ID for child process\n");
+    exit(EXIT_FAILURE);
+  }
+
+  // Change current working directory to a directory guaranteed to exist
+  if(0 > chdir("/")) {
+    //syslog(LOG_ERR, "Could not change working directory to /\n");
+    exit(EXIT_FAILURE);
+  }
+
+  // Daemons cannot use the terminal so close standard file descriptors for security reasons
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+  
+  // ====================================================================================================
 
   temperatures temps;
 
@@ -200,18 +246,25 @@ int main(int, char**) {
     //printf("Done sleeping\n");
   }
   
-  //  printf("Deleting SM\n");
+  // ====================================================================================================
+  
   if(NULL != SM) {
     delete SM;
   }
 
-  //  printf("restoring\n");
-  
+  // ====================================================================================================
+    
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &oldsa, NULL);
   //sigaction(SIGUSR1, &oldsa, NULL);
+
+  // ====================================================================================================
   
-  printf("Successful kill\n");
+  // Close system logs for child process
+  //syslog(LOG_NOTICE, "Stopping CMDaemon\n");
+  //closelog();
+  
+  // ====================================================================================================
   
   return 0;
 }

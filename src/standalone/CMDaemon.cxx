@@ -4,9 +4,10 @@
 #include <vector>
 #include <string>
 #include <boost/tokenizer.hpp>
-#include <unistd.h> // usleep
+#include <unistd.h> // usleep, execl
 #include <signal.h>
 #include <time.h>
+
 
 // ====================================================================================================
 // Definitions
@@ -25,10 +26,6 @@ struct temperatures {
 bool volatile loop;
 
 void static signal_handler(int const signum) {
-  //fprintf(stderr, "hello\n");
-  //printf("SIGUSR1 is: %d\n", SIGUSR1);
-  //printf("signum is: %d\n", signum);
-  //  if(SIGUSR1 == signum) {
   if(SIGINT == signum) {
     loop = false;
   }
@@ -41,7 +38,6 @@ temperatures sendAndParse(ApolloSM* SM) {
   
   // read and print
   std::string recv((SM)->UART_CMD("CM.CM1", "simple_sensor", '%'));
-  //printf("\nReceived:\n\n%s\n\n", recv.c_str());
   
   // Separate by line
   boost::char_separator<char> lineSep("\r\n");
@@ -122,11 +118,6 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
   (SM)->RegWriteRegister("SLAVE_I2C.S3.0", temps.FIREFLYTemp);
   (SM)->RegWriteRegister("SLAVE_I2C.S4.0", temps.FPGATemp);
   (SM)->RegWriteRegister("SLAVE_I2C.S5.0", temps.REGTemp);
-
-//(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S2.1"), temps.MCUTemp);
-//(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S3.1"), temps.FIREFLYTemp);
-//(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S4.1"), temps.FPGATemp);
-//(SM)->RegWriteNode((SM)->GetNode("SLAVE_I2C.S5.1"), temps.REGTemp);
 }
 
 // ====================================================================================================
@@ -158,7 +149,6 @@ int main(int, char**) {
   sa.sa_handler = signal_handler;
   sigemptyset(&sa.sa_mask);
   sigaction(SIGINT, &sa, &oldsa);
-  //sigaction(SIGUSR1, &sa, &oldsa);
   loop = true;
 
   // ====================================================================================================
@@ -168,10 +158,8 @@ int main(int, char**) {
 
   // second to microsecond
   long stous = 1000000;
-  // nanosecond to microsecond
-  //long nstous = 1000;
-  // 10 seconds in microseconds  
-  long sleepTime = 10*stous;
+  // 1 second in microseconds  
+  long sleepTime = 1*stous;
 
   // ====================================================================================================
 
@@ -180,43 +168,58 @@ int main(int, char**) {
   //Set the power-up done bit to 1 for the IPMC to read
   SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
 
+  bool inShutdown = false;
   while(loop) {
     // start time
     clock_gettime(CLOCK_REALTIME, &startTS);
 
-
-    if(SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD")){
+    if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
       temps = sendAndParse(SM);
       sendTemps(SM, temps);
     }else{
       temps = {0,0,0,0};
       sendTemps(SM, temps);
     }
-
     // end time
     clock_gettime(CLOCK_REALTIME, &stopTS);
-    //printf("%d\n", clock_gettime(CLOCK_MONOTONIC, &stopTS));
-      
-    // sleep for 10 seconds minus how long it took to read and send temperature
-    //    usleep(sleepTime - (stopTS.tv_sec - startTS.tv_sec)*stous - (stopTS.tv_nsec - startTS.tv_nsec)/nstous);
-    usleep(sleepTime - elapsed(startTS.tv_sec, startTS.tv_nsec, stopTS.tv_sec, stopTS.tv_nsec));
-    //usleep(10000000);
-    //printf("Done sleeping\n");
+    // sleep for 10 seconds minus how long it took to read and send temperature    
+    useconds_t sleepT = sleepTime - elapsed(startTS.tv_sec, startTS.tv_nsec, stopTS.tv_sec, stopTS.tv_nsec);
+    if(sleepT > 0){
+      usleep(sleepT);
+    }
+    if((!inShutdown) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
+      fprintf(stderr,"Shutdown requested\n");
+      inShutdown = true;
+      //the IPMC requested a re-boot.
+      pid_t reboot_pid;
+      if(0 == (reboot_pid = fork())){
+	//Shutdown the system
+	execlp("/sbin/shutdown","/sbin/shutdown","-h","now",NULL);
+	exit(1);
+      }
+      if(-1 == reboot_pid){
+	inShutdown = false;
+	fprintf(stderr,"Error! fork to shutdown failed!\n");
+      }else{
+	//Shutdown the command module (if up)
+	SM->PowerDownCM(1,5);
+      }
+    }
   }
+   
+  //We are no longer booted
+  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
+  //we are shut down
+  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN",1);
+
   
-  //  printf("Deleting SM\n");
   if(NULL != SM) {
     delete SM;
   }
-
-  //  printf("restoring\n");
   
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &oldsa, NULL);
-  //sigaction(SIGUSR1, &oldsa, NULL);
-
-  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE:",0)  ;
-  printf("Successful kill\n");
+  fprintf(stderr,"CMDaemon ended\n");
   
   return 0;
 }

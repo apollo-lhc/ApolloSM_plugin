@@ -23,7 +23,7 @@ struct temperatures {
 
 // ====================================================================================================
 // Kill program if it is in background
-bool volatile loop;
+bool static volatile loop;
 
 void static signal_handler(int const signum) {
   if(SIGINT == signum) {
@@ -146,6 +146,7 @@ int main(int, char**) {
   // Restore old SIGINT action
   struct sigaction oldsa;
   // Instantiate sigaction struct member with signal handler function
+  memset(&sa,0,sizeof(sa)); //Clear struct                                                                                                              
   sa.sa_handler = signal_handler;
   sigemptyset(&sa.sa_mask);
   sigaction(SIGINT, &sa, &oldsa);
@@ -205,8 +206,9 @@ int main(int, char**) {
 	SM->PowerDownCM(1,5);
       }
     }
+
   }
-   
+
   //We are no longer booted
   SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
   //we are shut down

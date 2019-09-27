@@ -4,13 +4,14 @@
 #include <vector>
 #include <string>
 #include <boost/tokenizer.hpp>
-#include <unistd.h>
+#include <unistd.h> // usleep, execl
 #include <signal.h>
 #include <time.h>
 #include <syslog.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 //#include <chrono>
+
 
 // ====================================================================================================
 // Definitions
@@ -32,7 +33,7 @@ struct temperatures {
 
 // ====================================================================================================
 // Kill program if it is in background
-bool volatile loop;
+bool static volatile loop;
 
 void static signal_handler(int const signum) {
   if(SIGINT == signum) {
@@ -47,7 +48,6 @@ struct temperatures sendAndParse(ApolloSM * const SM) {
   
   // read and print
   std::string recv((SM)->UART_CMD("CM.CM1", "simple_sensor", '%'));
-  //printf("\nReceived:\n\n%s\n\n", recv.c_str());
   
   // Separate by line
   boost::char_separator<char> lineSep("\r\n");
@@ -161,6 +161,7 @@ int main(int, char**) {
   // Restore old SIGINT action
   struct sigaction oldsa;
   // Instantiate sigaction struct member with signal handler function
+  memset(&sa,0,sizeof(sa)); //Clear struct                                                                                                              
   sa.sa_handler = signal_handler;
   sigemptyset(&sa.sa_mask);
   sigaction(SIGINT, &sa, &oldsa);
@@ -172,70 +173,23 @@ int main(int, char**) {
   struct timespec stopTS;
   
   // second to microsecond
-  // long stous = 1000000;
-  // 10 seconds in microseconds  
-  //long sleepTime = 10*stous;
+  long stous = 1000000;
+  // 1 second in microseconds  
+  long sleepTime = 1*stous;
 
-  //  tp start;
+  // ====================================================================================================
 
-//// ====================================================================================================
-//// For daemonizing
-//// Process and session ids
-//pid_t pid, sid;
-//
-//// Fork current process
-//pid = fork();
-//// Parent process continues with a process ID greater than 0
-//if(0 < pid) {
-//  exit(EXIT_SUCCESS);
-//}
-//// Process ID lower than 0 indicates failure in either process
-//else if(0 > pid) {
-//  exit(EXIT_FAILURE);
-//}
-//// Parent process has now terminated and forked child process will continue
-//// PID of child process was 0
-//
-//// Since the child process is a daemon, the umask needs to be set so files and logs can be written to
-//umask(0);
-//// Open system logs for child process
-//openlog("CMDaemon", LOG_NOWAIT | LOG_PID, LOG_USER);
-//syslog(LOG_NOTICE, "Successfully started CMDaemon");
-//
-//// Generate a session ID for child process
-//sid = setsid();
-//// Check valid SID
-//if(0 > sid) {
-//  syslog(LOG_ERR, "Could not generate session ID for child process");
-//  exit(EXIT_FAILURE);
-//}
-//
-//// Change current working directory to a directory guaranteed to exist
-//if(0 > chdir("/")) {
-//  syslog(LOG_ERR, "Could not change working directory to /");
-//  exit(EXIT_FAILURE);
-//}
-//
-//// Daemons cannot use the terminal so close standard file descriptors for security reasons
-//close(STDIN_FILENO);
-//close(STDOUT_FILENO);
-//close(STDERR_FILENO);
-//
-//// ====================================================================================================
-
-  struct temperatures temps;  
+  temperatures temps;  
 
   //Set the power-up done bit to 1 for the IPMC to read
   SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
 
+  bool inShutdown = false;
   while(loop) {
     // start time
     clock_gettime(CLOCK_REALTIME, &startTS);
-    //start = clk::now();
 
-    if(!loop) {break;}
-    
-    if(SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD")){
+    if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
       temps = sendAndParse(SM);
       sendTemps(SM, temps);
     }else{
@@ -243,45 +197,46 @@ int main(int, char**) {
       sendTemps(SM, temps);
     }
 
-    //printf("Read done\n");
-    
     // end time
     clock_gettime(CLOCK_REALTIME, &stopTS);
-    
-    if(!loop) {break;}
-    
-    printf("No kill\n");
+    // sleep for 10 seconds minus how long it took to read and send temperature    
+    useconds_t sleepT = sleepTime - elapsed(startTS.tv_sec, startTS.tv_nsec, stopTS.tv_sec, stopTS.tv_nsec);
+    if(sleepT > 0){
+      usleep(sleepT);
+    }
+    if((!inShutdown) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
+      fprintf(stderr,"Shutdown requested\n");
+      inShutdown = true;
+      //the IPMC requested a re-boot.
+      pid_t reboot_pid;
+      if(0 == (reboot_pid = fork())){
+	//Shutdown the system
+	execlp("/sbin/shutdown","/sbin/shutdown","-h","now",NULL);
+	exit(1);
+      }
+      if(-1 == reboot_pid){
+	inShutdown = false;
+	fprintf(stderr,"Error! fork to shutdown failed!\n");
+      }else{
+	//Shutdown the command module (if up)
+	SM->PowerDownCM(1,5);
+      }
+    }
 
-    // sleep for 10 seconds minus how long it took to read and send temperature
-    //usleep(sleepTime - elapsed(startTS.tv_sec, startTS.tv_nsec, stopTS.tv_sec, stopTS.tv_nsec));
-    //usleep(sleepTime - elapsed(start).count());
-    usleep(10000000);
   }
 
-  printf("Out of loop\n");
-  
-  // ====================================================================================================
+  //We are no longer booted
+  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
+  //we are shut down
+  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN",1);
   
   if(NULL != SM) {
     delete SM;
   }
-
-  // ====================================================================================================
-    
+  
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &oldsa, NULL);
-
-  // ====================================================================================================
-
-  SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE:",0);
-  
-  // ====================================================================================================
-  
-//syslog(LOG_NOTICE, "Successful kill");
-//closelog();
-////  exit(EXIT_SUCCESS);
-
-  // ====================================================================================================
+  fprintf(stderr,"CMDaemon ended\n");
   
   return 0;
 }

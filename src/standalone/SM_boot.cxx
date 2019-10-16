@@ -255,7 +255,8 @@ int main(int, char**) {
 
       //Process CM temps
       temperatures temps;  
-      if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
+      //if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
+      if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
 	temps = sendAndParse(SM);
 	sendTemps(SM, temps);
       }else{

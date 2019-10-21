@@ -260,14 +260,14 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
 
   std::string baseNode;
   char promptChar;
-  if(0 == strArg[0].compare("CM1")) {
-    baseNode.append("CM.CM1");    
+  if(0 == strArg[0].compare("1")) {
+    baseNode.append("1");    
     promptChar = '%';
-  } else if(0 == strArg[0].compare("CM2")) {
-    baseNode.append("CM.CM2");
+  } else if(0 == strArg[0].compare("2")) {
+    baseNode.append("2");
     promptChar = '%';
-  } else if(0 == strArg[0].compare("ESM")) {
-    baseNode.append("SERV.SWITCH");
+  } else if(0 == strArg[0].compare("3")) {
+    baseNode.append("3");
     promptChar = '>';
   } else {
     return CommandReturn::BAD_ARGS;

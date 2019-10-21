@@ -5,6 +5,9 @@
 #include <IPBusStatus/IPBusStatus.hh>
 #include <BUException/ExceptionBase.hh>
 
+
+#include <iostream>
+
 namespace BUException{
   ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n");
 }
@@ -32,6 +35,8 @@ public:
   
   bool PowerUpCM(int CM_ID,int wait = -1);
   bool PowerDownCM(int CM_ID,int wait = -1);
+
+  void DebugDump(std::ostream & output = std::cout);
 
 private:  
   IPBusStatus * statusDisplay;

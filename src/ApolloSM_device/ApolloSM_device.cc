@@ -10,6 +10,10 @@
 
 #include <ctype.h> //for isdigit
 
+#include <iostream>
+#include <iomanip>
+#include <ctime>
+
 using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
@@ -120,6 +124,13 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Manages the IO for the command module Uart\n"\
 	       "Usage: \n"\
 	       "  uart_cmd CMD_STRING\n");
+
+    AddCommand("dump_debug",&ApolloSMDevice::DumpDebug,
+	       "Dumps all registers to a file for debugging\n"\
+	       "Send to D. Gastler\n"\
+	       "Usage: \n"\
+	       "  dump_debug\n");
+
 }
 
 //If there is a file currently open, it closes it                                                             
@@ -296,12 +307,36 @@ CommandReturn::status ApolloSMDevice::GenerateHTMLStatus(std::vector<std::string
 
   //Grab a possible level
   size_t verbosity;
-  if (level.size() == 1) {verbosity = level[0];}
-  else {verbosity = 1;}
+  if (level.size() == 1) {
+    verbosity = level[0];
+  }else {
+    verbosity = 1;
+  }
 
-  if (strArg.size() == 1) {strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,"HTML");}
-  else {strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,strArg[1]);}
+  if (strArg.size() == 1) {
+    strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,"HTML");
+  }else{
+    strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,strArg[1]);
+  }
 
-  if (strOut == "ERROR") {return CommandReturn::BAD_ARGS;}
-  else {return CommandReturn::OK;}
+  if (strOut == "ERROR") {
+    return CommandReturn::BAD_ARGS;
+  }
+  
+  return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strArg*/,
+						std::vector<uint64_t> /*intArg*/){
+  std::stringstream outfileName;
+  outfileName << "Apollo_debug_dump_";  
+  std::time_t time = std::time(NULL);
+  outfileName << std::put_time(std::gmtime(&time),"%F-%T-%Z");
+  outfileName << ".dat";
+  
+  std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);
+  outfile << outfileName.str() << std::endl;
+  SM->DebugDump(outfile);
+  outfile.close();  
+  return CommandReturn::OK;
 }

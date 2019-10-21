@@ -15,6 +15,10 @@
 
 #define SEC_IN_USEC 10000000
 #define NSEC_IN_USEC 1000
+
+// value doesn't matter, as long as it is defined
+#define SAY_STATUS_DONE_ANYWAY 1
+
 // ====================================================================================================
 // Definitions
 
@@ -180,137 +184,90 @@ void printBuildDate(ApolloSM * SM, FILE * logFile, int CM) {
 
 // ====================================================================================================
 // Program CM FPGAs
-int programCMFPGAs(ApolloSM * SM, FILE * logFile) {
+int programCMFPGA(ApolloSM * SM, FILE * logFile, int CM_ID) {
   bool NOFILE = 2;
   bool SUCCESS = 1;
-  bool FAIL = 0; 
+  bool FAIL = 0;   
 
   int wait_time = 5; // 1 second
 
+  std::string FPGA;
+  std::string FPGAinitial;
+  switch(CM_ID) {
+  case 1: 
+    // Kintex
+    FPGA.append("Kintex");
+    FPGAinitial.append("K");
+  case 2:
+    // Virtex
+    FPGA.append("Virtex");
+    FPGAinitial.append("V");
+  default:
+    fprintf(logFile, "Invalid CM ID: %d\n", CM_ID);
+    fflush(logFile);
+    // Maybe something less harsh
+    return FAIL;
+  }
+
   try {
     // ==============================
-    // CM1 Kintex
-
-    int CM1_ID = 1;
-
-    // Power up CM1. Currently not doing anything about time out.    
-    bool success = SM->PowerUpCM(CM1_ID,wait_time);
+    // Power up CM. Currently not doing anything about time out.    
+    bool success = SM->PowerUpCM(CM_ID,wait_time);
     if(success) {
-      fprintf(logFile, "CM %d is powered up\n", CM1_ID);
+      fprintf(logFile, "CM %d is powered up\n", CM_ID);
       fflush(logFile);
     } else {
-      fprintf(logFile, "CM %d failed to powered up in time\n", CM1_ID);
+      fprintf(logFile, "CM %d failed to powered up in time\n", CM_ID);
       fflush(logFile);
     }
 
-    std::string CM1_CTRL = "CM.CM1.CTRL.";
+    std::string CM_CTRL = "CM.CM" + std::to_string(CM_ID) + ".CTRL.";
 
-    // Check CM1 is actually powered up and "good". 1 is good 0 is bad.
-    if(!checkNode(SM, logFile, CM1_CTRL + "PWR_GOOD",    1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM1_CTRL + "ISO_ENABLED", 1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM1_CTRL + "STATE",       4)) {return FAIL;}
+    // Check CM is actually powered up and "good". 1 is good 0 is bad.
+    if(!checkNode(SM, logFile, CM_CTRL + "PWR_GOOD",    1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_CTRL + "ISO_ENABLED", 1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_CTRL + "STATE",       4)) {return FAIL;}
 
     // Optionally run svfplayer commands to program CM FPGAs    
 
-    // Check that Kintex file exists
-    FILE * fk = fopen("/fw/CM/CM_Kintex.svf", "rb");
-    if(NULL == fk) {
+    // Check that CM file exists
+    FILE * f = fopen(("/fw/CM/CM_" + FPGA + ".svf").c_str(), "rb");
+    if(NULL == f) {
       return NOFILE;
     } 
-    fclose(fk);
+    fclose(f);
     
-    // Program Kintex FPGA
-    SM->svfplayer("/fw/CM/CM_Kintex.svf", "XVC1");
+    // Program FPGA
+    SM->svfplayer("/fw/CM/CM_" + FPGA +".svf", "XVC1");
     
-    std::string CM1_C2C = "CM.CM1.C2C.";
+    std::string CM_C2C = "CM.CM" + std::to_string(CM_ID) + ".C2C.";
     
-    // Check CM.CM1.C2C clocks are locked
-    if(!checkNode(SM, logFile, CM1_C2C + "CPLL_LOCK",       1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM1_C2C + "PHY_GT_PLL_LOCK", 1)) {return FAIL;}
+    // Check CM.CM*.C2C clocks are locked
+    if(!checkNode(SM, logFile, CM_C2C + "CPLL_LOCK",       1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_GT_PLL_LOCK", 1)) {return FAIL;}
     
-    // Get Kintex FPGA out of error state
-    SM->RegWriteRegister(CM1_C2C + "INITIALIZE", 1);
+    // Get FPGA out of error state
+    SM->RegWriteRegister(CM_C2C + "INITIALIZE", 1);
     usleep(1000000);
-    SM->RegWriteRegister(CM1_C2C + "INITIALIZE", 0);
+    SM->RegWriteRegister(CM_C2C + "INITIALIZE", 0);
     
     // Check that phy lane is up, link is good, and that there are no errors.
-    if(!checkNode(SM, logFile, CM1_C2C + "MB_ERROR",     0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM1_C2C + "CONFIG_ERROR", 0)) {return FAIL;}
-    //if(!checkNode(SM, logFile, CM1_C2C + "LINK_ERROR",   0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM1_C2C + "PHY_HARD_ERR", 0)) {return FAIL;}
-    //if(!checkNode(SM, logFile, CM1_C2C + "PHY_SOFT_ERR", 0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM1_C2C + "PHY_MMCM_LOL", 0)) {return FAIL;} 
-    if(!checkNode(SM, logFile, CM1_C2C + "PHY_LANE_UP",  1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM1_C2C + "LINK_GOOD",    1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "MB_ERROR",     0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "CONFIG_ERROR", 0)) {return FAIL;}
+    //if(!checkNode(SM, logFile, CM_C2C + "LINK_ERROR",   0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_HARD_ERR", 0)) {return FAIL;}
+    //if(!checkNode(SM, logFile, CM_C2C + "PHY_SOFT_ERR", 0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_MMCM_LOL", 0)) {return FAIL;} 
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_LANE_UP",  1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "LINK_GOOD",    1)) {return FAIL;}
     
     // Write to the "unblock" bits of the AXI*_FW slaves
-    SM->RegWriteRegister("C2C1_AXI_FW.UNBLOCK", 1);
-    SM->RegWriteRegister("C2C1_AXILITE_FW.UNBLOCK", 1);
+    SM->RegWriteRegister("C2C" + std::to_string(CM_ID) + "_AXI_FW.UNBLOCK", 1);
+    SM->RegWriteRegister("C2C" + std::to_string(CM_ID) + "_AXILITE_FW.UNBLOCK", 1);
     
-    // Print firmware build date for Kintex (CM = 1)
-    printBuildDate(SM, logFile, 1);
+    // Print firmware build date for FPGA
+    printBuildDate(SM, logFile, CM_ID);
     
-    // ==============================
-    // CM2 Virtex
-
-    int CM2_ID = 2;
-
-    // Power up CM2. Currently not doing anything about time out.    
-    success = SM->PowerUpCM(CM2_ID,wait_time);
-    if(success) {
-      fprintf(logFile, "CM %d is powered up\n", CM2_ID);
-      fflush(logFile);
-    } else {
-      fprintf(logFile, "CM %d failed to powered up in time\n", CM2_ID);
-      fflush(logFile);
-    }
-
-    std::string CM2_CTRL = "CM.CM2.CTRL.";
-
-    // Check CM2 is actually powered up and "good". 1 is good 0 is bad.
-    if(!checkNode(SM, logFile, CM2_CTRL + "PWR_GOOD",    1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM2_CTRL + "ISO_ENABLED", 1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM2_CTRL + "STATE",       4)) {return FAIL;}
-    
-    // Optionally run svfplayer commands to program CM FPGAs    
-
-    // Check that Virtex file exists
-    FILE * fv = fopen("/fw/CM/CM_Kintex.svf", "rb");
-    if(NULL == fv) {
-      return NOFILE;
-    } 
-    fclose(fv);
-
-    // Program Virtex FPGA
-    SM->svfplayer("/fw/CM/CM_Virtex.svf", "XVC1");
-    
-    std::string CM2_C2C = "CM.CM2.C2C.";
-    
-    // Check CM.CM1.C2C clocks are locked
-    if(!checkNode(SM, logFile, CM2_C2C + "CPLL_LOCK",       1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM2_C2C + "PHY_GT_PLL_LOCK", 1)) {return FAIL;}
-    
-    // Get Virtex FPGA out of error state
-    SM->RegWriteRegister(CM2_C2C + "INITIALIZE", 1);
-    usleep(1000000);
-    SM->RegWriteRegister(CM2_C2C + "INITIALIZE", 0);
-    
-    // Check that phy lane is up, link is good, and that there are no errors.
-    if(!checkNode(SM, logFile, CM2_C2C + "MB_ERROR",     0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM2_C2C + "CONFIG_ERROR", 0)) {return FAIL;}
-    //if(!checkNode(SM, logFile, CM2_C2C + "LINK_ERROR",   0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM2_C2C + "PHY_HARD_ERR", 0)) {return FAIL;}
-    //if(!checkNode(SM, logFile, CM2_C2C + "PHY_SOFT_ERR", 0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM2_C2C + "PHY_MMCM_LOL", 0)) {return FAIL;} 
-    if(!checkNode(SM, logFile, CM2_C2C + "PHY_LANE_UP",  1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM2_C2C + "LINK_GOOD",    1)) {return FAIL;}
-    
-    SM->RegWriteRegister("C2C2_AXI_FW.UNBLOCK", 1);
-    SM->RegWriteRegister("C2C2_AXILITE_FW.UNBLOCK", 1);
-
-    // Print firmware build date for Virtex (CM = 2)
-    printBuildDate(SM, logFile, 2);
-
   } catch(BUException::exBase const & e) {
     fprintf(logFile, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
     fflush(logFile);
@@ -392,7 +349,7 @@ int main(int, char**) {
 
   // ====================================
   // Signal handling
-  struct sigaction sa_INT,sa_TERM,old_sa;
+  struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
   memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
   memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
   //setup SA
@@ -400,8 +357,8 @@ int main(int, char**) {
   sa_TERM.sa_handler = signal_handler;
   sigemptyset(&sa_INT.sa_mask);
   sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
+  sigaction(SIGINT,  &sa_INT , &oldINT_sa);
+  sigaction(SIGTERM, &sa_TERM, &oldTERM_sa);
   loop = true;
 
   // ====================================
@@ -431,25 +388,31 @@ int main(int, char**) {
   
     // ==================================
     // Program CM FPGAs and kill program upon failure
-    switch(programCMFPGAs(SM, logFile)) {
-    case 0:
-      //  fail
-      return 0;
-    case 1: 
-      // success
-      break;
-    case 2:
-      // A CM file does not exist
-      fprintf(logFile, "A CM file does not exist\n");
-      fflush(logFile);
-      break;
+    int firstCM_ID = 1;
+    int lastCM_ID = 2;
+    for(int i = firstCM_ID; i <= lastCM_ID; i++) {
+      switch(programCMFPGA(SM, logFile, i)) {
+      case 0:
+	//  fail
+	return 0;
+      case 1: 
+	// success
+	break;
+      case 2:
+	// A CM file does not exist
+	fprintf(logFile, "CM %dfile does not exist\n", i);
+	fflush(logFile);
+	break;
+      }
     }
 
     // Do we set this bit if the CM files do not exist?
     //Set the power-up done bit to 1 for the IPMC to read
+#ifdef SAY_STATUS_DONE_ANYWAY
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
     fprintf(logFile,"Set STATUS.DONE to 1\n");
     fflush(logFile);
+#endif
 
     // ==================================
     // Main DAEMON loop
@@ -534,8 +497,9 @@ int main(int, char**) {
     delete SM;
   }
   
-  // Restore old action of receiving SIGINT (which is to kill program) before returning 
-  sigaction(SIGINT, &old_sa, NULL);
+  // Restore old action of receiving SIGINT and SIGTERM (which is to kill program) before returning 
+  sigaction(SIGINT, &oldINT_sa, NULL);
+  sigaction(SIGTERM, &oldTERM_sa, NULL);
   fprintf(logFile,"SM boot Daemon ended\n");
   fclose(logFile);
   

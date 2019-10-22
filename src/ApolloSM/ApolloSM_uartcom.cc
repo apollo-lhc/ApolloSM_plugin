@@ -41,6 +41,7 @@ bool SetNonBlocking(int &fd, bool value) {
 
 static void SetupTermIOS(int fd){
   struct termios term_opts;  
+
   tcgetattr(fd,&term_opts); //get existing options
   cfsetispeed(&term_opts,B115200); //set baudrate
   cfsetospeed(&term_opts,B115200); //set baudrate
@@ -50,6 +51,8 @@ static void SetupTermIOS(int fd){
   //Set the data size to 8
   term_opts.c_cflag &= ~CSIZE;
   term_opts.c_cflag |= CS8;
+
+  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL);
 
   //set parity
   term_opts.c_cflag &= ~PARENB;
@@ -101,14 +104,13 @@ void ApolloSM::UART_Terminal(std::string const & ttyDev) {
 
   // Enter curses mode
   initscr();
-  raw();
-  //cbreak();
+  cbreak();
   noecho();
   timeout(0);
 
 
   //maxfdp1 is the max fd plus 1
-  int maxfdp1 = std::max(fd,std::max(STDIN_FILENO,STDERR_FILENO));
+  int maxfdp1 = std::max(fd,std::max(STDIN_FILENO,STDIN_FILENO));
   maxfdp1++;
   fd_set readSet;
   fd_set writeSet; 
@@ -120,7 +122,7 @@ void ApolloSM::UART_Terminal(std::string const & ttyDev) {
   FD_SET(STDIN_FILENO, &readSet);
 
   FD_SET(fd, &writeSet);
-  FD_SET(STDERR_FILENO, &writeSet);
+  FD_SET(STDOUT_FILENO, &writeSet);
 
 
   while(interactiveLoop) {
@@ -130,35 +132,25 @@ void ApolloSM::UART_Terminal(std::string const & ttyDev) {
     int ret_psel = pselect(maxfdp1,&rSetCopy,&wSetCopy,NULL,NULL,&(sa.sa_mask));
     
     if(ret_psel > 0){
-      if(FD_ISSET(fd,&rSetCopy) && FD_ISSET(STDERR_FILENO,&wSetCopy)){
+      if(FD_ISSET(fd,&rSetCopy) && FD_ISSET(STDOUT_FILENO,&wSetCopy)){
       	char outChar;
 	int ret = read(fd,&outChar,1);
 	if(1 == ret){
-	  switch (outChar) {
-	  case 13:
-	    //fallthrough
-	    break;
-	  case 10:
-	    //	    printf("\n\r");
-	    printf("\r");
-	    fflush(stderr);
-	    break;
-	  default:
-	    printf("%c",outChar);
-	  }
+	  printf("%c",outChar);
+	  fflush(stdout);
 	}
       }else if(FD_ISSET(STDIN_FILENO,&rSetCopy) && FD_ISSET(fd,&wSetCopy)){
 	char userInput;
 	int ret;
 	ret = read(STDIN_FILENO,&userInput,1);
-	//userInput.i = getch();
 	if(1 == ret){	
 	  if(29 == userInput){
 	    interactiveLoop = false;
 	    continue;	
-	    //	}else if (10 == userInput){	
-	    //	  char const enter[] = {13,10};
-	    //	  write(fd,enter,2);
+	  }else if (13 == userInput){
+	    write(fd,&userInput,1);
+	  }else if (10 == userInput){	
+	    write(fd,&userInput,1);
 	  }else if (127 == userInput){
 	    char const BS = 8;
 	    write(fd,&BS,1);
@@ -237,7 +229,6 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
   //make sure the buffer is clear  
   bool readNotTimedOut = 1;
   while(readNotTimedOut) {
-    //    printf("%ld %ld\n", t.tv_sec, t.tv_nsec);
     // make copy of readSet everytime pselect is used because we don't want contents of readSet changed
     fd_set readSetCopy = readSet;
     int returnVal;

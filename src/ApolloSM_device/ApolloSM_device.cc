@@ -10,6 +10,13 @@
 
 #include <ctype.h> //for isdigit
 
+#include <iostream>
+#include <iomanip>
+#include <ctime>
+
+
+#include <boost/algorithm/string/predicate.hpp> //for iequals
+
 using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
@@ -120,6 +127,13 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Manages the IO for the command module Uart\n"\
 	       "Usage: \n"\
 	       "  uart_cmd CMD_STRING\n");
+
+    AddCommand("dump_debug",&ApolloSMDevice::DumpDebug,
+	       "Dumps all registers to a file for debugging\n"\
+	       "Send to D. Gastler\n"\
+	       "Usage: \n"\
+	       "  dump_debug\n");
+
 }
 
 //If there is a file currently open, it closes it                                                             
@@ -228,12 +242,12 @@ CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string> strArg,
     return CommandReturn::BAD_ARGS;
   }
 
-  if(0 == strArg[0].compare("CM1")) {
-    SM->UART_Terminal("CM.CM1");    
-  } else if(0 == strArg[0].compare("CM2")) {
-    SM->UART_Terminal("CM.CM2");
-  } else if(0 == strArg[0].compare("ESM")) {
-    SM->UART_Terminal("SERV.SWITCH");
+  if(boost::algorithm::iequals(strArg[0],"CM1")) {
+    SM->UART_Terminal("/dev/ttyUL1");    
+  } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
+    SM->UART_Terminal("/dev/ttyUL2");
+  } else if(boost::algorithm::iequals(strArg[0],"ESM")) {
+    SM->UART_Terminal("/dev/ttyUL3");
   } else {
     return CommandReturn::BAD_ARGS;
   }
@@ -247,16 +261,16 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
     return CommandReturn::BAD_ARGS;
   }
 
-  std::string baseNode;
+  std::string ttyDev;
   char promptChar;
-  if(0 == strArg[0].compare("CM1")) {
-    baseNode.append("CM.CM1");    
+  if(boost::algorithm::iequals(strArg[0],"CM1")) {
+    ttyDev.append("/dev/ttyUL1");    
     promptChar = '%';
-  } else if(0 == strArg[0].compare("CM2")) {
-    baseNode.append("CM.CM2");
+  } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
+    ttyDev.append("/dev/ttyUL2");
     promptChar = '%';
-  } else if(0 == strArg[0].compare("ESM")) {
-    baseNode.append("SERV.SWITCH");
+  } else if(boost::algorithm::iequals(strArg[0],"ESM")) {
+    ttyDev.append("/dev/ttyUL3");
     promptChar = '>';
   } else {
     return CommandReturn::BAD_ARGS;
@@ -271,7 +285,7 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   //get rid of last space
   sendline.pop_back();
 
-  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(baseNode, sendline,promptChar)).c_str());
+  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
 
   return CommandReturn::OK;
 } 
@@ -296,12 +310,36 @@ CommandReturn::status ApolloSMDevice::GenerateHTMLStatus(std::vector<std::string
 
   //Grab a possible level
   size_t verbosity;
-  if (level.size() == 1) {verbosity = level[0];}
-  else {verbosity = 1;}
+  if (level.size() == 1) {
+    verbosity = level[0];
+  }else {
+    verbosity = 1;
+  }
 
-  if (strArg.size() == 1) {strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,"HTML");}
-  else {strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,strArg[1]);}
+  if (strArg.size() == 1) {
+    strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,"HTML");
+  }else{
+    strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,strArg[1]);
+  }
 
-  if (strOut == "ERROR") {return CommandReturn::BAD_ARGS;}
-  else {return CommandReturn::OK;}
+  if (strOut == "ERROR") {
+    return CommandReturn::BAD_ARGS;
+  }
+  
+  return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strArg*/,
+						std::vector<uint64_t> /*intArg*/){
+  std::stringstream outfileName;
+  outfileName << "Apollo_debug_dump_";  
+  std::time_t time = std::time(NULL);
+  outfileName << std::put_time(std::gmtime(&time),"%F-%T-%Z");
+  outfileName << ".dat";
+  
+  std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);
+  outfile << outfileName.str() << std::endl;
+  SM->DebugDump(outfile);
+  outfile.close();  
+  return CommandReturn::OK;
 }

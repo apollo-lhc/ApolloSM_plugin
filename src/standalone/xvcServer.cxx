@@ -27,25 +27,27 @@
 #include <syslog.h>
 #include <errno.h>
 
-#include <ApolloSM/ApolloSM.hh>
 #include <vector>
 #include <string>
 
 //TCLAP parser
 #include <tclap/CmdLine.h>
 
+#include <standalone/uioLabelFinder.hh>
 
 extern int errno;
 
 #define MAP_SIZE      0x10000
 
-ApolloSM * SM = NULL;
-uhal::Node const * nGo;
-uhal::Node const * nLength;
-uhal::Node const * nTDI;
-uhal::Node const * nTDO;
-uhal::Node const * nTMS;
+typedef struct  {
+  uint32_t length_offset;
+  uint32_t tms_offset;
+  uint32_t tdi_offset;
+  uint32_t tdo_offset;
+  uint32_t ctrl_offset;
+} sXVC;
 
+sXVC volatile * pXVC = NULL;
 
 static int verbose = 0;
 
@@ -160,24 +162,18 @@ int handle_data(int fd) {
       if (bytesLeft >= 4) {
 	memcpy(&tms, &buffer[byteIndex], 4);
 	memcpy(&tdi, &buffer[byteIndex + nr_bytes], 4);
-
-	//					ptr->length_offset = 32;        
-	//					ptr->tms_offset = tms;         
-	//					ptr->tdi_offset = tdi;       
-	//					ptr->ctrl_offset = 0x01;
-	SM->RegWriteNode(*nLength,32);
-	SM->RegWriteNode(*nTMS,tms);
-	SM->RegWriteNode(*nTDI,tdi);
-	SM->RegWriteNode(*nGo,1);
+	
+	pXVC->length_offset = 32;        
+	pXVC->tms_offset = tms;         
+	pXVC->tdi_offset = tdi;       
+	pXVC->ctrl_offset = 0x01;
 
 	/* Switch this to interrupt in next revision */
-	//					while (ptr->ctrl_offset)
-	while (SM->RegReadNode(*nGo))
+	while (pXVC->ctrl_offset)
 	  {
 	  }
 
-	//					tdo = ptr->tdo_offset;
-	tdo = SM->RegReadNode(*nTDO);
+	tdo = pXVC->tdo_offset;
 	memcpy(&result[byteIndex], &tdo, 4);
 
 	bytesLeft -= 4;
@@ -199,24 +195,16 @@ int handle_data(int fd) {
 	memcpy(&tms, &buffer[byteIndex], bytesLeft);
 	memcpy(&tdi, &buffer[byteIndex + nr_bytes], bytesLeft);
           
-	SM->RegWriteNode(*nLength, bitsLeft);
-	SM->RegWriteNode(*nTMS,tms);
-	SM->RegWriteNode(*nTDI,tdi);
-	SM->RegWriteNode(*nGo,1);
-
-	//					ptr->length_offset =;        
-	//					ptr->tms_offset = tms;         
-	//					ptr->tdi_offset = tdi;       
-	//					ptr->ctrl_offset = 0x01;
+	pXVC->length_offset = bitsLeft;        
+	pXVC->tms_offset = tms;         
+	pXVC->tdi_offset = tdi;       
+	pXVC->ctrl_offset = 0x01;
 	//					/* Switch this to interrupt in next revision */
-	//					while (ptr->ctrl_offset)
-	while (SM->RegReadNode(*nGo))
+	while (pXVC->ctrl_offset)
 	  {
 	  }
 
-	//					tdo = ptr->tdo_offset;
-	tdo = SM->RegReadNode(*nTDO);
-          
+	tdo = pXVC->tdo_offset;          
 	memcpy(&result[byteIndex], &tdo, bytesLeft);
 
 	if (verbose) {
@@ -246,6 +234,7 @@ int main(int argc, char **argv) {
   int i;
   int s;
 
+  int fdUIO = -1;
   struct sockaddr_in address;
     
 
@@ -258,14 +247,6 @@ int main(int argc, char **argv) {
 		       ' ',
 		       "XVC");
    
-    //connection file
-    TCLAP::ValueArg<std::string> connFile("c",              //one char flag
-					  "connection",      // full flag name
-					  "xml connection file",//description
-					  true,            //required
-					  std::string(""),  //Default is empty
-					  "string",         // type
-					  cmd);
     // XVC name base
     TCLAP::ValueArg<std::string> xvcPreFix("v",              //one char flag
 					       "xvc",      // full flag name
@@ -288,22 +269,39 @@ int main(int argc, char **argv) {
     //Parse the command line arguments
     cmd.parse(argc,argv);
     port = xvcPort.getValue();
-    SM = new ApolloSM();
-    if(SM == NULL){
-      fprintf(stderr,"Failed to make ApolloSM.\n");
-      syslog(LOG_ERR,"Failed to make ApolloSM.\n");
-      return 1;
+
+    //Find UIO number
+    int uioN = label2uio(xvcPreFix.getValue());
+    if(uioN < 0){
+      fprintf(stderr,"Failed to find UIO device with label %s.\n",xvcPreFix.getValue().c_str());
+      syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",xvcPreFix.getValue().c_str());
+      return 1;      
     }
-    std::vector<std::string> arg;
-    arg.push_back(connFile.getValue());
-    SM->Connect(arg);
-   
-    std::string baseNode = xvcPreFix.getValue();
-    nGo     = &SM->GetNode(baseNode+std::string(".GO"));
-    nLength = &SM->GetNode(baseNode+std::string(".LENGTH"));
-    nTDI    = &SM->GetNode(baseNode+std::string(".TDI_VECTOR"));
-    nTDO    = &SM->GetNode(baseNode+std::string(".TDO_VECTOR"));
-    nTMS    = &SM->GetNode(baseNode+std::string(".TMS_VECTOR"));
+    size_t const uioFileNameLength = 1024;
+    char * uioFileName = new char[uioFileNameLength+1];
+    memset(uioFileName,0x0,uioFileNameLength+1);
+    snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioN);
+    
+    fprintf(stderr,"Found %s @ %s.\n",xvcPreFix.getValue().c_str(),uioFileName);
+    syslog(LOG_ERR,"Found %s @ %s.\n",xvcPreFix.getValue().c_str(),uioFileName);
+    //Open UIO device
+    fdUIO = open(uioFileName,O_RDWR);
+    if(fdUIO < 0){
+      fprintf(stderr,"Failed to open %s.\n",uioFileName);
+      syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
+      return 1;            
+    }
+    
+    pXVC = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
+				 PROT_READ|PROT_WRITE, MAP_SHARED,
+				 fdUIO, 0x0);
+    if(MAP_FAILED == pXVC){
+      fprintf(stderr,"Failed to mmap %s.\n",uioFileName);
+      syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
+      return 1;            
+    }
+
+    
   }catch (TCLAP::ArgException &e) {
     fprintf(stderr, "Error %s for arg %s\n",
 	    e.error().c_str(), e.argId().c_str());
@@ -399,7 +397,6 @@ int main(int argc, char **argv) {
 	  break;
       }
     }
-  }
-  delete SM;
+  }  
   return 0;
 }

@@ -8,10 +8,8 @@
 #include <signal.h>
 #include <sys/select.h>
 #include <termios.h>
+#include <algorithm>
 
-
-//Definitions
-#define STDIN 0
 
 // For Ctrl-C handling
 //---------------------------------------------------------------------------
@@ -73,14 +71,17 @@ static void SetupTermIOS(int fd){
 
 
 // The function where all the talking to and reading from command module happens
-void ApolloSM::UART_Terminal(std::string baseNode) {
-  baseNode.append(".UART.");
+void ApolloSM::UART_Terminal(std::string const & ttyDev) {  
+  // ttyDev descriptor
+  int fd = open(ttyDev.c_str(), O_RDWR);
+  if(-1 == fd){
+    BUException::IO_ERROR e;
+    e.Append("Unable to open device " + ttyDev + "\n");
+    throw e;    
+  }
 
-  //get nodes for read/write
-  uhal::Node const & nRD_FIFO_FULL = GetNode(baseNode+"RD_FIFO_FULL");
-  uhal::Node const & nRD_VALID     = GetNode(baseNode+"RD_VALID");
-  uhal::Node const & nRD_DATA      = GetNode(baseNode+"RD_DATA");
-  uhal::Node const & nWR_DATA      = GetNode(baseNode+"WR_DATA");;
+  //Setup the termios structures
+  SetupTermIOS(fd);
 
   // To catch Ctrl-C and break out of talking through SOL
   struct sigaction sa;
@@ -100,45 +101,78 @@ void ApolloSM::UART_Terminal(std::string baseNode) {
 
   // Enter curses mode
   initscr();
-  cbreak();
+  raw();
+  //cbreak();
   noecho();
   timeout(0);
 
-  try{
-    while(interactiveLoop) {
+
+  //maxfdp1 is the max fd plus 1
+  int maxfdp1 = std::max(fd,std::max(STDIN_FILENO,STDERR_FILENO));
+  maxfdp1++;
+  fd_set readSet;
+  fd_set writeSet; 
+  FD_ZERO(&readSet); // Zero out
+  FD_ZERO(&writeSet); // Zero out
+
+  //Set read mask
+  FD_SET(fd, &readSet);
+  FD_SET(STDIN_FILENO, &readSet);
+
+  FD_SET(fd, &writeSet);
+  FD_SET(STDERR_FILENO, &writeSet);
+
+
+  while(interactiveLoop) {
     
-      if(RegReadNode(nRD_FIFO_FULL)) {printf("Buffer full\n");} 
-
-      // read data from UART (keep this FIFO empty)
-      while(RegReadNode(nRD_VALID)) { 
-	char outChar = RegReadNode(nRD_DATA);
-	printf("%c",outChar);
-	if(10 == outChar){
-	  printf("%c",13);
+    fd_set rSetCopy = readSet;
+    fd_set wSetCopy = writeSet;
+    int ret_psel = pselect(maxfdp1,&rSetCopy,&wSetCopy,NULL,NULL,&(sa.sa_mask));
+    
+    if(ret_psel > 0){
+      if(FD_ISSET(fd,&rSetCopy) && FD_ISSET(STDERR_FILENO,&wSetCopy)){
+      	char outChar;
+	int ret = read(fd,&outChar,1);
+	if(1 == ret){
+	  switch (outChar) {
+	  case 13:
+	    //fallthrough
+	    break;
+	  case 10:
+	    //	    printf("\n\r");
+	    printf("\r");
+	    fflush(stderr);
+	    break;
+	  default:
+	    printf("%c",outChar);
+	  }
 	}
-	RegWriteNode(nRD_VALID,1);
-      }
-      fflush(stdout);
-
-      //Read from user
-      int userInput = getch();
-      if(ERR != userInput){
-	if(29 == userInput){
-	  interactiveLoop = false;
-	  continue;	
-	}else if (10 == userInput){	
-	  RegWriteNode(nWR_DATA,13);
-	  RegWriteNode(nWR_DATA,10);
-	}else if (127 == userInput){
-	  RegWriteNode(nWR_DATA,8); //bs
-	  printf("%c ",8); //Draw backspace by backspace, space, (backspace from remote echo)
-	}else{
-	  RegWriteNode(nWR_DATA,0xFF&userInput);
+      }else if(FD_ISSET(STDIN_FILENO,&rSetCopy) && FD_ISSET(fd,&wSetCopy)){
+	char userInput;
+	int ret;
+	ret = read(STDIN_FILENO,&userInput,1);
+	//userInput.i = getch();
+	if(1 == ret){	
+	  if(29 == userInput){
+	    interactiveLoop = false;
+	    continue;	
+	    //	}else if (10 == userInput){	
+	    //	  char const enter[] = {13,10};
+	    //	  write(fd,enter,2);
+	  }else if (127 == userInput){
+	    char const BS = 8;
+	    write(fd,&BS,1);
+	    printf("%c ",8); //Draw backspace by backspace, space, (backspace from remote echo)
+	  }else{
+	    write(fd,&userInput,1);
+	  }
 	}
       }
-    }
-  }catch (std::exception &e){}
-
+    }else{
+      interactiveLoop = false;
+      continue;
+    }  
+  }
   printf("Closing command module comm...\n");
 
   // Restore old action of pressing Ctrl-C before returning (which is to kill the program)
@@ -147,20 +181,17 @@ void ApolloSM::UART_Terminal(std::string baseNode) {
   // Leave curses mode
   endwin();
   printf("\n");
-  fflush(stdout);
+  fflush(stderr);
 
   return;
 }
 
-std::string ApolloSM::UART_CMD(std::string i, std::string sendline, char const promptChar) {
-  // 1 for CM1, 2 for CM2, 3 for ESM
-  std::string file = "/dev/ttyUL" + i;
-  
-  // file descriptor
-  int fd = open(file.c_str(), O_RDWR);
+std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline, char const promptChar) {  
+  // ttyDev descriptor
+  int fd = open(ttyDev.c_str(), O_RDWR);
   if(-1 == fd){
     BUException::IO_ERROR e;
-    e.Append("Unable to open device " + file + "\n");
+    e.Append("Unable to open device " + ttyDev + "\n");
     throw e;    
   }
 
@@ -170,11 +201,11 @@ std::string ApolloSM::UART_CMD(std::string i, std::string sendline, char const p
 
   // ==================================================
   // For pselect
-  // The biggest file descriptor number plus one (hence p1)
-  // There is only one file descriptor number so fd + 1
+  // The biggest ttyDev descriptor number plus one (hence p1)
+  // There is only one ttyDev descriptor number so fd + 1
   int maxfdp1 = fd + 1;
 
-  // Set of all file descriptors to be read/write from, has only one element: fd
+  // Set of all ttyDev descriptors to be read/write from, has only one element: fd
   // These two sets are basically the same thing
   fd_set readSet;
   fd_set writeSet; 
@@ -196,7 +227,7 @@ std::string ApolloSM::UART_CMD(std::string i, std::string sendline, char const p
   std::string recvline;
 
   //Press enter
-  char enter[] = "\l";
+  char enter[] = "\r";
   write(fd, enter,strlen(enter));
   write(fd, enter,strlen(enter));
   usleep(10000);
@@ -210,20 +241,20 @@ std::string ApolloSM::UART_CMD(std::string i, std::string sendline, char const p
     // make copy of readSet everytime pselect is used because we don't want contents of readSet changed
     fd_set readSetCopy = readSet;
     int returnVal;
-    // Pselect returns 0 for time out, -1 for error, or number of file descriptors ready to be read
+    // Pselect returns 0 for time out, -1 for error, or number of ttyDev descriptors ready to be read
     if(0 == (returnVal = pselect(maxfdp1, &readSetCopy, NULL, NULL, &t, NULL)))  {
       // timed out
       readNotTimedOut = 0;
       continue;
     } else if(-1 == returnVal) {
       BUException::IO_ERROR e;
-      e.Append("read error: error from pselect while clearing buffer for " + file + "\n");
+      e.Append("read error: error from pselect while clearing buffer for " + ttyDev + "\n");
       throw e;
     } else {
       // Do nothing with the character read
       if(read(fd, &readChar, sizeof(readChar)) < 0) {
 	BUException::IO_ERROR e;
-	e.Append("read error: error reading from " + file + "\n");
+	e.Append("read error: error reading from " + ttyDev + "\n");
 	throw e;
       }
     }
@@ -246,19 +277,19 @@ std::string ApolloSM::UART_CMD(std::string i, std::string sendline, char const p
   //Write the command
   // Write one byte and then immediately read one byte to make sure they are the same
   for(size_t i = 0; i < sendline.size();i++){
-    //Wait for write buffer in file descriptor to be not full
+    //Wait for write buffer in ttyDev descriptor to be not full
     // make copy of wroteSet everytime pselect is used because we don't want contents of writeSet changed
     fd_set writeSetCopy = writeSet;
     int returnValw;
-    // Pselect returns 0 for time out, -1 for error, or number of file descriptors ready to be written to
+    // Pselect returns 0 for time out, -1 for error, or number of ttyDev descriptors ready to be written to
     if(0 == (returnValw = pselect(maxfdp1, NULL, &writeSetCopy, NULL, &t, NULL)))  {
       // If the buffer is full for more than 5 seconds something is probably wrong
       BUException::IO_ERROR e;
-      e.Append("pselect timed out writing to " + file + " in 5 seconds\n");
+      e.Append("pselect timed out writing to " + ttyDev + " in 5 seconds\n");
       throw e;
     } else if(-1 == returnValw) {
       BUException::IO_ERROR e;
-      e.Append("write error: error from pselect while waiting for writer buffer in " + file + " to clear\n");
+      e.Append("write error: error from pselect while waiting for writer buffer in " + ttyDev + " to clear\n");
       throw e;
     } else {
       // Write char
@@ -267,7 +298,7 @@ std::string ApolloSM::UART_CMD(std::string i, std::string sendline, char const p
       writeChar[0] = sendline[i];
       if(write(fd, writeChar, writeCharLen) < 0) {
 	BUException::IO_ERROR e;
-	e.Append("write error: error writing to " + file + "\n");
+	e.Append("write error: error writing to " + ttyDev + "\n");
 	throw e;
       }
 
@@ -279,17 +310,17 @@ std::string ApolloSM::UART_CMD(std::string i, std::string sendline, char const p
       if(0 == (returnValr = pselect(maxfdp1, &readSetCopy, NULL, NULL, &t, NULL)))  {
 	// If it takes longer than 5 seconds for a character to be echoed back something is probably wrong
 	BUException::IO_ERROR e;
-	e.Append("pselect timed out while polling " + file + " for echoed command\n");
+	e.Append("pselect timed out while polling " + ttyDev + " for echoed command\n");
 	throw e;
       } else if(-1 == returnValr) {
 	BUException::IO_ERROR e;
-	e.Append("read error: error from pselect polling " + file + " for echoed command\n");
+	e.Append("read error: error from pselect polling " + ttyDev + " for echoed command\n");
 	throw e;
       } else {
 	// make sure echoed character is same as sent character
 	if(read(fd, &readChar, sizeof(readChar)) < 0) {
 	  BUException::IO_ERROR e;
-	  e.Append("read error: error reading echoed command from " + file + "\n");
+	  e.Append("read error: error reading echoed command from " + ttyDev + "\n");
 	  throw e;
 	}
       }
@@ -320,12 +351,12 @@ std::string ApolloSM::UART_CMD(std::string i, std::string sendline, char const p
       continue;
     } else if (-1 == returnVal) {
       BUException::IO_ERROR e;
-      e.Append("pselect error while polling read fd from " + file + " after command was sent and echoed\n");
+      e.Append("pselect error while polling read fd from " + ttyDev + " after command was sent and echoed\n");
       throw e;
     } else {
       if(0 > read(fd, &readChar, sizeof(readChar))) {
 	BUException::IO_ERROR e;
-	e.Append("read error: error reading from " + file + " after command was sent and echoed\n");
+	e.Append("read error: error reading from " + ttyDev + " after command was sent and echoed\n");
 	throw e;
       }
     }

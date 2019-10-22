@@ -240,11 +240,11 @@ CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string> strArg,
   }
 
   if(0 == strArg[0].compare("CM1")) {
-    SM->UART_Terminal("CM.CM1");    
+    SM->UART_Terminal("/dev/ttyUL1");    
   } else if(0 == strArg[0].compare("CM2")) {
-    SM->UART_Terminal("CM.CM2");
+    SM->UART_Terminal("/dev/ttyUL2");
   } else if(0 == strArg[0].compare("ESM")) {
-    SM->UART_Terminal("SERV.SWITCH");
+    SM->UART_Terminal("/dev/ttyUL3");
   } else {
     return CommandReturn::BAD_ARGS;
   }
@@ -260,14 +260,14 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
 
   std::string baseNode;
   char promptChar;
-  if(0 == strArg[0].compare("1")) {
-    baseNode.append("1");    
+  if(0 == strArg[0].compare("CM1")) {
+    baseNode.append("/dev/ttyUL1");    
     promptChar = '%';
-  } else if(0 == strArg[0].compare("2")) {
-    baseNode.append("2");
+  } else if(0 == strArg[0].compare("CM2")) {
+    baseNode.append("/dev/ttyUL2");
     promptChar = '%';
-  } else if(0 == strArg[0].compare("3")) {
-    baseNode.append("3");
+  } else if(0 == strArg[0].compare("CM3")) {
+    baseNode.append("/dev/ttyUL3");
     promptChar = '>';
   } else {
     return CommandReturn::BAD_ARGS;

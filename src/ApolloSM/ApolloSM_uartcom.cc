@@ -209,8 +209,8 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
 
   // timeout for reading
   struct timespec t;
-  t.tv_sec = 0; // seconds
-  t.tv_nsec = 500000000; // 500 milliseconds
+  t.tv_sec = 0; // 0 seconds
+  t.tv_nsec = 200000000; // 200 milliseconds
   // ==================================================
   
   char readChar;

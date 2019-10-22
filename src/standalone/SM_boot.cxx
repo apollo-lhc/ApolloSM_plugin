@@ -49,10 +49,6 @@ temperatures sendAndParse(ApolloSM* SM) {
   try{
     std::string recv(SM->UART_CMD("/dev/ttyUL1", "simple_sensor", '%'));
   
-    std::ofstream test("/tmp/test.dat",std::ofstream::out);
-    test << recv;
-    test.close();
-
     // Separate by line
     boost::char_separator<char> lineSep("\r\n");
     tokenizer lineTokens{recv, lineSep};

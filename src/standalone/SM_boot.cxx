@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
@@ -12,6 +13,8 @@
 #include <sys/types.h> //for umask
 
 #include <BUException/ExceptionBase.hh>
+
+#include <fstream>
 
 #define SEC_IN_USEC 10000000
 #define NSEC_IN_USEC 1000
@@ -43,62 +46,66 @@ temperatures sendAndParse(ApolloSM* SM) {
   temperatures temps {0,0,0,0};
   
   // read and print
-  std::string recv(SM->UART_CMD("/dev/ttyUL1", "simple_sensor", '%'));
+  try{
+    std::string recv(SM->UART_CMD("/dev/ttyUL1", "simple_sensor", '%'));
   
-  // Separate by line
-  boost::char_separator<char> lineSep("\r\n");
-  tokenizer lineTokens{recv, lineSep};
+    // Separate by line
+    boost::char_separator<char> lineSep("\r\n");
+    tokenizer lineTokens{recv, lineSep};
 
-  // One vector for each line 
-  std::vector<std::vector<std::string> > allTokens;
+    // One vector for each line 
+    std::vector<std::vector<std::string> > allTokens;
 
-  // Separate by spaces
-  boost::char_separator<char> space(" ");
-  int vecCount = 0;
-  // For each line
-  for(tokenizer::iterator lineIt = lineTokens.begin(); lineIt != lineTokens.end(); ++lineIt) {
-    tokenizer wordTokens{*lineIt, space};
-    // We don't yet own any memory in allTokens so we append a blank vector
-    std::vector<std::string> blankVec;
-    allTokens.push_back(blankVec);
-    // One vector per line
-    for(tokenizer::iterator wordIt = wordTokens.begin(); wordIt != wordTokens.end(); ++wordIt) {
-      allTokens[vecCount].push_back(*wordIt);
-    }
-    vecCount++;
-  }
-
-  // Check for at least one element 
-  // Check for two elements in first element
-  // Following lines follow the same concept
-  std::vector<float> temp_values;
-  for(size_t i = 0; 
-      i < allTokens.size() && i < 4;
-      i++){
-    if(2 == allTokens[i].size()) {
-      float temp;
-      if( (temp = std::atof(allTokens[i][1].c_str())) < 0) {
-	temp = 0;
+    // Separate by spaces
+    boost::char_separator<char> space(" ");
+    int vecCount = 0;
+    // For each line
+    for(tokenizer::iterator lineIt = lineTokens.begin(); lineIt != lineTokens.end(); ++lineIt) {
+      tokenizer wordTokens{*lineIt, space};
+      // We don't yet own any memory in allTokens so we append a blank vector
+      std::vector<std::string> blankVec;
+      allTokens.push_back(blankVec);
+      // One vector per line
+      for(tokenizer::iterator wordIt = wordTokens.begin(); wordIt != wordTokens.end(); ++wordIt) {
+	allTokens[vecCount].push_back(*wordIt);
       }
-      temp_values.push_back(temp);
+      vecCount++;
     }
-  }
-  switch (temp_values.size()){
-  case 4:
-    temps.REGTemp = (uint8_t)temp_values[3];  
-    //fallthrough
-  case 3:
-    temps.FPGATemp = (uint8_t)temp_values[2];  
-    //fallthrough
-  case 2:
-    temps.FIREFLYTemp = (uint8_t)temp_values[1];  
-    //fallthrough
-  case 1:
-    temps.MCUTemp = (uint8_t)temp_values[0];  
-    //fallthrough
-    break;
-  default:
-    break;
+
+    // Check for at least one element 
+    // Check for two elements in first element
+    // Following lines follow the same concept
+    std::vector<float> temp_values;
+    for(size_t i = 0; 
+	i < allTokens.size() && i < 4;
+	i++){
+      if(2 == allTokens[i].size()) {
+	float temp;
+	if( (temp = std::atof(allTokens[i][1].c_str())) < 0) {
+	  temp = 0;
+	}
+	temp_values.push_back(temp);
+      }
+    }
+    switch (temp_values.size()){
+    case 4:
+      temps.REGTemp = (uint8_t)temp_values[3];  
+      //fallthrough
+    case 3:
+      temps.FPGATemp = (uint8_t)temp_values[2];  
+      //fallthrough
+    case 2:
+      temps.FIREFLYTemp = (uint8_t)temp_values[1];  
+      //fallthrough
+    case 1:
+      temps.MCUTemp = (uint8_t)temp_values[0];  
+      //fallthrough
+      break;
+    default:
+      break;
+    }
+  }catch(BUException::IO_ERROR &e){
+    //ignore this 
   }
 
   return temps;

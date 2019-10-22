@@ -27,9 +27,9 @@ public:
 
   std::string GenerateHTMLStatus(std::string filename, size_t level, std::string);
   
-  void UART_Terminal(std::string baseNode);
+  void UART_Terminal(std::string const & ttyDev);
 
-  std::string UART_CMD(std::string baseNode, std::string sendline, char const promptChar = '%');
+  std::string UART_CMD(std::string const & ttyDev, std::string sendline, char const promptChar = '%');
 
   int svfplayer(std::string const & svfFile, std::string const & XVCReg);
   

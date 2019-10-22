@@ -14,6 +14,9 @@
 #include <iomanip>
 #include <ctime>
 
+
+#include <boost/algorithm/string/predicate.hpp> //for iequals
+
 using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
@@ -239,12 +242,12 @@ CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string> strArg,
     return CommandReturn::BAD_ARGS;
   }
 
-  if(0 == strArg[0].compare("CM1")) {
-    SM->UART_Terminal("CM.CM1");    
-  } else if(0 == strArg[0].compare("CM2")) {
-    SM->UART_Terminal("CM.CM2");
-  } else if(0 == strArg[0].compare("ESM")) {
-    SM->UART_Terminal("SERV.SWITCH");
+  if(boost::algorithm::iequals(strArg[0],"CM1")) {
+    SM->UART_Terminal("/dev/ttyUL1");    
+  } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
+    SM->UART_Terminal("/dev/ttyUL2");
+  } else if(boost::algorithm::iequals(strArg[0],"ESM")) {
+    SM->UART_Terminal("/dev/ttyUL3");
   } else {
     return CommandReturn::BAD_ARGS;
   }
@@ -258,16 +261,16 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
     return CommandReturn::BAD_ARGS;
   }
 
-  std::string baseNode;
+  std::string ttyDev;
   char promptChar;
-  if(0 == strArg[0].compare("CM1")) {
-    baseNode.append("CM.CM1");    
+  if(boost::algorithm::iequals(strArg[0],"CM1")) {
+    ttyDev.append("/dev/ttyUL1");    
     promptChar = '%';
-  } else if(0 == strArg[0].compare("CM2")) {
-    baseNode.append("CM.CM2");
+  } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
+    ttyDev.append("/dev/ttyUL2");
     promptChar = '%';
-  } else if(0 == strArg[0].compare("ESM")) {
-    baseNode.append("SERV.SWITCH");
+  } else if(boost::algorithm::iequals(strArg[0],"ESM")) {
+    ttyDev.append("/dev/ttyUL3");
     promptChar = '>';
   } else {
     return CommandReturn::BAD_ARGS;
@@ -282,7 +285,7 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   //get rid of last space
   sendline.pop_back();
 
-  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(baseNode, sendline,promptChar)).c_str());
+  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
 
   return CommandReturn::OK;
 } 

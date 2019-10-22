@@ -43,7 +43,7 @@ temperatures sendAndParse(ApolloSM* SM) {
   temperatures temps {0,0,0,0};
   
   // read and print
-  std::string recv(SM->UART_CMD("CM.CM1", "simple_sensor", '%'));
+  std::string recv(SM->UART_CMD("/dev/ttyUL1", "simple_sensor", '%'));
   
   // Separate by line
   boost::char_separator<char> lineSep("\r\n");

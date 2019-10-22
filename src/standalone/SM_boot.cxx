@@ -213,6 +213,7 @@ int main(int, char**) {
   long update_period_us = 1*SEC_IN_USEC; //sleep time in microseconds
 
 
+
   bool inShutdown = false;
   ApolloSM * SM = NULL;
   try{
@@ -230,11 +231,16 @@ int main(int, char**) {
     arg.push_back("connections.xml");
     SM->Connect(arg);
     //Set the power-up done bit to 1 for the IPMC to read
-    SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
+    SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
     fprintf(logFile,"Set STATUS.DONE to 1\n");
     fflush(logFile);
   
 
+    // ====================================
+    // Turn on CM uC      
+    SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",1);
+    fprintf(logFile,"Powering up CM uC\n");
+    sleep(1);
   
 
     // ==================================
@@ -301,6 +307,13 @@ int main(int, char**) {
     fprintf(logFile,"Caught std::exception: %s\n",e.what());
     fflush(logFile);      
   }
+
+
+  //make sure the CM is off
+  //Shutdown the command module (if up)
+  SM->PowerDownCM(1,5);
+  SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",0);
+
   
   //If we are shutting down, do the handshanking.
   if(inShutdown){

@@ -33,7 +33,7 @@
 //TCLAP parser
 #include <tclap/CmdLine.h>
 
-#include <standalone/uioLabelFinder.hh>
+#include <ApolloSM/uioLabelFinder.hh>
 
 extern int errno;
 

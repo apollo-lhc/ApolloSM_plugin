@@ -1,19 +1,19 @@
-#include <IPBusIO/IPBusIO.hh>
-#include "libxsvf.hh"
-//maybe
-#include <IPBusIO/IPBusConnection.hh>
-#include <IPBusStatus/IPBusStatus.hh>
-#include <BUException/ExceptionBase.hh>
-#include <ApolloSM/ApolloSM.hh>
-#include <stdio.h>
+#ifndef __SVF_PLAYER_HH__
+#define __SVF_PLAYER_HH__
+#include <ApolloSM/svplayer_consts.hh>
 
 class SVFPlayer : public IPBusIO {
 public:
-  SVFPlayer(uhal::HwInterface * const * _hw);  
-  int play(std::string const & svfFile , std::string const & XVCReg);
+  SVFPlayer();  
+  int play(std::string const & svfFile , std::string const & XVCLabel);
 private:
-
-  SVFPlayer();
+  typedef struct  {
+    uint32_t length_offset;
+    uint32_t tms_offset;
+    uint32_t tdi_offset;
+    uint32_t tdo_offset;
+    uint32_t ctrl_offset;
+  } sXVC;
 
   /* Defined in svfplayer.cc */
   int setup(std::string const & XVCReg);
@@ -42,18 +42,15 @@ private:
 
   /* internal variables */
   enum libxsvf_tap_state tap_state;
-  FILE *f;
-  int verbose;
+  
+  sXVC volatile * jtag_reg;
+
   int clockcount;
   int bitcount_tdi;
   int bitcount_tdo;
   int retval_i;
   int retval[256];
 
-  /* nodes for AXI connections */
-  uhal::Node const * nTDI;
-  uhal::Node const * nTDO;
-  uhal::Node const * nTMS;
-  uhal::Node const * nLength;
-  uhal::Node const * nGO;
 };
+
+#endif

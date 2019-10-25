@@ -1,27 +1,19 @@
-#include <ApolloSM/ApolloSM.hh>
-#include "ApolloSM/svfplayer.hh"
-//#include <../../butool-ipbus-herlpers/include/IPBusRegHelper/IPBusRegHelper.hh>
-#include <stdio.h>
-#include <string>
-#include <sys/time.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <stdint.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <ApolloSM/svfplayer.hh>
+//#include <stdio.h>
+//#include <string>
+//#include <sys/time.h>
+//#include <unistd.h>
+//#include <string.h>
+//#include <stdlib.h>
+//#include <stdio.h>
+//#include <errno.h>
+//#include <stdint.h>
+//#include <sys/mman.h>
+//#include <sys/types.h>
+//#include <sys/types.h>
+//#include <sys/stat.h>
+//#include <fcntl.h>
  
-/*DEBUGGING*/
-#define DEBUG
-#ifndef DEBUG
-int counter = 0;
-int lines = 32;
-#endif
 
 //Defining variables for AXI
 uint32_t tms32, tdi32, length32, tdo32;
@@ -173,47 +165,45 @@ int SVFPlayer::pulse_tck(int tms, int tdi, int tdo, int rmask, int sync) {
   return rc;
 }
 
-int SVFPlayer::play(std::string const & svfFile , std::string const & XVCReg) {
+void SVFPlayer::play(std::string const & svfFile , std::string const & XVCLabel) {
   
   //Giving credit to original creator
-  fprintf(stderr, "\nxsvftool-gpio, part of Lib(X)SVF (http://www.clifford.at/libxsvf/).\n");
-  fprintf(stderr, "Copyright (C) 2009  RIEGL Research ForschungsGmbH\n");
-  fprintf(stderr, "Copyright (C) 2009  Clifford Wolf <clifford@clifford.at>\n");
-  fprintf(stderr, "Lib(X)SVF is free software licensed under the ISC license.\n");  
-  fprintf(stderr, "Modified for use in Apollo platform by Michael Kremer, kremerme@bu.edu\n\n"); //Mike
+  //fprintf(stderr, "\nxsvftool-gpio, part of Lib(X)SVF (http://www.clifford.at/libxsvf/).\n");
+  //fprintf(stderr, "Copyright (C) 2009  RIEGL Research ForschungsGmbH\n");
+  //fprintf(stderr, "Copyright (C) 2009  Clifford Wolf <clifford@clifford.at>\n");
+  //fprintf(stderr, "Lib(X)SVF is free software licensed under the ISC license.\n");  
+  //fprintf(stderr, "Modified for use in Apollo platform by Michael Kremer, kremerme@bu.edu\n\n"); //Mike
 
   //open SVF file
-  f = fopen(svfFile.c_str(),"rb"); //swith to take path in
-  if (f == NULL) {fprintf(stderr, "failed to open path\n");}
-  else {fprintf(stderr, "playing %s\n", svfFile.c_str());}
+  FILE * svfFile = fopen(svfFile.c_str(),"rb"); //swith to take path in
+  if (NULL == svfFile ) {
+    throw runtime_error("failed to open svf file");    
+  }
 
   //set Tap State
   tap_state = LIBXSVF_TAP_INIT;
 
   //Run setup
-  if (setup(XVCReg) < 0) {
-    fprintf(stderr, "Setup of JTAG interface failed.\n");
-    return -1;
-  } else {fprintf(stderr, "JTAG setup succesful\n");}
-
+  int fdUIO = label2uio(XBVLabel);
+  if (fdUIO < 0) {
+    throw runtime_error("Failed to open UIO device");    
+  }
+  jtag_reg = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
+				   PROT_READ|PROT_WRITE, MAP_SHARED,
+				   fdUIO, 0x0);
+  if(MAP_FAILED == jtag_reg){
+    throw runtime_error("mem map failed");
+  }
+  
   //Run svf player
   int rc = svf_reader();
   tap_walk(LIBXSVF_TAP_RESET); //Reset tap
   
   //Run shutdown
   if (shutdown() < 0) {
-    fprintf(stderr, "Shutdown of JTAG interface failed.\n");
-    return -1;
-  } else {
-    fprintf(stderr, "JTAG shtdown succesful.\n");
-#ifndef DEBUG
-    fprintf(stderr, "Ran %d significant tdi bits.\n", bitcount_tdi);
-    fprintf(stderr, "Recieved %d significant tdo bits.\n", bitcount_tdo);
-#endif
+    throw runtime_error("Shutdown of JTAG interface failed.");
   }
   return rc;
 }
 
-SVFPlayer::SVFPlayer(uhal::HwInterface * const * _hw): f(NULL), nTDI(NULL), nTDO(NULL), nTMS(NULL), nLength(NULL), nGO(NULL) {
-  SetHWInterface(_hw);  
-}
+SVFPlayer::SVFPlayer(): {}

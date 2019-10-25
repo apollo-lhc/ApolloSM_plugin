@@ -28,6 +28,7 @@ struct temperatures {
   uint8_t FIREFLYTemp;
   uint8_t FPGATemp;
   uint8_t REGTemp;
+  bool    validData;
 };
 
 // ====================================================================================================
@@ -43,12 +44,18 @@ void static signal_handler(int const signum) {
 // ====================================================================================================
 
 temperatures sendAndParse(ApolloSM* SM) {
-  temperatures temps {0,0,0,0};
-  
+  temperatures temps {0,0,0,0,false};
+  std::string recv;
+
   // read and print
   try{
-    std::string recv(SM->UART_CMD("/dev/ttyUL1", "simple_sensor", '%'));
+    recv = (SM->UART_CMD("/dev/ttyUL1", "simple_sensor", '%'));
+    temps.validData = true;
+  }catch(BUException::IO_ERROR &e){
+    //ignore this     
+  }
   
+  if (temps.validData){
     // Separate by line
     boost::char_separator<char> lineSep("\r\n");
     tokenizer lineTokens{recv, lineSep};
@@ -104,10 +111,7 @@ temperatures sendAndParse(ApolloSM* SM) {
     default:
       break;
     }
-  }catch(BUException::IO_ERROR &e){
-    //ignore this 
   }
-
   return temps;
 }
 
@@ -272,8 +276,11 @@ int main(int, char**) {
       if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
 	temps = sendAndParse(SM);
 	sendTemps(SM, temps);
+	if(!temps.validData){
+	  fprintf(logFile,"Error in parsing data stream\n");
+	}
       }else{
-	temps = {0,0,0,0};
+	temps = {0,0,0,0,false};
 	sendTemps(SM, temps);
       }
 

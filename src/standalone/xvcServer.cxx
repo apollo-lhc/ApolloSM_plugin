@@ -33,7 +33,7 @@
 //TCLAP parser
 #include <tclap/CmdLine.h>
 
-#include <standalone/uioLabelFinder.hh>
+#include <ApolloSM/uioLabelFinder.hh>
 
 extern int errno;
 
@@ -286,6 +286,7 @@ int main(int argc, char **argv) {
     syslog(LOG_ERR,"Found %s @ %s.\n",xvcPreFix.getValue().c_str(),uioFileName);
     //Open UIO device
     fdUIO = open(uioFileName,O_RDWR);
+    delete [] uioFileName;
     if(fdUIO < 0){
       fprintf(stderr,"Failed to open %s.\n",uioFileName);
       syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);

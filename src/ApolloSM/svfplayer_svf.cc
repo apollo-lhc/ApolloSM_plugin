@@ -274,7 +274,7 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
   if(bd->len > 10000){
     updateCount=80;
     totalBitCount=bd->len;
-    printf("[");
+    printf("Programming FPGA.\n[");
     for(size_t i = 0; i < totalBitCount/(totalBitCount/updateCount);i++){
       printf("=");
     }
@@ -307,14 +307,14 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
     
     //updates
     if((updateBitCount != 0) && (currentBitCount > updateBitCount)){
-      printf("=");
+      printf(".");
       fflush(stdout);
       //      updateBitCount += totalBitCount/updateCount; 
       currentBitCount=0;
     }
   }
   if(updateBitCount != 0){
-    printf("=]\n");
+    printf(".]\n");
     fflush(stdout);
   }
 

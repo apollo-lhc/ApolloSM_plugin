@@ -266,15 +266,17 @@ int main(int, char**) {
       //Do work
       //=================================
 
-      //PS heartbeat
-      SM->RegReadRegister("SLAVE_I2C.HB_SET1");
-      SM->RegReadRegister("SLAVE_I2C.HB_SET2");
-
       //Process CM temps
       temperatures temps;  
       //if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
       if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
-	temps = sendAndParse(SM);
+	try{
+	  temps = sendAndParse(SM);
+	}catch(std::exception & e){
+	  fprintf(logFile,e.what());
+	  //ignoring any exception here for now
+	  temps = {0,0,0,0,false};
+	}
 	sendTemps(SM, temps);
 	if(!temps.validData){
 	  fprintf(logFile,"Error in parsing data stream\n");

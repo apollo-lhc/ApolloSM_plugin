@@ -2,7 +2,7 @@ BUTOOL_PATH?=../../
 
 CXX?=g++
 
-IPBUS_REG_HELPER_PATH?=${BUTOOL_PATH}/plugins/butool-ipbus-helpers
+IPBUS_REG_HELPER_PATH?=${BUTOOL_PATH}/plugins/BUTool-IPBUS-Helpers
 
 LIBRARY_APOLLO_SM_DEVICE = lib/libBUTool_ApolloSMDevice.so
 LIBRARY_APOLLO_SM_DEVICE_SOURCES = $(wildcard src/ApolloSM_device/*.cc)

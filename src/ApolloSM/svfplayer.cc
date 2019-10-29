@@ -179,8 +179,10 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
     throw std::runtime_error("mem map failed");
   }
 
+
   
   //Run svf player
+  printf("Reading svf file...\n");
   int rc = svf_reader();
   tap_walk(LIBXSVF_TAP_RESET); //Reset tap
   

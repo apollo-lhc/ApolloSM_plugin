@@ -361,6 +361,7 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
       recvline.push_back(readChar);
     }
   }
+  close(fd);
 
   return recvline;
 }

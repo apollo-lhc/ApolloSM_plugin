@@ -1,19 +1,20 @@
 #include <ApolloSM/svfplayer.hh>
 //#include <stdio.h>
 //#include <string>
-//#include <sys/time.h>
-//#include <unistd.h>
+#include <sys/time.h> //get time of day
+#include <unistd.h> //usleep
 //#include <string.h>
 //#include <stdlib.h>
 //#include <stdio.h>
 //#include <errno.h>
 //#include <stdint.h>
-//#include <sys/mman.h>
+#include <sys/mman.h> //memmap
 //#include <sys/types.h>
 //#include <sys/types.h>
 //#include <sys/stat.h>
-//#include <fcntl.h>
- 
+#include <fcntl.h>  //for fd consts
+#include <stdexcept> //runtime_error
+#include <ApolloSM/uioLabelFinder.hh> 
 
 //Defining variables for AXI
 uint32_t tms32, tdi32, length32, tdo32;
@@ -29,13 +30,14 @@ void SVFPlayer::tck() {
   if(indx == 31) {
     
     //assign registers
-    RegWriteNode(*nLength, length32);
-    RegWriteNode(*nTMS, tms32);
-    RegWriteNode(*nTDI, tdi32);
-    RegWriteNode(*nGO, 1UL);
+    
+    jtag_reg->length_offset = length32;
+    jtag_reg->tms_offset    = tms32;
+    jtag_reg->tdi_offset    = tdi32;
+    jtag_reg->ctrl_offset   = 1;
 
     //wait for read
-    while(RegReadNode(*nGO)) {}
+    while(jtag_reg->ctrl_offset) {}
     
     //reset local registers
     length32 = 0UL;
@@ -45,27 +47,6 @@ void SVFPlayer::tck() {
     indx = 0;
   } else {indx++;}
 
-  //Debugging
-#ifndef DEBUG
-  if (counter == lines) {}
-  else {
-    counter++;
-    //print tdi
-    fprintf(stderr, "_tdi_");
-    for (int run = 0; run < 32; ++run) {
-      if (tdi32 >> run & 0x1) fprintf(stderr, "1");
-      else fprintf(stderr, "0");
-    }
-    fprintf(stderr, "\n");
-    //print tms
-    fprintf(stderr, "_tms_");
-    for (int run = 0; run < 32; ++run) {
-      if (tms32 >> run & 0x1) fprintf(stderr, "1");
-      else fprintf(stderr, "0");
-    }
-    fprintf(stderr, "\n");
-  }
-#endif
 }
 
 //Empty definitions,
@@ -74,14 +55,8 @@ void SVFPlayer::pulse_sck() {}
 void SVFPlayer::set_trst(int v) {if ((v * 0)==1){fprintf(stderr,"null");} }
 int SVFPlayer::set_frequency(int v) {return (v * 0);}
 
-int SVFPlayer::setup(std::string const & XVCReg) {
+int SVFPlayer::setup() {
 
-  //Setting nodes
-  nTDI = &GetNode(XVCReg+".TDI_VECTOR");
-  nTDO = &GetNode(XVCReg+".TDO_VECTOR");
-  nTMS = &GetNode(XVCReg+".TMS_VECTOR");
-  nLength = &GetNode(XVCReg+".LENGTH");
-  nGO = &GetNode(XVCReg+".GO");
   
   //Setting up AXI
   tms32 = 0UL;
@@ -98,13 +73,13 @@ int SVFPlayer::shutdown() {
 
   
   //assign registers
-  RegWriteNode(*nLength, length32);
-  RegWriteNode(*nTMS, tms32);
-  RegWriteNode(*nTDI, tdi32);
-  RegWriteNode(*nGO, 1);
-  
+  jtag_reg->length_offset = length32;
+  jtag_reg->tms_offset    = tms32;
+  jtag_reg->tdi_offset    = tdi32;
+  jtag_reg->ctrl_offset   = 1;
+    
   //wait for read
-  while(RegReadNode(*nGO)) {}
+  while(jtag_reg->ctrl_offset) {}
   
   //reset local registers
   length32 = 0UL;
@@ -138,7 +113,7 @@ void SVFPlayer::udelay(long usecs, int tms, long num_tck) {
 
 //Runs for reading file
 int SVFPlayer::getbyte() {
-  return fgetc(f);
+  return fgetc(svfFile);
 }
 
 //Main function for setting tms, tdi, and tck
@@ -165,7 +140,7 @@ int SVFPlayer::pulse_tck(int tms, int tdi, int tdo, int rmask, int sync) {
   return rc;
 }
 
-void SVFPlayer::play(std::string const & svfFile , std::string const & XVCLabel) {
+int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLabel) {
   
   //Giving credit to original creator
   //fprintf(stderr, "\nxsvftool-gpio, part of Lib(X)SVF (http://www.clifford.at/libxsvf/).\n");
@@ -175,25 +150,35 @@ void SVFPlayer::play(std::string const & svfFile , std::string const & XVCLabel)
   //fprintf(stderr, "Modified for use in Apollo platform by Michael Kremer, kremerme@bu.edu\n\n"); //Mike
 
   //open SVF file
-  FILE * svfFile = fopen(svfFile.c_str(),"rb"); //swith to take path in
+  svfFile = fopen(svfFileName.c_str(),"rb"); //swith to take path in
   if (NULL == svfFile ) {
-    throw runtime_error("failed to open svf file");    
+    throw std::runtime_error("failed to open svf file");    
   }
-
+  
   //set Tap State
   tap_state = LIBXSVF_TAP_INIT;
 
+  int nUIO = label2uio(XVCLabel);
+
+  size_t const uioFileNameLength = 1024;
+  char * uioFileName = new char[uioFileNameLength+1];
+  memset(uioFileName,0x0,uioFileNameLength+1);
+  snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",nUIO);
+  printf("Found UIO labeled %s @ %s\n",XVCLabel.c_str(),uioFileName);
   //Run setup
-  int fdUIO = label2uio(XBVLabel);
+  fdUIO = open(uioFileName,O_RDWR);
+  delete [] uioFileName;
   if (fdUIO < 0) {
-    throw runtime_error("Failed to open UIO device");    
+    throw std::runtime_error("Failed to open UIO device");    
   }
+  
   jtag_reg = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
 				   PROT_READ|PROT_WRITE, MAP_SHARED,
 				   fdUIO, 0x0);
   if(MAP_FAILED == jtag_reg){
-    throw runtime_error("mem map failed");
+    throw std::runtime_error("mem map failed");
   }
+
   
   //Run svf player
   int rc = svf_reader();
@@ -201,9 +186,13 @@ void SVFPlayer::play(std::string const & svfFile , std::string const & XVCLabel)
   
   //Run shutdown
   if (shutdown() < 0) {
-    throw runtime_error("Shutdown of JTAG interface failed.");
+    throw std::runtime_error("Shutdown of JTAG interface failed.");
   }
   return rc;
 }
 
-SVFPlayer::SVFPlayer(): {}
+SVFPlayer::SVFPlayer() {
+  jtag_reg = NULL;
+  svfFile = NULL;
+  
+}

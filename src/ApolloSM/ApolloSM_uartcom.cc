@@ -174,7 +174,7 @@ void ApolloSM::UART_Terminal(std::string const & ttyDev) {
   endwin();
   printf("\n");
   fflush(stderr);
-
+  close(fd);
   return;
 }
 

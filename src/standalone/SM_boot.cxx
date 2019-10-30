@@ -18,6 +18,10 @@
 
 #define SEC_IN_USEC 10000000
 #define NSEC_IN_USEC 1000
+
+#define NUMBER_OF_SENSORS 4
+// First column is sensor and second is temperature
+#define COLUMNS_OF_INFO 2
 // ====================================================================================================
 // Definitions
 
@@ -57,55 +61,67 @@ temperatures sendAndParse(ApolloSM* SM) {
   
   if (temps.validData){
     // Separate by line
-    boost::char_separator<char> lineSep("\r\n");
-    tokenizer lineTokens{recv, lineSep};
 
-    // One vector for each line 
+    // remove all all \r
+    recv.erase(std::remove(recv.begin(), recv.end(), '\r'), recv.end());
+    // now tokenize by \n
+    boost::char_separator<char> newline("\n");
+    tokenizer lineTokens{recv, newline};
+    // Could have used \n first and then \r
+
+    // One vector for each line. One string per word in each line.
     std::vector<std::vector<std::string> > allTokens;
 
     // Separate by spaces
     boost::char_separator<char> space(" ");
-    int vecCount = 0;
+    int lineCount = 0;
     // For each line
     for(tokenizer::iterator lineIt = lineTokens.begin(); lineIt != lineTokens.end(); ++lineIt) {
       tokenizer wordTokens{*lineIt, space};
       // We don't yet own any memory in allTokens so we append a blank vector
       std::vector<std::string> blankVec;
       allTokens.push_back(blankVec);
-      // One vector per line
+      
+      // For each word
       for(tokenizer::iterator wordIt = wordTokens.begin(); wordIt != wordTokens.end(); ++wordIt) {
-	allTokens[vecCount].push_back(*wordIt);
+	allTokens[lineCount].push_back(*wordIt);
       }
-      vecCount++;
-    }
 
-    // Check for at least one element 
-    // Check for two elements in first element
-    // Following lines follow the same concept
+      // Go to next line
+      lineCount++;
+    }
+    
+    // Temperatures of all sensors
     std::vector<float> temp_values;
+
+    // For each sensor
     for(size_t i = 0; 
-	i < allTokens.size() && i < 4;
+	i < allTokens.size() && i < NUMBER_OF_SENSORS;
 	i++){
-      if(2 == allTokens[i].size()) {
+
+      // Make sure we have both sensor name and sensor temperature
+      if(COLUMNS_OF_INFO == allTokens[i].size()) {
 	float temp;
+	// In case temperature conversion fails
 	if( (temp = std::atof(allTokens[i][1].c_str())) < 0) {
 	  temp = 0;
 	}
 	temp_values.push_back(temp);
       }
     }
+
     switch (temp_values.size()){
     case 4:
-      temps.REGTemp = (uint8_t)temp_values[3];  
+      temps.REGTemp     = (uint8_t)temp_values[3];  
       //fallthrough
     case 3:
-      temps.FPGATemp = (uint8_t)temp_values[2];  
+      temps.FPGATemp    = (uint8_t)temp_values[2];  
       //fallthrough
     case 2:
       temps.FIREFLYTemp = (uint8_t)temp_values[1];  
       //fallthrough
     case 1:
-      temps.MCUTemp = (uint8_t)temp_values[0];  
+      temps.MCUTemp     = (uint8_t)temp_values[0];  
       //fallthrough
       break;
     default:
@@ -126,15 +142,78 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
 
 // ====================================================================================================
 
-
 long us_difftime(struct timespec cur, struct timespec end){ 
   return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_USEC + 
 	   (end.tv_nsec - cur.tv_nsec)/NSEC_IN_USEC);
 }
 
+// ====================================================================================================
+// The program spends the majority of its time in this loop
+void workLoop(ApolloSM * SM, FILE * logFile, bool * inShutdown, struct timespec startTS, struct timespec stopTS) {
+  loop = true;
+  while(loop) {
+    // loop start time
+    clock_gettime(CLOCK_REALTIME, &startTS);
+    
+    //=================================
+    //Do work
+    //=================================
+    
+    //PS heartbeat
+    SM->RegReadRegister("SLAVE_I2C.HB_SET1");
+    SM->RegReadRegister("SLAVE_I2C.HB_SET2");
+    
+    //=================================
+    //Process CM temps
+    temperatures temps;  
+    //if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
+    if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
+      temps = sendAndParse(SM);
+      sendTemps(SM, temps);
+      if(!temps.validData){
+	fprintf(logFile,"Error in parsing data stream\n");
+	fflush(logFile);
+      }
+    }else{
+      temps = {0,0,0,0,false};
+      sendTemps(SM, temps);
+    }
+    
+    //=================================
+    //Check if we are shutting down
+    if((!(*inShutdown)) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
+      fprintf(logFile,"Shutdown requested\n");
+      fflush(logFile);
+      *inShutdown = true;
+      //the IPMC requested a re-boot.
+      pid_t reboot_pid;
+      if(0 == (reboot_pid = fork())){
+	//Shutdown the system
+	execlp("/sbin/shutdown","/sbin/shutdown","-h","now",NULL);
+	exit(1);
+      }
+      if(-1 == reboot_pid){
+	*inShutdown = false;
+	fprintf(logFile,"Error! fork to shutdown failed!\n");
+	fflush(logFile);	
+      }else{
+	//Shutdown the command module (if up)
+	SM->PowerDownCM(1,5);
+      }
+    }
+    
+    //=================================
+    // monitoring sleep
+    clock_gettime(CLOCK_REALTIME, &stopTS);
+    // sleep for 10 seconds minus how long it took to read and send temperature    
+    useconds_t sleep_us = update_period_us - us_difftime(startTS, stopTS);
+    if(sleep_us > 0){
+      usleep(sleep_us);
+    }
+  }
+}
 
-
-
+// ====================================================================================================
 
 int main(int, char**) { 
 
@@ -189,22 +268,14 @@ int main(int, char**) {
     fflush(logFile);
   }
 
-
   //Everything looks good, close the standard file fds.
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-
-
-
-
-  // ============================================================================
-  // Daemon code setup
-
   // ====================================
   // Signal handling
-  struct sigaction sa_INT,sa_TERM,old_sa;
+  struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
   memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
   memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
   //setup SA
@@ -212,9 +283,8 @@ int main(int, char**) {
   sa_TERM.sa_handler = signal_handler;
   sigemptyset(&sa_INT.sa_mask);
   sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
+  sigaction(SIGINT,  &sa_INT , &oldINT_sa);
+  sigaction(SIGTERM, &sa_TERM, &oldTERM_sa);
 
   // ====================================
   // for counting time
@@ -223,8 +293,8 @@ int main(int, char**) {
 
   long update_period_us = 1*SEC_IN_USEC; //sleep time in microseconds
 
-
-
+  // ====================================
+  // ApolloSM code
   bool inShutdown = false;
   ApolloSM * SM = NULL;
   try{
@@ -234,6 +304,8 @@ int main(int, char**) {
     if(NULL == SM){
       fprintf(logFile,"Failed to create new ApolloSM\n");
       fflush(logFile);
+      fclose(logFile);
+      return 0;
     }else{
       fprintf(logFile,"Created new ApolloSM\n");
       fflush(logFile);
@@ -245,75 +317,20 @@ int main(int, char**) {
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
     fprintf(logFile,"Set STATUS.DONE to 1\n");
     fflush(logFile);
-  
-
+    
     // ====================================
     // Turn on CM uC      
     SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",1);
     fprintf(logFile,"Powering up CM uC\n");
     sleep(1);
-  
 
     // ==================================
     // Main DAEMON loop
     fprintf(logFile,"Starting Monitoring loop\n");
     fflush(logFile);
-    while(loop) {
-      // loop start time
-      clock_gettime(CLOCK_REALTIME, &startTS);
+  
+    workLoop(SM, logFile, &inShutdown, startTS, stopTS);
 
-      //=================================
-      //Do work
-      //=================================
-
-      //PS heartbeat
-      SM->RegReadRegister("SLAVE_I2C.HB_SET1");
-      SM->RegReadRegister("SLAVE_I2C.HB_SET2");
-
-      //Process CM temps
-      temperatures temps;  
-      //if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
-      if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
-	temps = sendAndParse(SM);
-	sendTemps(SM, temps);
-	if(!temps.validData){
-	  fprintf(logFile,"Error in parsing data stream\n");
-	}
-      }else{
-	temps = {0,0,0,0,false};
-	sendTemps(SM, temps);
-      }
-
-      //Check if we are shutting down
-      if((!inShutdown) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
-	fprintf(logFile,"Shutdown requested\n");
-	inShutdown = true;
-	//the IPMC requested a re-boot.
-	pid_t reboot_pid;
-	if(0 == (reboot_pid = fork())){
-	  //Shutdown the system
-	  execlp("/sbin/shutdown","/sbin/shutdown","-h","now",NULL);
-	  exit(1);
-	}
-	if(-1 == reboot_pid){
-	  inShutdown = false;
-	  fprintf(logFile,"Error! fork to shutdown failed!\n");
-	}else{
-	  //Shutdown the command module (if up)
-	  SM->PowerDownCM(1,5);
-	}
-      }
-      //=================================
-
-
-      // monitoring sleep
-      clock_gettime(CLOCK_REALTIME, &stopTS);
-      // sleep for 10 seconds minus how long it took to read and send temperature    
-      useconds_t sleep_us = update_period_us - us_difftime(startTS, stopTS);
-      if(sleep_us > 0){
-	usleep(sleep_us);
-      }
-    }
   }catch(BUException::exBase const & e){
     fprintf(logFile,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
     fflush(logFile);      
@@ -322,16 +339,17 @@ int main(int, char**) {
     fflush(logFile);      
   }
 
-
+  // ==================================================
+  // Shutdown sequence
   //make sure the CM is off
   //Shutdown the command module (if up)
   SM->PowerDownCM(1,5);
   SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",0);
 
-  
   //If we are shutting down, do the handshanking.
   if(inShutdown){
     fprintf(logFile,"Tell IPMC we have shut-down\n");
+    fflush(logFile);
     //We are no longer booted
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
     //we are shut down
@@ -340,7 +358,6 @@ int main(int, char**) {
     //PS heartbeat
     SM->RegReadRegister("SLAVE_I2C.HB_SET1");
     SM->RegReadRegister("SLAVE_I2C.HB_SET2");
-
   }
   
   //Clean up
@@ -349,8 +366,10 @@ int main(int, char**) {
   }
   
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
-  sigaction(SIGINT, &old_sa, NULL);
+  sigaction(SIGINT, &oldINT_sa, NULL);
+  sigaction(SIGTERM, &oldTERM_sa, NULL);
   fprintf(logFile,"SM boot Daemon ended\n");
+  fflush(logFile);
   fclose(logFile);
   
   return 0;

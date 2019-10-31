@@ -258,6 +258,8 @@ int main(int, char**) {
     // Main DAEMON loop
     fprintf(logFile,"Starting Monitoring loop\n");
     fflush(logFile);
+
+    uint32_t CM_running = 0;
     while(loop) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
@@ -268,7 +270,6 @@ int main(int, char**) {
 
       //Process CM temps
       temperatures temps;  
-      //if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
       if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
 	try{
 	  temps = sendAndParse(SM);
@@ -277,6 +278,15 @@ int main(int, char**) {
 	  //ignoring any exception here for now
 	  temps = {0,0,0,0,false};
 	}
+	
+	if(0 == CM_running ){
+	  //Drop the non uC temps
+	  temps.FIREFLYTemp = 0;
+	  temps.FPGATemp = 0;
+	  temps.REGTemp = 0;
+	}
+	CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
+
 	sendTemps(SM, temps);
 	if(!temps.validData){
 	  fprintf(logFile,"Error in parsing data stream\n");

@@ -78,3 +78,33 @@ float CPUUsage(){
 
   return ret;
 }
+
+
+void Uptime(float & days, float &hours, float & minutes){
+  //return the real value, but use reference passes to make human reable values
+  float fullValue = 0;
+  days = hours = minutes = fullValue;
+
+  //Open uptime file
+  FILE * uptimeFile = fopen("/proc/uptime","r");
+  if(NULL == uptimeFile){
+    return;
+  }
+  //Read in the first entry (number of seconds uptime)
+  fscanf(uptimeFile,"%f",&fullValue);
+  fclose(uptimeFile);
+
+  //blank out values that are trivially small
+  if(fullValue < 1){
+    return;
+  }
+  //Display values in useful units (zero other types)
+  if(fullValue < 5*60){
+    minutes = fullValue/60.0;
+  }else if(fullValue < 24*60*60){
+    hours = fullValue/(60.0*60);
+  }else{
+    days = fullValue/(24*60.0*60);
+  }
+  return;
+}

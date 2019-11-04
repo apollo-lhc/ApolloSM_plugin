@@ -179,6 +179,12 @@ int main() {
       SM->RegWriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
       mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
       SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
+      float days,hours,minutes;
+      Uptime(days,hours,minutes);
+      SM->RegWriteRegister("PL_MEM.ARM.UPTIME.DAYS",uint32_t(100.0*days));
+      SM->RegWriteRegister("PL_MEM.ARM.UPTIME.HOURS",uint32_t(100.0*hours));
+      SM->RegWriteRegister("PL_MEM.ARM.UPTIME.MINS",uint32_t(100.0*minutes));
+
     }else if(pselRet > 0){
       //a FD is readable. 
       if(FD_ISSET(fdUserCount,&readSet_ret)){

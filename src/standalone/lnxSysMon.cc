@@ -99,7 +99,7 @@ void Uptime(float & days, float &hours, float & minutes){
     return;
   }
   //Display values in useful units (zero other types)
-  if(fullValue < 5*60){
+  if(fullValue < 60*60){
     minutes = fullValue/60.0;
   }else if(fullValue < 24*60*60){
     hours = fullValue/(60.0*60);

@@ -53,6 +53,7 @@ uint32_t volatile * XVCLock = NULL;
 
 #define CHECK_LOCK				\
   if(XVCLock && *XVCLock){			\
+    fprintf(stderr,"Breaking due to Lock\n");	\
     return -1;					\
   }						\
 
@@ -301,16 +302,16 @@ int main(int argc, char **argv) {
   }
   uint32_t offset = 0;
   if(!xvcName.compare("XVC1")){
-    offset=0x7e4;
-  }else if(!xvcName.compare("XVC2")){
     offset=0x7e5;
-  }else if(!xvcName.compare("XVC_LOCAL")){
+  }else if(!xvcName.compare("XVC2")){
     offset=0x7e6;
+  }else if(!xvcName.compare("XVC_LOCAL")){
+    offset=0x7e7;
   }
   if(offset){  
-    XVCLock = (uint32_t volatile*) mmap(NULL,sizeof(uint32_t)*0x800,
-					PROT_READ|PROT_WRITE, MAP_SHARED,
-					fdXVCLock,0x0) + offset;
+    XVCLock = ((uint32_t volatile*) mmap(NULL,sizeof(uint32_t)*0x800,
+					 PROT_READ|PROT_WRITE, MAP_SHARED,
+					 fdXVCLock,0x0))  + offset;
     if(MAP_FAILED == XVCLock){
       fprintf(stderr,"Failed to mmap %s.\n",uioFileName);
       syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);

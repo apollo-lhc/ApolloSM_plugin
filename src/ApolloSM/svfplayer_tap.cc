@@ -151,7 +151,7 @@ int SVFPlayer::tap_walk(enum libxsvf_tap_state s)
 	  break;
 
 	default:
-	  fprintf(stderr, "Illegal tap state.\n");
+	  fprintf(stderr, "Illegal tap state. (%d)\n",tap_state);
 	  return -1;
 	}
       if (i>10) {

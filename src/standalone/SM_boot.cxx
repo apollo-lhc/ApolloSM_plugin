@@ -28,6 +28,7 @@ struct temperatures {
   uint8_t FIREFLYTemp;
   uint8_t FPGATemp;
   uint8_t REGTemp;
+  bool    validData;
 };
 
 // ====================================================================================================
@@ -43,12 +44,18 @@ void static signal_handler(int const signum) {
 // ====================================================================================================
 
 temperatures sendAndParse(ApolloSM* SM) {
-  temperatures temps {0,0,0,0};
-  
+  temperatures temps {0,0,0,0,false};
+  std::string recv;
+
   // read and print
   try{
-    std::string recv(SM->UART_CMD("/dev/ttyUL1", "simple_sensor", '%'));
+    recv = (SM->UART_CMD("/dev/ttyUL1", "simple_sensor", '%'));
+    temps.validData = true;
+  }catch(BUException::IO_ERROR &e){
+    //ignore this     
+  }
   
+  if (temps.validData){
     // Separate by line
     boost::char_separator<char> lineSep("\r\n");
     tokenizer lineTokens{recv, lineSep};
@@ -104,10 +111,7 @@ temperatures sendAndParse(ApolloSM* SM) {
     default:
       break;
     }
-  }catch(BUException::IO_ERROR &e){
-    //ignore this 
   }
-
   return temps;
 }
 
@@ -254,6 +258,8 @@ int main(int, char**) {
     // Main DAEMON loop
     fprintf(logFile,"Starting Monitoring loop\n");
     fflush(logFile);
+
+    uint32_t CM_running = 0;
     while(loop) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
@@ -262,18 +268,31 @@ int main(int, char**) {
       //Do work
       //=================================
 
-      //PS heartbeat
-      SM->RegReadRegister("SLAVE_I2C.HB_SET1");
-      SM->RegReadRegister("SLAVE_I2C.HB_SET2");
-
       //Process CM temps
       temperatures temps;  
-      //if(SM->RegReadRegister("CM.CM1.CTRL.IOS_ENABLED")){
       if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
-	temps = sendAndParse(SM);
+	try{
+	  temps = sendAndParse(SM);
+	}catch(std::exception & e){
+	  fprintf(logFile,e.what());
+	  //ignoring any exception here for now
+	  temps = {0,0,0,0,false};
+	}
+	
+	if(0 == CM_running ){
+	  //Drop the non uC temps
+	  temps.FIREFLYTemp = 0;
+	  temps.FPGATemp = 0;
+	  temps.REGTemp = 0;
+	}
+	CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
+
 	sendTemps(SM, temps);
+	if(!temps.validData){
+	  fprintf(logFile,"Error in parsing data stream\n");
+	}
       }else{
-	temps = {0,0,0,0};
+	temps = {0,0,0,0,false};
 	sendTemps(SM, temps);
       }
 

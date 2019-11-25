@@ -241,11 +241,6 @@ const char * SVFPlayer::bitdata_parse(const char *p, struct bitdata_s *bd, int o
 
       i = bd->alloced_bytes*2 - hexdigits;
       for (j=0; j<hexdigits; j++, i++, p++) {
-//	if (i%2 == 0) {
-//	  d[i/2] |= hex(*p) << 4;
-//	} else {
-//	  d[i/2] |= hex(*p);
-//	}
 	if ((i&0x1) == 0x0) {
 	  d[i>>1] |= hex(*p) << 4;
 	} else {
@@ -261,34 +256,6 @@ const char * SVFPlayer::bitdata_parse(const char *p, struct bitdata_s *bd, int o
 	p++;
       }
     }
-#if 0
-  /* Debugging Output, needs <stdio.h> */
-  printf("--- Parsed bitdata [%d] ---\n", bd->len);
-  if (bd->tdi_data) {
-    printf("TDI DATA:");
-    for (i=0; i<bd->alloced_bytes; i++)
-      printf(" %02x", bd->tdi_data[i]);
-    printf("\n");
-  }
-  if (bd->tdo_data && has_tdo_data) {
-    printf("TDO DATA:");
-    for (i=0; i<bd->alloced_bytes; i++)
-      printf(" %02x", bd->tdo_data[i]);
-    printf("\n");
-  }
-  if (bd->tdi_mask) {
-    printf("TDI MASK:");
-    for (i=0; i<bd->alloced_bytes; i++)
-      printf(" %02x", bd->tdi_mask[i]);
-    printf("\n");
-  }
-  if (bd->tdo_mask) {
-    printf("TDO MASK:");
-    for (i=0; i<bd->alloced_bytes; i++)
-      printf(" %02x", bd->tdo_mask[i]);
-    printf("\n");
-  }
-#endif
   return p;
 }
 
@@ -300,13 +267,27 @@ int SVFPlayer::getbit(unsigned char *data, int n)
 
 int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
 {
-  //  int left_padding = (8 - bd->len % 8) % 8;
   int left_padding = (8 - (bd->len & 0x7)) & 0x7;
   int tdo_error = 0;
   int tms = 0;
-  int i;
 
-  for (i=bd->len+left_padding-1; i >= left_padding; i--) {
+  if(bd->len > 10000){
+    updateCount=80;
+    totalBitCount=bd->len;
+    printf("Programming FPGA.\n[");
+    for(size_t i = 0; i < totalBitCount/(totalBitCount/updateCount);i++){
+      printf("=");
+    }
+    printf("]\n[");
+    fflush(stdout);
+    currentBitCount=0;
+    updateBitCount = totalBitCount/updateCount; 
+  }else{
+    currentBitCount = 0;
+    updateBitCount  = 0;
+  }
+
+  for (int i=bd->len+left_padding-1; i >= left_padding; i--) {
     if (i == left_padding && tap_state != estate) {
       tap_state = (libxsvf_tap_state)((int)tap_state + 1);
       tms = 1;
@@ -316,12 +297,25 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
       if (!bd->tdi_mask || getbit(bd->tdi_mask, i))
 	tdi = getbit(bd->tdi_data, i);
     }
+    currentBitCount++;
     int tdo = -1;
     if (bd->tdo_data && bd->has_tdo_data && (!bd->tdo_mask || getbit(bd->tdo_mask, i)))
       tdo = getbit(bd->tdo_data, i);
     int rmask = bd->ret_mask && getbit(bd->ret_mask, i);
     if(pulse_tck(tms, tdi, tdo, rmask, 0) < 0)
       tdo_error = 1;
+    
+    //updates
+    if((updateBitCount != 0) && (currentBitCount > updateBitCount)){
+      printf(".");
+      fflush(stdout);
+      //      updateBitCount += totalBitCount/updateCount; 
+      currentBitCount=0;
+    }
+  }
+  if(updateBitCount != 0){
+    printf(".]\n");
+    fflush(stdout);
   }
 
   // if (tms)
@@ -347,9 +341,9 @@ int SVFPlayer::svf_reader()
   struct bitdata_s bd_sdr = { 0, 0, 0, NULL, NULL, NULL, NULL, NULL, 0};
   struct bitdata_s bd_sir = { 0, 0, 0, NULL, NULL, NULL, NULL, NULL, 0};
 
-  int state_endir = LIBXSVF_TAP_IDLE;
-  int state_enddr = LIBXSVF_TAP_IDLE;
-  int state_run = LIBXSVF_TAP_IDLE;
+  int state_endir  = LIBXSVF_TAP_IDLE;
+  int state_enddr  = LIBXSVF_TAP_IDLE;
+  int state_run    = LIBXSVF_TAP_IDLE;
   int state_endrun = LIBXSVF_TAP_IDLE;
 
   while (1)

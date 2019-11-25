@@ -2,7 +2,7 @@ BUTOOL_PATH?=../../
 
 CXX?=g++
 
-IPBUS_REG_HELPER_PATH?=${BUTOOL_PATH}/plugins/butool-ipbus-helpers
+IPBUS_REG_HELPER_PATH?=${BUTOOL_PATH}/plugins/BUTool-IPBUS-Helpers
 
 LIBRARY_APOLLO_SM_DEVICE = lib/libBUTool_ApolloSMDevice.so
 LIBRARY_APOLLO_SM_DEVICE_SOURCES = $(wildcard src/ApolloSM_device/*.cc)
@@ -132,14 +132,14 @@ obj/%.o : src/%.cc
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
 
-obj/%.o : src/%.cxx
+obj/%.o : src/%.cxx 
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
 
-bin/% : obj/standalone/%.o
+bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES}
 	mkdir -p bin
-	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} $^ -o $@
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml $^ -o $@
 
 
 -include $(LIBRARY_OBJECT_FILES:.o=.d)

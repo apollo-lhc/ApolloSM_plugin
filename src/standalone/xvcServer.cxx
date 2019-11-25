@@ -33,7 +33,7 @@
 //TCLAP parser
 #include <tclap/CmdLine.h>
 
-#include <standalone/uioLabelFinder.hh>
+#include <ApolloSM/uioLabelFinder.hh>
 
 extern int errno;
 
@@ -48,8 +48,15 @@ typedef struct  {
 } sXVC;
 
 sXVC volatile * pXVC = NULL;
+uint32_t volatile * XVCLock = NULL;
 
-static int verbose = 0;
+
+#define CHECK_LOCK				\
+  if(XVCLock && *XVCLock){			\
+    fprintf(stderr,"Breaking due to Lock\n");	\
+    return -1;					\
+  }						\
+
 
 static int sread(int fd, void *target, int len) {
   unsigned char *t = (unsigned char *) target;
@@ -67,7 +74,8 @@ int handle_data(int fd) {
 
   const char xvcInfo[] = "xvcServer_v1.0:2048\n"; 
 
-  do {
+  do {    
+    CHECK_LOCK
     char cmd[16];
     unsigned char buffer[2048], result[1024];
     memset(cmd, 0, 16);
@@ -84,12 +92,6 @@ int handle_data(int fd) {
 	perror("write");
 	return 1;
       }
-      if (verbose) {
-	printf("%u : Received command: 'getinfo'\n", (int)time(NULL));
-	syslog(LOG_ERR,"%u : Received command: 'getinfo'\n", (int)time(NULL));
-	printf("\t Replied with %s\n", xvcInfo);
-	syslog(LOG_ERR,"\t Replied with %s\n", xvcInfo);
-      }
       break;
     } else if (memcmp(cmd, "se", 2) == 0) {
       if (sread(fd, cmd, 9) != 1)
@@ -99,20 +101,10 @@ int handle_data(int fd) {
 	perror("write");
 	return 1;
       }
-      if (verbose) {
-	printf("%u : Received command: 'settck'\n", (int)time(NULL));
-	syslog(LOG_ERR,"%u : Received command: 'settck'\n", (int)time(NULL));
-	printf("\t Replied with '%.*s'\n\n", 4, cmd + 5);
-	syslog(LOG_ERR,"\t Replied with '%.*s'\n\n", 4, cmd + 5);
-      }
       break;
     } else if (memcmp(cmd, "sh", 2) == 0) {
       if (sread(fd, cmd, 4) != 1)
 	return 1;
-      if (verbose) {
-	printf("%u : Received command: 'shift'\n", (int)time(NULL));
-	syslog(LOG_ERR,"%u : Received command: 'shift'\n", (int)time(NULL));
-      }
     } else {
 
       fprintf(stderr, "invalid cmd '%s'\n", cmd);
@@ -141,21 +133,14 @@ int handle_data(int fd) {
     }
     memset(result, 0, nr_bytes);
 
-    if (verbose) {
-      printf("\tNumber of Bits  : %d\n", len);
-      syslog(LOG_ERR,"\tNumber of Bits  : %d\n", len);
-      printf("\tNumber of Bytes : %d \n", nr_bytes);
-      syslog(LOG_ERR,"\tNumber of Bytes : %d \n", nr_bytes);
-      printf("\n");
-      syslog(LOG_ERR,"\n");
-    }
 
     int bytesLeft = nr_bytes;
     int bitsLeft = len;
     int byteIndex = 0;
     int tdi, tms, tdo;
 
-    while (bytesLeft > 0) {
+    while (bytesLeft > 0) {      
+      CHECK_LOCK
       tms = 0;
       tdi = 0;
       tdo = 0;
@@ -180,16 +165,6 @@ int handle_data(int fd) {
 	bitsLeft -= 32;         
 	byteIndex += 4;
 
-	if (verbose) {
-	  printf("LEN : 0x%08x\n", 32);
-	  syslog(LOG_ERR,"LEN : 0x%08x\n", 32);
-	  printf("TMS : 0x%08x\n", tms);
-	  syslog(LOG_ERR,"TMS : 0x%08x\n", tms);
-	  printf("TDI : 0x%08x\n", tdi);
-	  syslog(LOG_ERR,"TDI : 0x%08x\n", tdi);
-	  printf("TDO : 0x%08x\n", tdo);
-	  syslog(LOG_ERR,"TDO : 0x%08x\n", tdo);
-	}
 
       } else {
 	memcpy(&tms, &buffer[byteIndex], bytesLeft);
@@ -207,16 +182,6 @@ int handle_data(int fd) {
 	tdo = pXVC->tdo_offset;          
 	memcpy(&result[byteIndex], &tdo, bytesLeft);
 
-	if (verbose) {
-	  printf("LEN : 0x%08x\n", bitsLeft);
-	  syslog(LOG_ERR,"LEN : 0x%08x\n", bitsLeft);
-	  printf("TMS : 0x%08x\n", tms);
-	  syslog(LOG_ERR,"TMS : 0x%08x\n", tms);
-	  printf("TDI : 0x%08x\n", tdi);
-	  syslog(LOG_ERR,"TDI : 0x%08x\n", tdi);
-	  printf("TDO : 0x%08x\n", tdo);
-	  syslog(LOG_ERR,"TDO : 0x%08x\n", tdo);
-	}
 	break;
       }
     }
@@ -236,12 +201,13 @@ int main(int argc, char **argv) {
 
   int fdUIO = -1;
   struct sockaddr_in address;
-    
+
 
   openlog("xvcServer",LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
   syslog(LOG_INFO,"starting %s", argv[0]);                                                                                                                                                                         
   int port;
-   
+  std::string xvcName;
+  
   try {
     TCLAP::CmdLine cmd("Apollo XVC.",
 		       ' ',
@@ -271,6 +237,7 @@ int main(int argc, char **argv) {
     port = xvcPort.getValue();
 
     //Find UIO number
+    xvcName=xvcPreFix.getValue();
     int uioN = label2uio(xvcPreFix.getValue());
     if(uioN < 0){
       fprintf(stderr,"Failed to find UIO device with label %s.\n",xvcPreFix.getValue().c_str());
@@ -300,7 +267,7 @@ int main(int argc, char **argv) {
       syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
       return 1;            
     }
-
+    delete [] uioFileName;
     
   }catch (TCLAP::ArgException &e) {
     fprintf(stderr, "Error %s for arg %s\n",
@@ -309,6 +276,55 @@ int main(int argc, char **argv) {
 	   e.error().c_str(), e.argId().c_str());
     return 0;
   }
+
+
+  //Setup XVCLock UIO
+  int fdXVCLock = -1;
+  int uioNXVCLock = label2uio("PL_MEM");
+  if(uioNXVCLock < 0){
+    fprintf(stderr,"Failed to find UIO device with label %s.\n","PL_MEM");
+    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n","PL_MEM");
+    return 1;      
+  }
+  size_t const uioFileNameLength = 1024;
+  char * uioFileName = new char[uioFileNameLength+1];
+  memset(uioFileName,0x0,uioFileNameLength+1);
+  snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioNXVCLock);
+    
+  fprintf(stderr,"Found %s @ %s.\n","PL_MEM",uioFileName);
+  syslog(LOG_ERR,"Found %s @ %s.\n","PL_MEM",uioFileName);
+  //Open UIO device
+  fdXVCLock = open(uioFileName,O_RDWR);
+  if(fdXVCLock < 0){
+    fprintf(stderr,"Failed to open %s.\n",uioFileName);
+    syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
+    return 1;            
+  }
+  uint32_t offset = 0;
+  if(!xvcName.compare("XVC1")){
+    offset=0x7e5;
+  }else if(!xvcName.compare("XVC2")){
+    offset=0x7e6;
+  }else if(!xvcName.compare("XVC_LOCAL")){
+    offset=0x7e7;
+  }
+  if(offset){  
+    XVCLock = ((uint32_t volatile*) mmap(NULL,sizeof(uint32_t)*0x800,
+					 PROT_READ|PROT_WRITE, MAP_SHARED,
+					 fdXVCLock,0x0))  + offset;
+    if(MAP_FAILED == XVCLock){
+      fprintf(stderr,"Failed to mmap %s.\n",uioFileName);
+      syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
+      return 1;            
+    }
+    fprintf(stderr,"Found XVC lock register @ 0x%04X\n",offset);
+    syslog(LOG_ERR,"Found XVC lock register @ 0x%04X\n",offset);    
+  }else{
+    fprintf(stderr,"No lock register found.\n");
+    syslog(LOG_ERR,"No lock register found.\n");        
+    XVCLock = &offset;
+  }
+  delete [] uioFileName;  
 
   opterr = 0;
   s = socket(AF_INET, SOCK_STREAM, 0);
@@ -351,7 +367,7 @@ int main(int argc, char **argv) {
       perror("select");
       break;
     }
-
+    
     for (fd = 0; fd <= maxfd; ++fd) {
       if (FD_ISSET(fd, &read)) {
 	if (fd == s) {
@@ -360,7 +376,6 @@ int main(int argc, char **argv) {
 
 	  newfd = accept(s, (struct sockaddr*) &address, &nsize);
 
-	  //               if (verbose)
 	  printf("connection accepted - fd %d\n", newfd);
 	  if (newfd < 0) {
 	    perror("accept");
@@ -382,15 +397,13 @@ int main(int argc, char **argv) {
 	}
 	else if (handle_data(fd)) {
 
-	  if (verbose)
-	    printf("connection closed - fd %d\n", fd);
+	  printf("connection closed - fd %d\n", fd);
 	  close(fd);
 	  FD_CLR(fd, &conn);
 	}
       }
       else if (FD_ISSET(fd, &except)) {
-	if (verbose)
-	  printf("connection aborted - fd %d\n", fd);
+	printf("connection aborted - fd %d\n", fd);
 	close(fd);
 	FD_CLR(fd, &conn);
 	if (fd == s)

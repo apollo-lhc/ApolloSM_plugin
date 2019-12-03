@@ -137,7 +137,7 @@ obj/%.o : src/%.cxx
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
 
-bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES}
+bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
 	mkdir -p bin
 	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml $^ -o $@
 

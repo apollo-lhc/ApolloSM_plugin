@@ -14,9 +14,14 @@
 
 #include <BUException/ExceptionBase.hh>
 
+#include <boost/program_options.hpp>
 #include <fstream>
 
-#define SEC_IN_USEC 10000000
+// CHANGE THIS !!!!!!!!!!!!
+using namespace boost::program_options;
+
+
+#define SEC_IN_USEC 1000000
 #define NSEC_IN_USEC 1000
 // ====================================================================================================
 // Definitions
@@ -30,6 +35,55 @@ struct temperatures {
   uint8_t REGTemp;
   bool    validData;
 };
+// ====================================================================================================
+// Read from config files and set up all parameters                                                                                                                                                                                         
+
+int polltime_in_seconds;
+#define DEFAULT_POLLTIME 10
+
+void setup(FILE * logFile) {
+  try {
+    options_description fileOptions{"File"};
+    fileOptions.add_options()
+      ("polltime", value<int>()->default_value(DEFAULT_POLLTIME), "polltime");
+
+    variables_map vm;
+
+    std::ifstream ifs{"SMconfig.txt"};
+    if(ifs) {
+      store(parse_config_file(ifs, fileOptions), vm);
+    }
+    notify(vm);
+
+    if(vm.count("polltime")) {
+      polltime_in_seconds = vm["polltime"].as<int>();
+      std::string msg;
+      msg.append("Setting poll time as ");
+      msg.append(std::to_string(polltime_in_seconds) + " from SMCopnfig.txt\n");
+      //      fprintf(logFile, "Setting poll time as " + std::to_string(polltime_in_seconds) + " from SMConfig.txt\n");
+      fprintf(logFile, msg.c_str());
+      fflush(logFile);
+    } else {
+      polltime_in_seconds = DEFAULT_POLLTIME;
+      std::string msg;
+      msg.append("Setting poll time as 10 seconds (from default)\n");
+      //      fprintf(logFile, "Setting poll time as 10 seconds (from default)\n");
+      fprintf(logFile, msg.c_str());
+      fflush(logFile);
+    }
+
+  } catch (const error &ex) {
+    //    std::cerr << ex.what() << '\n';
+
+    std::string caught;
+    caught.append("Caught exception in function, setup(): ");
+    caught.append(ex.what());
+    caught.append("\n");
+    //    fprintf(logFile, "Caught exception in function, setup(): " + ex.what().c_str() + "\n");
+    fprintf(logFile, caught.c_str());
+  }
+
+}
 
 // ====================================================================================================
 // Kill program if it is in background
@@ -214,9 +268,9 @@ int main(int, char**) {
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-
-
-
+  // ============================================================================
+  // Read from configuration file and set up parameters
+  setup(logFile);
 
   // ============================================================================
   // Daemon code setup
@@ -240,7 +294,7 @@ int main(int, char**) {
   struct timespec startTS;
   struct timespec stopTS;
 
-  long update_period_us = 1*SEC_IN_USEC; //sleep time in microseconds
+  long update_period_us = polltime_in_seconds*SEC_IN_USEC; //sleep time in microseconds
 
 
 

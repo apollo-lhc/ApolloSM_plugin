@@ -17,10 +17,6 @@
 #include <boost/program_options.hpp>
 #include <fstream>
 
-// CHANGE THIS !!!!!!!!!!!!
-using namespace boost::program_options;
-
-
 #define SEC_IN_USEC 1000000
 #define NSEC_IN_USEC 1000
 // ====================================================================================================
@@ -38,49 +34,76 @@ struct temperatures {
 // ====================================================================================================
 // Read from config files and set up all parameters                                                                                                                                                                                         
 
+// For further information see https://theboostcpplibraries.com/boost.program_options
+
+// global polltime variable
 int polltime_in_seconds;
-#define DEFAULT_POLLTIME 10
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_POLLTIME_STR "10"
 
 void setup(FILE * logFile) {
   try {
-    options_description fileOptions{"File"};
+    // fileOptions is for parsing config files
+    boost::program_options::options_description fileOptions{"File"};
+    // Let fileOptions know what information you want it to take out of the config file. Here you want it to take "polltime"
+    // Second argument is the type of the information. Second argument has many features, we use the default_value feature. 
+    // Third argument is description of the information
     fileOptions.add_options()
-      ("polltime", value<int>()->default_value(DEFAULT_POLLTIME), "polltime");
+      ("polltime", boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), "amount of time to wait before reading sensors from ApolloSM again");
 
-    variables_map vm;
+    // This is a container for the information that fileOptions will get from the config file
+    boost::program_options::variables_map vm;
 
+    // Check if config file exists
     std::ifstream ifs{"SMconfig.txt"};
     if(ifs) {
-      store(parse_config_file(ifs, fileOptions), vm);
+      // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
+      // Note that if the config file does not exist, store will not be called and vm will be empty
+      boost::program_options::store(boost::program_options::parse_config_file(ifs, fileOptions), vm);
     }
-    notify(vm);
 
+    fprintf(logFile, "SMConfig.txt %s\n", ifs ? "exists" : "DNE");
+    fflush(logFile);
+    // Notify is not needed but it is powerful. Commeneted out for future references
+    //boost::program_options::notify(vm);
+
+    // Check for information in vm
     if(vm.count("polltime")) {
       polltime_in_seconds = vm["polltime"].as<int>();
-      std::string msg;
-      msg.append("Setting poll time as ");
-      msg.append(std::to_string(polltime_in_seconds) + " from SMCopnfig.txt\n");
+      //std::string msg;
+      //msg.append("Setting poll time as ");
+      //msg.append(std::to_string(polltime_in_seconds) + " from SMConfig.txt\n");
       //      fprintf(logFile, "Setting poll time as " + std::to_string(polltime_in_seconds) + " from SMConfig.txt\n");
-      fprintf(logFile, msg.c_str());
-      fflush(logFile);
-    } else {
-      polltime_in_seconds = DEFAULT_POLLTIME;
-      std::string msg;
-      msg.append("Setting poll time as 10 seconds (from default)\n");
-      //      fprintf(logFile, "Setting poll time as 10 seconds (from default)\n");
-      fprintf(logFile, msg.c_str());
-      fflush(logFile);
+      //fprintf(logFile, msg.c_str());
+      //fflush(logFile);
+//    } else {
+//      polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+//      std::string msg;
+//      msg.append("Setting poll time as 10 seconds (from default)\n");
+//      //      fprintf(logFile, "Setting poll time as 10 seconds (from default)\n");
+//      fprintf(logFile, msg.c_str());
+//      fflush(logFile);
     }
 
-  } catch (const error &ex) {
-    //    std::cerr << ex.what() << '\n';
+    std::string polltime_str(std::to_string(polltime_in_seconds));
 
-    std::string caught;
-    caught.append("Caught exception in function, setup(): ");
-    caught.append(ex.what());
-    caught.append("\n");
-    //    fprintf(logFile, "Caught exception in function, setup(): " + ex.what().c_str() + "\n");
-    fprintf(logFile, caught.c_str());
+    fprintf(logFile, "Setting poll time as %s seconds from %s\n", vm.count("polltime") ? polltime_str.c_str() : DEFAULT_POLLTIME_STR, vm.count("polltime") ? "CONFIGURATION FILE" : "DEFAULT VALUE");
+    fflush(logFile);
+ 
+//    printf("using %s, blah %d",
+//	   cm.count("polltime") ? "non default" : "default",
+//	   foobar);
+//
+  } catch (const boost::program_options::error &ex) {
+    //    std::cerr << ex.what() << '\n';
+//
+//    std::string caught;
+//    caught.append("Caught exception in function, setup(): ");
+//    caught.append(ex.what());
+//    caught.append("\n");
+//    //    fprintf(logFile, "Caught exception in function, setup(): " + ex.what().c_str() + "\n");
+//    fprintf(logFile, "Caught exception in function setup(): %s \n", ex.what());
+    fflush(logFile);
   }
 
 }
@@ -270,7 +293,11 @@ int main(int, char**) {
 
   // ============================================================================
   // Read from configuration file and set up parameters
+  fprintf(logFile,"Reading from config file now\n");
+  fflush(logFile);
   setup(logFile);
+  fprintf(logFile,"Finished reading from config file\n");
+  fflush(logFile);
 
   // ============================================================================
   // Daemon code setup

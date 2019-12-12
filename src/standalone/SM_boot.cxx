@@ -33,7 +33,6 @@ struct temperatures {
 };
 // ====================================================================================================
 // Read from config files and set up all parameters                                                                                                                                                                                         
-
 // For further information see https://theboostcpplibraries.com/boost.program_options
 
 // global polltime variable
@@ -41,7 +40,10 @@ int polltime_in_seconds;
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_POLLTIME_STR "10"
 
+#define CONFIG_FILE "/tmp/bin/SMConfig.txt"
+
 void setup(FILE * logFile) {
+  
   try {
     // fileOptions is for parsing config files
     boost::program_options::options_description fileOptions{"File"};
@@ -55,57 +57,42 @@ void setup(FILE * logFile) {
     boost::program_options::variables_map vm;
 
     // Check if config file exists
-    std::ifstream ifs{"SMconfig.txt"};
+    std::ifstream ifs{CONFIG_FILE};
     if(ifs) {
       // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
       // Note that if the config file does not exist, store will not be called and vm will be empty
-      boost::program_options::store(boost::program_options::parse_config_file(ifs, fileOptions), vm);
+      fprintf(logFile, "Config file " CONFIG_FILE " exists\n");
+      fflush(logFile);
+      // Using just parse_config_file without boost::program_options:: works. This may be a boost bug or the compiler may just be very smart
+      boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
+    } else {
+      fprintf(logFile, "Config file " CONFIG_FILE " does not exist\n");
+      fflush(logFile);
     }
 
-    fprintf(logFile, "SMConfig.txt %s\n", ifs ? "exists" : "DNE");
-    fflush(logFile);
+    // For some reason neither of the following two lines will evaluate to exist. Even if ifs evaluates true in if(ifs) (as it does above), the second line here still will not evaluate to exist.
+    // If we can fix either of these two lines we can get rid of the above else statement (not the if, just the else)
+    //    fprintf(logFile, "Config file at " CONFIG_FILE " %s\n", !ifs.fail() ? "exists" : "does not exist");
+    //    fprintf(logFile, "Config file at " CONFIG_FILE " %s\n", ifs ? "exists" : "does not exist");
+    //    fflush(logFile);
+
     // Notify is not needed but it is powerful. Commeneted out for future references
     //boost::program_options::notify(vm);
 
     // Check for information in vm
     if(vm.count("polltime")) {
       polltime_in_seconds = vm["polltime"].as<int>();
-      //std::string msg;
-      //msg.append("Setting poll time as ");
-      //msg.append(std::to_string(polltime_in_seconds) + " from SMConfig.txt\n");
-      //      fprintf(logFile, "Setting poll time as " + std::to_string(polltime_in_seconds) + " from SMConfig.txt\n");
-      //fprintf(logFile, msg.c_str());
-      //fflush(logFile);
-//    } else {
-//      polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
-//      std::string msg;
-//      msg.append("Setting poll time as 10 seconds (from default)\n");
-//      //      fprintf(logFile, "Setting poll time as 10 seconds (from default)\n");
-//      fprintf(logFile, msg.c_str());
-//      fflush(logFile);
     }
 
     std::string polltime_str(std::to_string(polltime_in_seconds));
 
     fprintf(logFile, "Setting poll time as %s seconds from %s\n", vm.count("polltime") ? polltime_str.c_str() : DEFAULT_POLLTIME_STR, vm.count("polltime") ? "CONFIGURATION FILE" : "DEFAULT VALUE");
     fflush(logFile);
- 
-//    printf("using %s, blah %d",
-//	   cm.count("polltime") ? "non default" : "default",
-//	   foobar);
-//
+
   } catch (const boost::program_options::error &ex) {
-    //    std::cerr << ex.what() << '\n';
-//
-//    std::string caught;
-//    caught.append("Caught exception in function, setup(): ");
-//    caught.append(ex.what());
-//    caught.append("\n");
-//    //    fprintf(logFile, "Caught exception in function, setup(): " + ex.what().c_str() + "\n");
-//    fprintf(logFile, "Caught exception in function setup(): %s \n", ex.what());
+    fprintf(logFile, "Caught exception in function setup(): %s \n", ex.what());
     fflush(logFile);
   }
-
 }
 
 // ====================================================================================================

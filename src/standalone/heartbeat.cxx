@@ -13,8 +13,75 @@
 
 #include <BUException/ExceptionBase.hh>
 
-#define SEC_IN_USEC 10000000
+#include <boost/program_options.hpp>
+#include <fstream>
+
+#define SEC_IN_USEC 1000000
 #define NSEC_IN_USEC 1000
+
+// ====================================================================================================
+// Read from config files and set up all parameters                                                                                                                                                                                         
+// For further information see https://theboostcpplibraries.com/boost.program_options
+
+// global polltime variable
+int polltime_in_seconds;
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_POLLTIME_STR "10"
+
+#define CONFIG_FILE "/tmp/bin/heartbeatConfig.txt"
+
+void setup(FILE * logFile) {
+  
+  try {
+    // fileOptions is for parsing config files
+    boost::program_options::options_description fileOptions{"File"};
+    // Let fileOptions know what information you want it to take out of the config file. Here you want it to take "polltime"
+    // Second argument is the type of the information. Second argument has many features, we use the default_value feature. 
+    // Third argument is description of the information
+    fileOptions.add_options()
+      ("polltime", boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), "amount of time to wait before reading heartbeat nodes again");
+
+    // This is a container for the information that fileOptions will get from the config file
+    boost::program_options::variables_map vm;
+
+    // Check if config file exists
+    std::ifstream ifs{CONFIG_FILE};
+    if(ifs) {
+      // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
+      // Note that if the config file does not exist, store will not be called and vm will be empty
+      fprintf(logFile, "Config file " CONFIG_FILE " exists\n");
+      fflush(logFile);
+      // Using just parse_config_file without boost::program_options:: works. This may be a boost bug or the compiler may just be very smart
+      boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
+    } else {
+      fprintf(logFile, "Config file " CONFIG_FILE " does not exist\n");
+      fflush(logFile);
+    }
+
+    // For some reason neither of the following two lines will evaluate to exist. Even if ifs evaluates true in if(ifs) (as it does above), the second line here still will not evaluate to exist.
+    // If we can fix either of these two lines we can get rid of the above else statement (not the if, just the else)
+    //    fprintf(logFile, "Config file at " CONFIG_FILE " %s\n", !ifs.fail() ? "exists" : "does not exist");
+    //    fprintf(logFile, "Config file at " CONFIG_FILE " %s\n", ifs ? "exists" : "does not exist");
+    //    fflush(logFile);
+
+    // Notify is not needed but it is powerful. Commeneted out for future references
+    //boost::program_options::notify(vm);
+
+    // Check for information in vm
+    if(vm.count("polltime")) {
+      polltime_in_seconds = vm["polltime"].as<int>();
+    }
+
+    std::string polltime_str(std::to_string(polltime_in_seconds));
+
+    fprintf(logFile, "Setting poll time as %s seconds from %s\n", vm.count("polltime") ? polltime_str.c_str() : DEFAULT_POLLTIME_STR, vm.count("polltime") ? "CONFIGURATION FILE" : "DEFAULT VALUE");
+    fflush(logFile);
+
+  } catch (const boost::program_options::error &ex) {
+    fprintf(logFile, "Caught exception in function setup(): %s \n", ex.what());
+    fflush(logFile);
+  }
+}
 
 // ====================================================================================================
 // Kill program if it is in background
@@ -98,8 +165,14 @@ int main(int, char**) {
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-
-
+  
+  // ============================================================================
+  // Read from configuration file and set up parameters
+  fprintf(logFile,"Reading from config file now\n");
+  fflush(logFile);
+  setup(logFile);
+  fprintf(logFile,"Finished reading from config file\n");
+  fflush(logFile);
 
 
   // ============================================================================
@@ -124,7 +197,7 @@ int main(int, char**) {
   struct timespec startTS;
   struct timespec stopTS;
 
-  long update_period_us = 1*SEC_IN_USEC; //sleep time in microseconds
+  long update_period_us = polltime_in_seconds*SEC_IN_USEC; //sleep time in microseconds
 
 
   ApolloSM * SM = NULL;

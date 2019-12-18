@@ -133,6 +133,8 @@ ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}
 install: all
 	 install -m 775 -d ${INSTALL_PATH}/lib
 	 install -b -m 775 ./lib/* ${INSTALL_PATH}/lib
+	 install -m 775 -d ${INSTALL_PATH}/bin
+	 install -b -m 775 ./bin/* ${INSTALL_PATH}/bin
 
 
 

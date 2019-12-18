@@ -44,7 +44,7 @@ LIBRARIES =    	-lcurses \
 		-lboost_regex \
 		-lboost_filesystem
 
-
+INSTALL_PATH ?= ./install
 
 
 CXX_FLAGS = -std=c++11 -g -O3 -rdynamic -Wall -MMD -MP -fPIC ${INCLUDE_PATH} -Werror -Wno-literal-suffix
@@ -82,7 +82,7 @@ UHAL_INCLUDE_PATH = \
 	         					-isystem$(CACTUS_ROOT)/include 
 
 UHAL_LIBRARY_PATH = \
-							-L$(CACTUS_ROOT)/lib 
+							-L$(CACTUS_ROOT)/lib -Wl,-rpath=$(CACTUS_ROOT)/lib
 endif
 
 UHAL_CXX_FLAGHS = ${UHAL_INCLUDE_PATH}
@@ -125,6 +125,15 @@ ${LIBRARY_APOLLO_SM_DEVICE}: ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES} ${IPBUS_RE
 
 ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusIO.so
 	${CXX} ${LINK_LIBRARY_FLAGS}  ${LIBRARY_APOLLO_SM_OBJECT_FILES} -o $@
+
+
+# -----------------------
+# install
+# -----------------------
+install: all
+	 install -m 775 -d ${INSTALL_PATH}/lib
+	 install -b -m 775 ./lib/* ${INSTALL_PATH}/lib
+
 
 
 obj/%.o : src/%.cc

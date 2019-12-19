@@ -51,11 +51,12 @@ CXX_FLAGS = -std=c++11 -g -O3 -rdynamic -Wall -MMD -MP -fPIC ${INCLUDE_PATH} -We
 
 CXX_FLAGS +=-fno-omit-frame-pointer -Wno-ignored-qualifiers -Werror=return-type -Wextra -Wno-long-long -Winit-self -Wno-unused-local-typedefs  -Woverloaded-virtual ${COMPILETIME_ROOT} ${FALLTHROUGH_FLAGS}
 
-LINK_LIBRARY_FLAGS = -shared -fPIC -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} -Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT}
+LINK_LIBRARY_FLAGS = -shared -fPIC -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
+			-Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT}
 
-LINK_EXE_FLAGS = -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
-	         -L${COMPILETIME_ROOT}/lib/ -lBUTool_Helpers \
-		 -Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT} 
+LINK_EXE_FLAGS     = -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
+			-lBUTool_Helpers \
+			-Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT} 
 
 
 
@@ -150,7 +151,7 @@ obj/%.o : src/%.cxx
 
 bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
 	mkdir -p bin
-	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml $^ -o $@
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml $(filter-out %.so, $^) -o $@
 
 
 -include $(LIBRARY_OBJECT_FILES:.o=.d)

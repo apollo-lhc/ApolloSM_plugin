@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 
 #define UPDATE_PERIOD 10
+#define RUN_DIR "/opt/address_tables/"
 
 // ====================================================================================================
 // Kill program if it is in background
@@ -85,13 +86,13 @@ int main() {
     fprintf(logFile, "Set SID to %d\n",sid);
     fflush(logFile);
   }
-  // Move to /tmp/bin
-  if(0 > (chdir("/tmp/bin"))) {
-    fprintf(logFile,"Failed to change path to /tmp/bin \n");
+  // Move to RUN_DIR
+  if(0 > (chdir(RUN_DIR))) {
+    fprintf(logFile,"Failed to change path to " RUN_DIR " \n");
     fflush(logFile);
     exit(EXIT_FAILURE);
   } else {
-    fprintf(logFile, "Changed path to /tmp/bin \n");
+    fprintf(logFile, "Changed path to " RUN_DIR " \n");
     fflush(logFile);
   }
   // Everything looks good, close standard file fds.

@@ -18,6 +18,9 @@
 
 #define SEC_IN_USEC 10000000
 #define NSEC_IN_USEC 1000
+
+#define RUN_DIR "/opt/address_tables/"
+
 // ====================================================================================================
 // Definitions
 
@@ -198,13 +201,13 @@ int main(int, char**) {
     fflush(logFile);    
   }
 
-  //Move to "/tmp/bin"
-  if ((chdir("/tmp/bin")) < 0) {
-    fprintf(logFile,"Failed to change path to \"/tmp/bin\"\n");
+  //Move to RUN_DIR
+  if ((chdir(RUN_DIR)) < 0) {
+    fprintf(logFile,"Failed to change path to \"" RUN_DIR "\"\n");
     fflush(logFile);
     exit(EXIT_FAILURE);
   }else{
-    fprintf(logFile,"Changed path to \"/tmp/bin\"\n");
+    fprintf(logFile,"Changed path to \"" RUN_DIR "\"\n");
     fflush(logFile);
   }
 

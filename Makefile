@@ -42,7 +42,8 @@ LIBRARIES =    	-lcurses \
 		-lBUTool_IPBusIO \
 		-lBUTool_IPBusStatus \
 		-lboost_regex \
-		-lboost_filesystem
+		-lboost_filesystem \
+		-lboost_program_options
 
 INSTALL_PATH ?= ./install
 

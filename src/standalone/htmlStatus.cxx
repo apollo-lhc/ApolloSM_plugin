@@ -62,8 +62,6 @@ boost::program_options::variables_map loadConfig(std::string const & configFileN
     // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
     boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
   }
-  //boost::program_options::store(parse_config_file(configFileName.c_str(), fileOptions,false), vm);
-  boost::program_options::notify(vm);
 
   return vm;
 }
@@ -177,26 +175,33 @@ int main(int argc, char** argv) {
   try{
     configOptions = loadConfig(configFile.getValue(),fileOptions);
     // Check for information in configOptions
-    polltime_in_seconds = configOptions["polltime"].as<int>();
+    if(configOptions.count("polltime")) {
+      polltime_in_seconds = configOptions["polltime"].as<int>();
+    }
     syslog(LOG_INFO,
 	   "Setting poll time to %d seconds (%s)\n",
 	   polltime_in_seconds, 
 	   configOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
 
-
-    logLevel = configOptions["log_level"].as<int>();
+    if(configOptions.count("log_level")) {
+      logLevel = configOptions["log_level"].as<int>();
+    }
     syslog(LOG_INFO,
 	   "Setting log level to %d (%s)\n",
 	   logLevel, 
 	   configOptions.count("log_level") ? "CONFIG FILE" : "DEFAULT");
 
-    outfile = configOptions["outfile"].as<int>();
+    if(configOptions.count("outfile")) {
+      outfile = configOptions["outfile"].as<int>();
+    }
     syslog(LOG_INFO,
 	   "Sending output to %s (%s)\n",
 	   outfile.c_str(), 
 	   configOptions.count("outfile") ? "CONFIG FILE" : "DEFAULT");
 
-    outputType = configOptions["output_type"].as<int>();
+    if(configOptions.count("output_type")) {
+      outputType = configOptions["output_type"].as<int>();
+    }
     syslog(LOG_INFO,
 	   "Sending output type to %s (%s)\n",
 	   outputType.c_str(), 

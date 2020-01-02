@@ -26,7 +26,7 @@
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/htmlStatus"
 #define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_PID_FILE    "/var/log/htmlStatus.pid"
+#define DEFAULT_PID_FILE    "/var/run/htmlStatus.pid"
 
 #define DEFAULT_OUTFILE     "/var/www/lighttpd/index.html"
 #define DEFAULT_LOG_LEVEL   1
@@ -58,10 +58,10 @@ boost::program_options::variables_map loadConfig(std::string const & configFileN
 
   
 
-  //if(ifs) {
+  if(ifs) {
     // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
-  boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
-  //}
+    boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
+  }
   //boost::program_options::store(parse_config_file(configFileName.c_str(), fileOptions,false), vm);
   //boost::program_options::notify(vm);
 

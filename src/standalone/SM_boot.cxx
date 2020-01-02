@@ -185,7 +185,7 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
 
 int main(int argc, char** argv) { 
 
-  TCLAP::CmdLine cmd("ApolloSM PS Heartbeat");
+  TCLAP::CmdLine cmd("ApolloSM boot interface");
   TCLAP::ValueArg<std::string> configFile("c",                 //one char flag
 					  "config_file",       // full flag name
 					  "config file",       //description

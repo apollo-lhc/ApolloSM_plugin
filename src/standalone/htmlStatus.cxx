@@ -24,9 +24,9 @@
 #define NS_IN_US 1000
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
-#define DEFAULT_CONFIG_FILE "/etc/heartbeat"
+#define DEFAULT_CONFIG_FILE "/etc/htmlStatus"
 #define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_PID_FILE    "/var/log/heartbeat.log"
+#define DEFAULT_PID_FILE    "/var/log/htmlStatus.pid"
 
 #define DEFAULT_OUTFILE     "/var/www/lighttpd/index.html"
 #define DEFAULT_LOG_LEVEL   1
@@ -282,7 +282,7 @@ int main(int argc, char** argv) {
 
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-  syslog(LOG_INFO,"heartbeat Daemon ended\n");
+  syslog(LOG_INFO,"htmlStatus Daemon ended\n");
   
 
   return 0;

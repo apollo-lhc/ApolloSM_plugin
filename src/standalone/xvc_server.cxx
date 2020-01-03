@@ -260,7 +260,7 @@ int main(int argc, char **argv) {
 
   //now that we know the port, setup the log
   char daemonName[] = "xvc_server.XXXXXY"; //The 'Y' is so strlen is properly padded
-  snprintf(daemonName,strlen(daemonName),"xvc_server.%05u",port);
+  snprintf(daemonName,strlen(daemonName),"xvc_server.%u",port);
   
   // ============================================================================
   // Deamon book-keeping

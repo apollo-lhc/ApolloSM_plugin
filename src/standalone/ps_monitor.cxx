@@ -35,9 +35,9 @@
 #define NS_IN_US 1000
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
-#define DEFAULT_CONFIG_FILE "/etc/heartbeat"
+#define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
 #define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_PID_FILE    "/var/run/heartbeat.pid"
+#define DEFAULT_PID_FILE    "/var/run/ps_monitor.pid"
 
 
 

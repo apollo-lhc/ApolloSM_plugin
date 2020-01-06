@@ -192,7 +192,7 @@ int main(int argc, char** argv) {
 	   configOptions.count("log_level") ? "CONFIG FILE" : "DEFAULT");
 
     if(configOptions.count("outfile")) {
-      outfile = configOptions["outfile"].as<int>();
+      outfile = configOptions["outfile"].as<std::string>();
     }
     syslog(LOG_INFO,
 	   "Sending output to %s (%s)\n",
@@ -200,7 +200,7 @@ int main(int argc, char** argv) {
 	   configOptions.count("outfile") ? "CONFIG FILE" : "DEFAULT");
 
     if(configOptions.count("output_type")) {
-      outputType = configOptions["output_type"].as<int>();
+      outputType = configOptions["output_type"].as<std::string>();
     }
     syslog(LOG_INFO,
 	   "Sending output type to %s (%s)\n",

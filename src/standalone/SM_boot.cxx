@@ -176,10 +176,10 @@ void updateTemp(ApolloSM * SM, std::string const & base,uint8_t temp){
 }
 
 void sendTemps(ApolloSM* SM, temperatures temps) {
-  updateTemp(SM,"SLAVE_I2C.S2.0", temps.MCUTemp);
-  updateTemp(SM,"SLAVE_I2C.S3.0", temps.FIREFLYTemp);
-  updateTemp(SM,"SLAVE_I2C.S4.0", temps.FPGATemp);
-  updateTemp(SM,"SLAVE_I2C.S5.0", temps.REGTemp);
+  updateTemp(SM,"SLAVE_I2C.S2.VAL", temps.MCUTemp);
+  updateTemp(SM,"SLAVE_I2C.S3.VAL", temps.FIREFLYTemp);
+  updateTemp(SM,"SLAVE_I2C.S4.VAL", temps.FPGATemp);
+  updateTemp(SM,"SLAVE_I2C.S5.VAL", temps.REGTemp);
 }
 
 

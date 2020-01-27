@@ -267,10 +267,10 @@ int main(int argc, char** argv) {
   fileOptions.add_options() 
     ("polltime", 
      boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), 
-     "polling interval");
+     "polling interval")
     ("cm_powerup"
      boost::program_options::value<bool>()->default_value(true), 
-     "power up CM uC");
+     "power up CM uC")
     ("cm_powerup_time"
      boost::program_options::value<int>()->default_value(DEFAULT_POWERUP_TIME), 
      "uC powerup wait time");

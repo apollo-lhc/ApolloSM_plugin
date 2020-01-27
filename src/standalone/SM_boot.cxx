@@ -257,6 +257,8 @@ int main(int argc, char** argv) {
   // Read from configuration file and set up parameters
   syslog(LOG_INFO,"Reading from config file now\n");
   int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+  bool powerupCMuC = true;
+  int powerupTime = DEFAULT_POWERUP_TIME;
  
   // fileOptions is for parsing config files
   boost::program_options::options_description fileOptions{"File"};
@@ -265,6 +267,13 @@ int main(int argc, char** argv) {
     ("polltime", 
      boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), 
      "polling interval");
+    ("cm_powerup"
+     boost::program_options::value<bool>()->default_value(true), 
+     "power up CM uC");
+    ("cm_powerup_time"
+     boost::program_options::value<int>()->default_value(DEFAULT_POWERUP_TIME), 
+     "uC powerup wait time");
+
   boost::program_options::variables_map configOptions;  
   try{
     configOptions = loadConfig(configFile.getValue(),fileOptions);
@@ -276,6 +285,20 @@ int main(int argc, char** argv) {
 	   "Setting poll time to %d seconds (%s)\n",
 	   polltime_in_seconds, 
 	   configOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
+    if(configOptions.count("cm_powerup")) {
+      powerupCMuC = configOptions["cm_powerup"].as<bool>();
+    }  
+    syslog(LOG_INFO,
+	   "%s up CM uC @ boot (%s)\n",
+	   powerupCMuC ? "Powering" : "Not powering",
+	   configOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
+    if(configOptions.count("cm_powerup_time")) {
+      powerupTime = configOptions["cm_powerup_time"].as<int>();
+    }  
+    syslog(LOG_INFO,
+	   "Setting uC power-up time to %d seconds (%s)\n",
+	   powerupTime,
+	   configOptions.count("cm_powerup_time") ? "CONFIG FILE" : "DEFAULT");
         
   }catch(const boost::program_options::error &ex){
     syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
@@ -328,9 +351,11 @@ int main(int argc, char** argv) {
 
     // ====================================
     // Turn on CM uC      
-    SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",1);
-    syslog(LOG_INFO,"Powering up CM uC\n");
-    sleep(1);
+    if (powerupCMuC){
+      SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",1);
+      syslog(LOG_INFO,"Powering up CM uC\n");
+      sleep(powerupTime);
+    }
   
 
     // ==================================

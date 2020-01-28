@@ -14,10 +14,61 @@
 
 #include <BUException/ExceptionBase.hh>
 
+#include <boost/program_options.hpp>
 #include <fstream>
 
-#define SEC_IN_USEC 10000000
-#define NSEC_IN_USEC 1000
+#include <tclap/CmdLine.h> //TCLAP parser
+
+#include <syslog.h>  ///for syslog
+
+#define SEC_IN_US  1000000
+#define NS_IN_US 1000
+
+
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_CONFIG_FILE "/etc/SM_boot"
+#define DEFAULT_RUN_DIR     "/opt/address_tables/"
+#define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
+
+// ====================================================================================================
+// signal handling
+bool static volatile loop;
+void static signal_handler(int const signum) {
+  if(SIGINT == signum || SIGTERM == signum) {
+    loop = false;
+  }
+}
+
+
+
+// ====================================================================================================
+// Read from config files and set up all parameters
+// For further information see https://theboostcpplibraries.com/boost.program_options
+
+boost::program_options::variables_map loadConfig(std::string const & configFileName,
+						 boost::program_options::options_description const & fileOptions) {
+  // This is a container for the information that fileOptions will get from the config file
+  boost::program_options::variables_map vm;  
+
+  // Check if config file exists
+  std::ifstream ifs{configFileName};
+  syslog(LOG_INFO, "Config file \"%s\" %s\n",configFileName.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
+
+  if(ifs) {
+    // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
+    boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
+  }
+
+  return vm;
+}
+
+// ====================================================================================================
+long us_difftime(struct timespec cur, struct timespec end){ 
+  return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
+	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
+}
+
+
 // ====================================================================================================
 // Definitions
 
@@ -30,19 +81,7 @@ struct temperatures {
   uint8_t REGTemp;
   bool    validData;
 };
-
 // ====================================================================================================
-// Kill program if it is in background
-bool static volatile loop;
-
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
-
-// ====================================================================================================
-
 temperatures sendAndParse(ApolloSM* SM) {
   temperatures temps {0,0,0,0,false};
   std::string recv;
@@ -143,19 +182,28 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
   updateTemp(SM,"SLAVE_I2C.S5.0", temps.REGTemp);
 }
 
-// ====================================================================================================
+
+int main(int argc, char** argv) { 
+
+  TCLAP::CmdLine cmd("ApolloSM boot interface");
+  TCLAP::ValueArg<std::string> configFile("c",                 //one char flag
+					  "config_file",       // full flag name
+					  "config file",       //description
+					  false,               //required argument
+					  DEFAULT_CONFIG_FILE, //Default value
+					  "string",            //type
+					  cmd);
+  TCLAP::ValueArg<std::string>    runPath    ("r","run_path","run path",false,DEFAULT_RUN_DIR ,"string",cmd);
+  TCLAP::ValueArg<std::string>    pidFileName("p","pid_file","pid file",false,DEFAULT_PID_FILE,"string",cmd);
+
+  try {
+    cmd.parse(argc, argv);
+  }catch (TCLAP::ArgException &e) {
+    fprintf(stderr, "Failed to Parse Command Line\n");
+    return -1;
+  }
 
 
-long us_difftime(struct timespec cur, struct timespec end){ 
-  return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_USEC + 
-	   (end.tv_nsec - cur.tv_nsec)/NSEC_IN_USEC);
-}
-
-
-
-
-
-int main(int, char**) { 
 
   // ============================================================================
   // Deamon book-keeping
@@ -167,55 +215,71 @@ int main(int, char**) {
     exit(EXIT_FAILURE);
   }else if(pid > 0){
     //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen("/var/run/sm_boot.pid","w");
+    FILE * pidFile = fopen(pidFileName.getValue().c_str(),"w");
     fprintf(pidFile,"%d\n",pid);
     fclose(pidFile);
     exit(EXIT_SUCCESS);
   }else{
     // I'm the child!
+    //open syslog
+    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
   }
+
   
   //Change the file mode mask to allow read/write
   umask(0);
 
-  //Create log file
-  FILE * logFile = fopen("/var/log/sm_boot.log","w");
-  if(logFile == NULL){
-    fprintf(stderr,"Failed to create log file\n");
-    exit(EXIT_FAILURE);
-  }
-  fprintf(logFile,"Opened log file\n");
-  fflush(logFile);
+  //Start logging
+  syslog(LOG_INFO,"Opened log file\n");
 
-  // create nbew SID for the daemon.
+  // create new SID for the daemon.
   sid = setsid();
   if (sid < 0) {
-    fprintf(logFile,"Failed to change SID\n");
-    fflush(logFile);
+    syslog(LOG_ERR,"Failed to change SID\n");
     exit(EXIT_FAILURE);
-  }else{
-    fprintf(logFile,"Set SID to %d\n",sid);
-    fflush(logFile);    
   }
+  syslog(LOG_INFO,"Set SID to %d\n",sid);
 
-  //Move to "/tmp/bin"
-  if ((chdir("/tmp/bin")) < 0) {
-    fprintf(logFile,"Failed to change path to \"/tmp/bin\"\n");
-    fflush(logFile);
+  //Move to RUN_DIR
+  if ((chdir(runPath.getValue().c_str())) < 0) {
+    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.getValue().c_str());    
     exit(EXIT_FAILURE);
-  }else{
-    fprintf(logFile,"Changed path to \"/tmp/bin\"\n");
-    fflush(logFile);
   }
-
+  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.getValue().c_str());    
 
   //Everything looks good, close the standard file fds.
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-
-
+  
+  // ============================================================================
+  // Read from configuration file and set up parameters
+  syslog(LOG_INFO,"Reading from config file now\n");
+  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+ 
+  // fileOptions is for parsing config files
+  boost::program_options::options_description fileOptions{"File"};
+  //sigh... with boost comes compilcated c++ magic
+  fileOptions.add_options() 
+    ("polltime", 
+     boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), 
+     "polling interval");
+  boost::program_options::variables_map configOptions;  
+  try{
+    configOptions = loadConfig(configFile.getValue(),fileOptions);
+    // Check for information in configOptions
+    if(configOptions.count("polltime")) {
+      polltime_in_seconds = configOptions["polltime"].as<int>();
+    }  
+    syslog(LOG_INFO,
+	   "Setting poll time to %d seconds (%s)\n",
+	   polltime_in_seconds, 
+	   configOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
+        
+  }catch(const boost::program_options::error &ex){
+    syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
+  }
 
 
   // ============================================================================
@@ -240,9 +304,7 @@ int main(int, char**) {
   struct timespec startTS;
   struct timespec stopTS;
 
-  long update_period_us = 1*SEC_IN_USEC; //sleep time in microseconds
-
-
+  long update_period_us = polltime_in_seconds*SEC_IN_US; //sleep time in microseconds
 
   bool inShutdown = false;
   ApolloSM * SM = NULL;
@@ -251,32 +313,30 @@ int main(int, char**) {
     // Initialize ApolloSM
     SM = new ApolloSM();
     if(NULL == SM){
-      fprintf(logFile,"Failed to create new ApolloSM\n");
-      fflush(logFile);
+      syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+      exit(EXIT_FAILURE);
     }else{
-      fprintf(logFile,"Created new ApolloSM\n");
-      fflush(logFile);
+      syslog(LOG_INFO,"Created new ApolloSM\n");      
     }
     std::vector<std::string> arg;
     arg.push_back("connections.xml");
     SM->Connect(arg);
     //Set the power-up done bit to 1 for the IPMC to read
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
-    fprintf(logFile,"Set STATUS.DONE to 1\n");
-    fflush(logFile);
+    syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
   
 
     // ====================================
     // Turn on CM uC      
     SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",1);
-    fprintf(logFile,"Powering up CM uC\n");
+    syslog(LOG_INFO,"Powering up CM uC\n");
     sleep(1);
   
 
     // ==================================
     // Main DAEMON loop
-    fprintf(logFile,"Starting Monitoring loop\n");
-    fflush(logFile);
+    syslog(LOG_INFO,"Starting Monitoring loop\n");
+    
 
     uint32_t CM_running = 0;
     while(loop) {
@@ -293,7 +353,7 @@ int main(int, char**) {
 	try{
 	  temps = sendAndParse(SM);
 	}catch(std::exception & e){
-	  fprintf(logFile,e.what());
+	  syslog(LOG_INFO,e.what());
 	  //ignoring any exception here for now
 	  temps = {0,0,0,0,false};
 	}
@@ -308,7 +368,7 @@ int main(int, char**) {
 
 	sendTemps(SM, temps);
 	if(!temps.validData){
-	  fprintf(logFile,"Error in parsing data stream\n");
+	  syslog(LOG_INFO,"Error in parsing data stream\n");
 	}
       }else{
 	temps = {0,0,0,0,false};
@@ -317,7 +377,7 @@ int main(int, char**) {
 
       //Check if we are shutting down
       if((!inShutdown) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
-	fprintf(logFile,"Shutdown requested\n");
+	syslog(LOG_INFO,"Shutdown requested\n");
 	inShutdown = true;
 	//the IPMC requested a re-boot.
 	pid_t reboot_pid;
@@ -328,7 +388,7 @@ int main(int, char**) {
 	}
 	if(-1 == reboot_pid){
 	  inShutdown = false;
-	  fprintf(logFile,"Error! fork to shutdown failed!\n");
+	  syslog(LOG_INFO,"Error! fork to shutdown failed!\n");
 	}else{
 	  //Shutdown the command module (if up)
 	  SM->PowerDownCM(1,5);
@@ -346,11 +406,11 @@ int main(int, char**) {
       }
     }
   }catch(BUException::exBase const & e){
-    fprintf(logFile,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
-    fflush(logFile);      
+    syslog(LOG_INFO,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
+          
   }catch(std::exception const & e){
-    fprintf(logFile,"Caught std::exception: %s\n",e.what());
-    fflush(logFile);      
+    syslog(LOG_INFO,"Caught std::exception: %s\n",e.what());
+          
   }
 
 
@@ -362,7 +422,7 @@ int main(int, char**) {
   
   //If we are shutting down, do the handshanking.
   if(inShutdown){
-    fprintf(logFile,"Tell IPMC we have shut-down\n");
+    syslog(LOG_INFO,"Tell IPMC we have shut-down\n");
     //We are no longer booted
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
     //we are shut down
@@ -381,8 +441,7 @@ int main(int, char**) {
   
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-  fprintf(logFile,"SM boot Daemon ended\n");
-  fclose(logFile);
+  syslog(LOG_INFO,"SM boot Daemon ended\n");
   
   return 0;
 }

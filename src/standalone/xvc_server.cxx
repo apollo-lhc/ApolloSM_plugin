@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
+
 #include <time.h>
 #include <stdint.h>
 
@@ -23,6 +25,8 @@
 #include <netinet/in.h> 
 #include <pthread.h>
 
+#include <sys/stat.h> //for umask
+#include <sys/types.h> //for umask
                                                                                                                                                 
 #include <syslog.h>
 #include <errno.h>
@@ -35,7 +39,20 @@
 
 #include <ApolloSM/uioLabelFinder.hh>
 
-extern int errno;
+//extern int errno;
+
+#define DEFAULT_RUN_DIR     "/opt/address_tables/"
+#define DEFAULT_PID_FILE    "/var/run/"
+
+
+// ====================================================================================================
+// signal handling
+bool static volatile loop;
+void static signal_handler(int const signum) {
+  if(SIGINT == signum || SIGTERM == signum) {
+    loop = false;
+  }
+}
 
 #define MAP_SIZE      0x10000
 
@@ -53,7 +70,7 @@ uint32_t volatile * XVCLock = NULL;
 
 #define CHECK_LOCK				\
   if(XVCLock && *XVCLock){			\
-    fprintf(stderr,"Breaking due to Lock\n");	\
+    syslog(LOG_INFO,"Breaking due to Lock\n");  \
     return -1;					\
   }						\
 
@@ -89,7 +106,7 @@ int handle_data(int fd) {
       memcpy(result, xvcInfo, strlen(xvcInfo));
       ssize_t writeRet = write(fd, result, strlen(xvcInfo));
       if ((writeRet < 0) || (((size_t)writeRet) != strlen(xvcInfo))) {
-	perror("write");
+	syslog(LOG_ERR,"write: %s",strerror(errno));
 	return 1;
       }
       break;
@@ -98,7 +115,7 @@ int handle_data(int fd) {
 	return 1;
       memcpy(result, cmd + 5, 4);
       if (write(fd, result, 4) != 4) {
-	perror("write");
+	syslog(LOG_ERR,"write: %s",strerror(errno));
 	return 1;
       }
       break;
@@ -107,27 +124,23 @@ int handle_data(int fd) {
 	return 1;
     } else {
 
-      fprintf(stderr, "invalid cmd '%s'\n", cmd);
       syslog(LOG_ERR,"invalid cmd '%s'\n", cmd);
       return 1;
     }
 
     int len;
     if (sread(fd, &len, 4) != 1) {
-      fprintf(stderr, "reading length failed\n");
       syslog(LOG_ERR,"reading length failed\n");
       return 1;
     }
 
     int nr_bytes = (len + 7) / 8;
     if (((size_t)nr_bytes) * 2 > sizeof(buffer)) {
-      fprintf(stderr, "buffer size exceeded\n");
       syslog(LOG_ERR,"buffer size exceeded\n");
       return 1;
     }
 
     if (sread(fd, buffer, nr_bytes * 2) != 1) {
-      fprintf(stderr, "reading data failed\n");
       syslog(LOG_ERR,"reading data failed\n");
       return 1;
     }
@@ -186,11 +199,11 @@ int handle_data(int fd) {
       }
     }
     if (write(fd, result, nr_bytes) != nr_bytes) {
-      perror("write");
+      syslog(LOG_ERR,"write: %s",strerror(errno));
       return 1;
     }
 
-  } while (1);
+  } while (loop);
   /* Note: Need to fix JTAG state updates, until then no exit is allowed */
   return 0;
 }
@@ -202,9 +215,9 @@ int main(int argc, char **argv) {
   int fdUIO = -1;
   struct sockaddr_in address;
 
-
-  openlog("xvcServer",LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
-  syslog(LOG_INFO,"starting %s", argv[0]);                                                                                                                                                                         
+  int uioN = -1;
+  std::string uioLabel;
+ 
   int port;
   std::string xvcName;
   
@@ -234,69 +247,118 @@ int main(int argc, char **argv) {
   
     //Parse the command line arguments
     cmd.parse(argc,argv);
-    port = xvcPort.getValue();
 
-    //Find UIO number
+    port = xvcPort.getValue();
     xvcName=xvcPreFix.getValue();
-    int uioN = label2uio(xvcPreFix.getValue());
-    if(uioN < 0){
-      fprintf(stderr,"Failed to find UIO device with label %s.\n",xvcPreFix.getValue().c_str());
-      syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",xvcPreFix.getValue().c_str());
-      return 1;      
-    }
-    size_t const uioFileNameLength = 1024;
-    char * uioFileName = new char[uioFileNameLength+1];
-    memset(uioFileName,0x0,uioFileNameLength+1);
-    snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioN);
-    
-    fprintf(stderr,"Found %s @ %s.\n",xvcPreFix.getValue().c_str(),uioFileName);
-    syslog(LOG_ERR,"Found %s @ %s.\n",xvcPreFix.getValue().c_str(),uioFileName);
-    //Open UIO device
-    fdUIO = open(uioFileName,O_RDWR);
-    if(fdUIO < 0){
-      fprintf(stderr,"Failed to open %s.\n",uioFileName);
-      syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
-      return 1;            
-    }
-    
-    pXVC = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
-				 PROT_READ|PROT_WRITE, MAP_SHARED,
-				 fdUIO, 0x0);
-    if(MAP_FAILED == pXVC){
-      fprintf(stderr,"Failed to mmap %s.\n",uioFileName);
-      syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
-      return 1;            
-    }
-    delete [] uioFileName;
-    
-  }catch (TCLAP::ArgException &e) {
-    fprintf(stderr, "Error %s for arg %s\n",
-	    e.error().c_str(), e.argId().c_str());
+    uioLabel = xvcPreFix.getValue();
+  }catch (TCLAP::ArgException &e) {  
     syslog(LOG_ERR, "Error %s for arg %s\n",
 	   e.error().c_str(), e.argId().c_str());
     return 0;
   }
 
 
-  //Setup XVCLock UIO
-  int fdXVCLock = -1;
-  int uioNXVCLock = label2uio("PL_MEM");
-  if(uioNXVCLock < 0){
-    fprintf(stderr,"Failed to find UIO device with label %s.\n","PL_MEM");
-    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n","PL_MEM");
+  //now that we know the port, setup the log
+  char daemonName[] = "xvc_server.XXXXXY"; //The 'Y' is so strlen is properly padded
+  snprintf(daemonName,strlen(daemonName),"xvc_server.%u",port);
+  
+  // ============================================================================
+  // Deamon book-keeping
+  pid_t pid, sid;
+  pid = fork();
+  if(pid < 0){
+    //Something went wrong.
+    //log something
+    exit(EXIT_FAILURE);
+  }else if(pid > 0){
+    //We are the parent and created a child with pid pid
+    std::string pidFileName = DEFAULT_PID_FILE;
+    pidFileName+=daemonName;
+    pidFileName+=".pid";
+    FILE * pidFile = fopen(pidFileName.c_str(),"w");
+    fprintf(pidFile,"%d\n",pid);
+    fclose(pidFile);
+    exit(EXIT_SUCCESS);
+  }else{
+    // I'm the child!
+  }
+
+  
+  //Change the file mode mask to allow read/write
+  umask(0);
+  
+  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
+  syslog(LOG_INFO,"starting %s", daemonName);
+  
+
+  // create new SID for the daemon.
+  sid = setsid();
+  if (sid < 0) {
+    syslog(LOG_ERR,"Failed to change SID\n");
+    exit(EXIT_FAILURE);
+  }
+  syslog(LOG_INFO,"Set SID to %d\n",sid);
+
+  //Move to RUN_DIR
+  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
+    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
+    exit(EXIT_FAILURE);
+  }
+  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
+
+  //Everything looks good, close the standard file fds.
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+
+
+
+
+  //Find UIO number
+  uioN = label2uio(uioLabel.c_str());
+  if(uioN < 0){
+    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",uioLabel.c_str());
     return 1;      
   }
   size_t const uioFileNameLength = 1024;
   char * uioFileName = new char[uioFileNameLength+1];
   memset(uioFileName,0x0,uioFileNameLength+1);
+  snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioN);
+  
+  syslog(LOG_ERR,"Found %s @ %s.\n",uioLabel.c_str(),uioFileName);
+  //Open UIO device
+  fdUIO = open(uioFileName,O_RDWR);
+  if(fdUIO < 0){
+    syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
+    return 1;            
+  }
+  
+  pXVC = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
+			       PROT_READ|PROT_WRITE, MAP_SHARED,
+			       fdUIO, 0x0);
+  if(MAP_FAILED == pXVC){
+    syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
+    return 1;            
+  }
+  delete [] uioFileName;
+    
+
+
+  //Setup XVCLock UIO
+  int fdXVCLock = -1;
+  int uioNXVCLock = label2uio("PL_MEM");
+  if(uioNXVCLock < 0){
+    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n","PL_MEM");
+    return 1;      
+  }
+  uioFileName = new char[uioFileNameLength+1];
+  memset(uioFileName,0x0,uioFileNameLength+1);
   snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioNXVCLock);
     
-  fprintf(stderr,"Found %s @ %s.\n","PL_MEM",uioFileName);
   syslog(LOG_ERR,"Found %s @ %s.\n","PL_MEM",uioFileName);
   //Open UIO device
   fdXVCLock = open(uioFileName,O_RDWR);
   if(fdXVCLock < 0){
-    fprintf(stderr,"Failed to open %s.\n",uioFileName);
     syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
     return 1;            
   }
@@ -313,14 +375,11 @@ int main(int argc, char **argv) {
 					 PROT_READ|PROT_WRITE, MAP_SHARED,
 					 fdXVCLock,0x0))  + offset;
     if(MAP_FAILED == XVCLock){
-      fprintf(stderr,"Failed to mmap %s.\n",uioFileName);
       syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
       return 1;            
     }
-    fprintf(stderr,"Found XVC lock register @ 0x%04X\n",offset);
     syslog(LOG_ERR,"Found XVC lock register @ 0x%04X\n",offset);    
   }else{
-    fprintf(stderr,"No lock register found.\n");
     syslog(LOG_ERR,"No lock register found.\n");        
     XVCLock = &offset;
   }
@@ -330,7 +389,7 @@ int main(int argc, char **argv) {
   s = socket(AF_INET, SOCK_STREAM, 0);
                
   if (s < 0) {
-    perror("socket");
+    syslog(LOG_ERR,"socket: %s",strerror(errno));
     return 1;
   }
    
@@ -342,12 +401,12 @@ int main(int argc, char **argv) {
   address.sin_family = AF_INET;
 
   if (bind(s, (struct sockaddr*) &address, sizeof(address)) < 0) {
-    perror("bind");
+    syslog(LOG_ERR,"bind: %s",strerror(errno));
     return 1;
   }
 
   if (listen(s, 5) < 0) {
-    perror("listen");
+    syslog(LOG_ERR,"listen: %s",strerror(errno));
     return 1;
   }
 
@@ -359,12 +418,30 @@ int main(int argc, char **argv) {
 
   maxfd = s;
 
-  while (1) {
+
+  // ============================================================================
+  // Daemon code setup
+
+  // ====================================
+  // Signal handling
+  struct sigaction sa_INT,sa_TERM,old_sa;
+  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
+  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
+  //setup SA
+  sa_INT.sa_handler  = signal_handler;
+  sa_TERM.sa_handler = signal_handler;
+  sigemptyset(&sa_INT.sa_mask);
+  sigemptyset(&sa_TERM.sa_mask);
+  sigaction(SIGINT,  &sa_INT , &old_sa);
+  sigaction(SIGTERM, &sa_TERM, NULL);
+  loop = true;
+
+  while (loop) {
     fd_set read = conn, except = conn;
     int fd;
 
     if (select(maxfd + 1, &read, 0, &except, 0) < 0) {
-      perror("select");
+      syslog(LOG_ERR,"select: %s",strerror(errno));
       break;
     }
     
@@ -376,11 +453,11 @@ int main(int argc, char **argv) {
 
 	  newfd = accept(s, (struct sockaddr*) &address, &nsize);
 
-	  printf("connection accepted - fd %d\n", newfd);
+	  syslog(LOG_INFO,"connection accepted - fd %d\n", newfd);
 	  if (newfd < 0) {
-	    perror("accept");
+	    syslog(LOG_ERR,"accept: %s",strerror(errno));
 	  } else {
-	    printf("setting TCP_NODELAY to 1\n");
+	    syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
 	    int flag = 1;
 	    int optResult = setsockopt(newfd,
 				       IPPROTO_TCP,
@@ -388,7 +465,7 @@ int main(int argc, char **argv) {
 				       (char *)&flag,
 				       sizeof(int));
 	    if (optResult < 0)
-	      perror("TCP_NODELAY error");
+	      syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
 	    if (newfd > maxfd) {
 	      maxfd = newfd;
 	    }
@@ -397,13 +474,13 @@ int main(int argc, char **argv) {
 	}
 	else if (handle_data(fd)) {
 
-	  printf("connection closed - fd %d\n", fd);
+	  syslog(LOG_INFO,"connection closed - fd %d\n", fd);
 	  close(fd);
 	  FD_CLR(fd, &conn);
 	}
       }
       else if (FD_ISSET(fd, &except)) {
-	printf("connection aborted - fd %d\n", fd);
+	syslog(LOG_INFO,"connection aborted - fd %d\n", fd);
 	close(fd);
 	FD_CLR(fd, &conn);
 	if (fd == s)
@@ -411,5 +488,9 @@ int main(int argc, char **argv) {
       }
     }
   }  
+  // Restore old action of receiving SIGINT (which is to kill program) before returning 
+  sigaction(SIGINT, &old_sa, NULL);
+  syslog(LOG_INFO,"%s Daemon ended\n",daemonName);
+
   return 0;
 }

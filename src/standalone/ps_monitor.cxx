@@ -1,15 +1,26 @@
+#include <utmpx.h>
 #include <stdio.h>
-#include <ApolloSM/ApolloSM.hh>
-#include <uhal/uhal.hpp>
-#include <vector>
 #include <string>
-#include <boost/tokenizer.hpp>
-#include <unistd.h> // usleep, execl
-#include <signal.h>
-#include <time.h>
+#include <vector>
+#include <ApolloSM/ApolloSM.hh>
+#include <standalone/userCount.hh>
+#include <standalone/lnxSysMon.hh>
 
-#include <sys/stat.h> //for umask
-#include <sys/types.h> //for umask
+#include <errno.h>
+#include <string.h>
+
+//pselect stuff
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+//signals
+#include <signal.h>
+
+//umask
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <BUException/ExceptionBase.hh>
 
@@ -24,21 +35,21 @@
 #define NS_IN_US 1000
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
-#define DEFAULT_CONFIG_FILE "/etc/heartbeat"
+#define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
 #define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_PID_FILE    "/var/run/heartbeat.pid"
+#define DEFAULT_PID_FILE    "/var/run/ps_monitor.pid"
+
 
 
 // ====================================================================================================
-// signal handling
+// Kill program if it is in background
 bool static volatile loop;
+
 void static signal_handler(int const signum) {
   if(SIGINT == signum || SIGTERM == signum) {
     loop = false;
   }
 }
-
-
 
 // ====================================================================================================
 // Read from config files and set up all parameters
@@ -70,13 +81,11 @@ long us_difftime(struct timespec cur, struct timespec end){
 	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
 }
 
+// ==================================================
 
+int main(int argc, char ** argv) {
 
-
-// ====================================================================================================
-int main(int argc, char** argv) { 
-
-  TCLAP::CmdLine cmd("ApolloSM PS Heartbeat");
+  TCLAP::CmdLine cmd("ApolloSM PS Monitor");
   TCLAP::ValueArg<std::string> configFile("c",                 //one char flag
 					  "config_file",       // full flag name
 					  "config file",       //description
@@ -93,8 +102,6 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Failed to Parse Command Line\n");
     return -1;
   }
-
-
 
   // ============================================================================
   // Deamon book-keeping
@@ -190,13 +197,16 @@ int main(int argc, char** argv) {
   sigaction(SIGTERM, &sa_TERM, NULL);
   loop = true;
 
-  // ====================================
-  // for counting time
-  struct timespec startTS;
-  struct timespec stopTS;
 
-  long update_period_us = polltime_in_seconds*SEC_IN_US; //sleep time in microseconds
-
+  // ==================================================
+  // If /var/run/utmp does not exist we are done
+  {
+    FILE * file = fopen("/var/run/utmp","r");
+    if(NULL == file) {
+      syslog(LOG_INFO,"Utmp file does not exist. Terminating countUsers\n");
+      return -1;
+    }
+  }
 
   ApolloSM * SM = NULL;
   try{
@@ -213,30 +223,62 @@ int main(int argc, char** argv) {
     arg.push_back("connections.xml");
     SM->Connect(arg);
 
+    //vars for pselect
+    fd_set readSet,readSet_ret;
+    FD_ZERO(&readSet);
+    struct timespec timeout = {polltime_in_seconds,0};
+    int maxFDp1 = 0;
+    
+    //Create a usercount process
+    userCount uCnt;
+    int fdUserCount = uCnt.initNotify();
+    syslog(LOG_INFO,"iNotify setup on FD %d\n",fdUserCount);
+    FD_SET(fdUserCount,&readSet);
+    if(fdUserCount >= maxFDp1){
+      maxFDp1 = fdUserCount+1;
+    }
+
+
     // ==================================
     // Main DAEMON loop
-    syslog(LOG_INFO,"Starting heartbeat\n");
-    
-    while(loop) {
-      // loop start time
-      clock_gettime(CLOCK_REALTIME, &startTS);
+    syslog(LOG_INFO,"Starting PS monitor\n");
 
-      //=================================
-      //Do work
-      //=================================
+    // ==================================================
+    // All the work
 
-      //PS heartbeat
-      SM->RegReadRegister("SLAVE_I2C.HB_SET1");
-      SM->RegReadRegister("SLAVE_I2C.HB_SET2");
-
-      //=================================
-
-      // monitoring sleep
-      clock_gettime(CLOCK_REALTIME, &stopTS);
-      // sleep for 10 seconds minus how long it took to read and send temperature    
-      useconds_t sleep_us = update_period_us - us_difftime(startTS, stopTS);
-      if(sleep_us > 0){
-	usleep(sleep_us);
+    //Do one read of users file before we start our loop
+    uint32_t superUsers,normalUsers;
+    uCnt.GetUserCounts(superUsers,normalUsers);
+    SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
+    SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
+ 
+    while(loop){
+      readSet_ret = readSet;
+      int pselRet = pselect(maxFDp1,&readSet_ret,NULL,NULL,&timeout,NULL);
+      if(0 == pselRet){
+	//timeout, do CPU/mem monitoring
+	uint32_t mon;
+	mon = MemUsage()*100; //Scale the value by 100 to get two decimal places for reg   
+	SM->RegWriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
+	mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
+	SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
+	float days,hours,minutes;
+	Uptime(days,hours,minutes);
+	SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.DAYS",uint32_t(100.0*days));
+	SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.HOURS",uint32_t(100.0*hours));
+	SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.MINS",uint32_t(100.0*minutes));
+	
+      }else if(pselRet > 0){
+	//a FD is readable. 
+	if(FD_ISSET(fdUserCount,&readSet_ret)){
+	  if(uCnt.ProcessWatchEvent()){
+	    uCnt.GetUserCounts(superUsers,normalUsers);
+	    SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
+	    SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);
+	  }
+	}
+      }else{
+	syslog(LOG_ERR,"Error in pselect %d(%s)",errno,strerror(errno));
       }
     }
   }catch(BUException::exBase const & e){
@@ -244,19 +286,18 @@ int main(int argc, char** argv) {
   }catch(std::exception const & e){
     syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
   }
-  
-  //PS heartbeat
-  SM->RegReadRegister("SLAVE_I2C.HB_SET1");
-  SM->RegReadRegister("SLAVE_I2C.HB_SET2");
-  
-  //Clean up
+
+  // ==================================================
+  // Clean up. Close and delete everything.
+    
+  // Delete SM
   if(NULL != SM) {
     delete SM;
   }
-  
+
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-  syslog(LOG_INFO,"heartbeat Daemon ended\n");
-  
+  syslog(LOG_INFO,"PS Monitor Daemon ended\n");
   return 0;
+
 }

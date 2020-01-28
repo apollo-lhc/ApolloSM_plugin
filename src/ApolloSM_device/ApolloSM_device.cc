@@ -333,8 +333,13 @@ CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strAr
 						std::vector<uint64_t> /*intArg*/){
   std::stringstream outfileName;
   outfileName << "Apollo_debug_dump_";  
-  std::time_t time = std::time(NULL);
-  outfileName << std::put_time(std::gmtime(&time),"%F-%T-%Z");
+
+  char buffer[128];
+  time_t unixTime=time(NULL);
+  struct tm * timeinfo = localtime(&unixTime);
+  strftime(buffer,128,"%F-%T-%Z",timeinfo);
+  outfileName << buffer;
+
   outfileName << ".dat";
   
   std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);

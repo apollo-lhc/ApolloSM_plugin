@@ -1,6 +1,6 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <BUTool/ToolException.hh>
-#include <uhal/ProtocolUIO.hpp>
+#include <ProtocolUIO.hpp>
 #include <iostream>
 #include <iomanip> 
 

@@ -38,6 +38,8 @@ public:
 
   void DebugDump(std::ostream & output = std::cout);
 
+  void unblockAXI();
+
 private:  
   IPBusStatus * statusDisplay;
 };

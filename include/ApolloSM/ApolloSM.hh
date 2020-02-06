@@ -38,6 +38,8 @@ public:
 
   void DebugDump(std::ostream & output = std::cout);
 
+  std::vector<eyescanCoords> EyeScan(std::string baseNode, float maxVoltage, float maxPhase, uint16_t prescale);
+
 private:  
   IPBusStatus * statusDisplay;
 };

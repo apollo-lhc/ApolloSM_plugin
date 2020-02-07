@@ -134,6 +134,26 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Usage: \n"\
 	       "  dump_debug\n");
 
+    
+    AddCommand("EnableEyeScan",&ApolloSMDevice::EnableEyeScan,
+	       "Set up all attributes for eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  EnableEyeScan <base node> <prescale> \n");
+    AddCommandAlias("esn","EnableEyeScan");
+
+    AddCommand("SetOffsets",&ApolloSMDevice::SetOffsets,
+	       "Set up voltage and phase offsets for eyescan\n"   \
+	       "Usage: \n"                              \
+	       "  SetOffsets <voltage> <phase> \n");
+    AddCommandAlias("vpoff","SetOffsets");
+
+    AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
+	       "Perform a single eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  SingleEyeScan \n");
+    AddCommandAlias("singlees","SingleEyeScan");
+
+
 }
 
 //If there is a file currently open, it closes it                                                             
@@ -347,4 +367,34 @@ CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strAr
   SM->DebugDump(outfile);
   outfile.close();  
   return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  // base node and prescale
+  SM->EnableEyeScan(strArg[0], strArg[1]);
+  
+  return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  SM->
+}
+
+CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  SM->
 }

@@ -4,7 +4,7 @@
 #include <IPBusIO/IPBusConnection.hh>
 #include <IPBusStatus/IPBusStatus.hh>
 #include <BUException/ExceptionBase.hh>
-
+#include <ApolloSM/eyescan.hh>
 
 #include <iostream>
 
@@ -38,7 +38,12 @@ public:
 
   void DebugDump(std::ostream & output = std::cout);
 
+
+  void throwException(std::string message);
+  void assertNode(std::string node, uint32_t correctVal);
+  void confirmNode(std::string node, uint32_t correctVal);
   std::vector<eyescanCoords> EyeScan(std::string baseNode, float maxVoltage, float maxPhase, uint16_t prescale);
+  
 
 private:  
   IPBusStatus * statusDisplay;

@@ -1,4 +1,5 @@
 #include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/eyescan.hh>
 #include <vector>
 
 // ================================================================================
@@ -14,19 +15,19 @@
 #define PMA_RSV2 0x1
 #define ES_QUALIFIER 0x0000
 #define ES_QUAL_MASK 0xFFFF
-#define RX_DATA_WIDTH 0x4
-#define RX_INT_DATAWDITH 0x1
+#define RX_DATA_WIDTH 0x4 // We use 32 bit
+#define RX_INT_DATAWDITH 0x1 // We use 32 bit
 
 // ==================================================
 
-void throwException(std::string message) {
+void ApolloSM::throwException(std::string message) {
   BUException::EYESCAN_ERROR e;
   e.append(message);
   throw e;
 }
 
 // assert to the node the correct value
-void assertNode(std::string node, uint32_t correctVal) {
+void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
   RegWriteRegister(node, correctVal);
   // Might be able to just put confirmNode here
   if(correctVal != RegReadRegister(node)) {
@@ -35,13 +36,13 @@ void assertNode(std::string node, uint32_t correctVal) {
 }
 
 // confirm that the node value is correct 
-void confirmNode(std::string node, uint32_t correctVal) {
+void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
   if(correctVal != RegReadRegister(node)) {
     throwException(node + " is not set correctly to: " + std::to_string(correctVal));
   }
 }
 
-void EnableEyeScan(std::string baseNode, uint16_t prescale) {
+void EnableEyeScan(std::string baseNode, std::string prescale) {
   // ** must do this
   // *** not quite sure
   
@@ -51,16 +52,16 @@ void EnableEyeScan(std::string baseNode, uint16_t prescale) {
   assertNode(baseNode + "EYE_SCAN_EN", ES_EYE_SCAN_EN);
 
   // ** ES_ERRDET_EN assert 1
-  assertNode(baseNode + "ERRDET_EN", ES_ERRDET_EN)
+  assertNode(baseNode + "ERRDET_EN", ES_ERRDET_EN);
 
   // ** ES_PRESCALE set prescale
-  uint32_t prescale32 = prescale;
+  uint32_t prescale32 = std::stoi(prescale); 
   assertNode(baseNode + "PRESCALE", prescale32);
 
   // *** PMA_CFG confirm all 0s
   confirmNode(baseNode + "PMA_CFG", PMA_CFG);
 
-  // ** PMA_RSV2[5] assert 1 
+  // ** PMA_RSV2[5] assert 1 OB
   assertNode(baseNode + "PMA_RSV2", PMA_RSV2);
   
   // *** ES_QUALIFIER I think assert all 0s
@@ -94,7 +95,7 @@ float GetEyeScanVoltage() {
   return i;
 }
 
-void SetEyeScanVoltage(float) {
+void SetEyeScanVoltage(float voltage) {
   // change int to hex
   // write the hex
 }
@@ -107,25 +108,11 @@ float GetEyeScanPhase() {
   return i;
 }
 
-void SetEyeScanPhase(float) {
+void SetEyeScanPhase(float phase) {
   // change int to hex
+  
   // write the hex
 }
- 
-// ==================================================
-
-// All necessary information to calculate bit error rate (BER)
-//struct eyescanData {
-//  uint16_t sampleCount;
-//  uint16_t errorCount;
-//};
-
-// All necessary information to plot an eyescan
-struct eyescanCoords {
-  float voltage;
-  float phase;
-  float BER;
-};
   
 // ==================================================
 
@@ -134,7 +121,7 @@ struct eyescanCoords {
 #define RUN 0x1
 #define DONT_RUN 0x0
 
-float SingleEyeScan(std::string baseNode, uint16_t prescale) {
+float ApolloSM::SingleEyeScan(std::string baseNode, uint16_t prescale) {
   // confirm we are in WAIT, if not, stop scan
   confirmNode(baseNode + "CTRL_STATUS", WAIT);
 
@@ -166,7 +153,9 @@ float SingleEyeScan(std::string baseNode, uint16_t prescale) {
   return errorCount/(prescale*sampleCount); 
 }
 
-std::vector<<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, float maxVoltage, float maxPhase, uint16_t prescale) {
+// ==================================================
+
+std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, float maxVoltage, float maxPhase, uint16_t prescale) {
   
   // declare vector of vector of eye scan data
   //  std::vector<std::vector<eyescanData> esData;

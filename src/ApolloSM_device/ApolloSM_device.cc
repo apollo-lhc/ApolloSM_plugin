@@ -378,8 +378,16 @@ CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> str
     return CommandReturn::BAD_ARGS;
   }
 
-  // strtoul needs to be checked. It will not convert 0xFFFFFFFF, the largest number it should be able to convert. It actually won't even convert 0x8FFFFFFF
-  uint32_t prescale = strtoul(strArg[1].c_str(), NULL, 16);
+  // For base 0, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
+  uint32_t prescale = strtoul(strArg[1].c_str(), NULL, 0);
+
+  // prescale attribute has only 5 bits of space
+  uint32_t maxPrescaleAllowed = 31;
+
+  // Checks that the prescale is in allowed range
+  if(maxPrescaleAllowed < prescale) {
+    return CommandReturn::BAD_ARGS;
+  }
 
   // base node and prescale
   SM->EnableEyeScan(strArg[0], prescale);
@@ -394,7 +402,41 @@ CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg
     return CommandReturn::BAD_ARGS;
   }
 
- 
+  // For base 0 in strtoul, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
+
+  // Probably a better function for this
+  uint8_t vertOffset = strtoul(strArg[0].c_str(), NULL, 0);
+  // vertical offset has only 7 bits of space (for magnitude)
+  uint8_t maxVertOffset = 127;
+  
+  // Checks that the vertical offset is in allowed range
+  if(maxVertOffset < vertOffset) {
+    return CommandReturn::BAD_ARGS;
+  }  
+
+  // Probably a better function for this
+  uint8_t horzOffset = strtoul(strArg[1].c_str(), NULL, 0);
+  // vertical offset has only 7 bits of space (for magnitude)
+  //  uint8_t maxVertOffset = 127;
+
+
+//
+//  float horzOffset = strtof(strArg[1].c_str());
+//  float maxHorzOffset = 0.5;
+//
+//  if(maxHorzOffset < horzOffset) {
+//    return CommandReturn::BAD_ARGS;
+//  }
+//
+//  if(0 > horzOffset) {
+//    // no negatives (yet)
+//    return CommandReturn::BAD_ARGS;
+//  }
+//
+//  
+//
+
+  SM->SetOffsets("C2C1_PHY.", vertOffset, horzOffset);
 
   return CommandReturn::OK;
 }

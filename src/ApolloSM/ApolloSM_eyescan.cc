@@ -44,6 +44,7 @@ void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
   }
 }
 
+// To set up all attributes for an eye scan
 void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // ** must do this
   // *** not quite sure
@@ -90,6 +91,8 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH);
 }
 
+// ==================================================
+
 float GetEyeScanVoltage() {
   // Change hex to int
   // return the int
@@ -97,10 +100,14 @@ float GetEyeScanVoltage() {
   return i;
 }
 
-void SetEyeScanVoltage(float) {
+void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset) {
   // change int to hex
   // write the hex
+
+  // write the hex
+  RegWriteRegister(baseNode + "VERT_OFFSET", vertOffset);
 }
+
 
 float GetEyeScanPhase() {
   // change hex to int
@@ -110,12 +117,34 @@ float GetEyeScanPhase() {
   return i;
 }
 
-void SetEyeScanPhase(float) {
+void ApolloSM::SetEyeScanPhase(std::string baseNode, uint16_t horzOffset) {
+
   // change int to hex
-  
+  //  uint16_t horz_offset = 
+
   // write the hex
+  RegWriteRegister(baseNode + "HORZ_OFFSET", horzOffset);
 }
-  
+ 
+void ApolloSM::SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t horzOffset) {
+  // Set offsets
+
+  // set voltage offset
+  SetEyeScanVoltage(baseNode, vertOffset);
+  // check that voltage offset is actually set correctly
+//  if(GetEyeScanVoltage() != vertOffset) {
+//    throwException("Cannot set voltage offset properly\n");
+//  }    
+//  
+  // set phase offset
+  SetEyeScanPhase(baseNode, horzOffset);
+  // check that phase offset is actually set correctly
+//  if(GetEyeScanPhase() != horzOffset) {
+//    throwException("Cannot set voltage phase properly\n");
+//  }
+//    
+}
+ 
 // ==================================================
 
 #define WAIT 0x1
@@ -123,6 +152,7 @@ void SetEyeScanPhase(float) {
 #define RUN 0x1
 #define DONT_RUN 0x0
 
+// Performs a single eye scan and returns the BER
 float ApolloSM::SingleEyeScan(std::string baseNode) {
   // confirm we are in WAIT, if not, stop scan
   confirmNode(baseNode + "CTRL_STATUS", WAIT);
@@ -134,7 +164,8 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
   int count = 0;
   while(1000 > count) {
     if(END == RegReadRegister(baseNode + "CTRL_STATUS")) {
-	break;
+      // Scan has ended
+      break;
     }
     // sleep 1 millisecond
     usleep(1000);
@@ -159,7 +190,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
 }
 
 // ==================================================
-
+/*
 std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, float maxVoltage, float maxPhase, uint16_t prescale) {
   
   // declare vector of vector of eye scan data
@@ -218,6 +249,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, float maxVolt
 
   return esCoords;
 }
+*/
 
 // ================================================================================
 // Functions

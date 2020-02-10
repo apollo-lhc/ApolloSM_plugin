@@ -17,6 +17,8 @@
 
 #include <boost/algorithm/string/predicate.hpp> //for iequals
 
+#include <stdlib.h> // for strtoul
+
 using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
@@ -150,7 +152,7 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
 	       "Perform a single eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  SingleEyeScan \n");
+	       "  SingleEyeScan <base node>\n");
     AddCommandAlias("singlees","SingleEyeScan");
 
 
@@ -369,32 +371,49 @@ CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strAr
   return CommandReturn::OK;
 }
 
+// To set up all attributes for an eye scan
 CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
   if(2 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
 
+  // strtoul needs to be checked. It will not convert 0xFFFFFFFF, the largest number it should be able to convert. It actually won't even convert 0x8FFFFFFF
+  uint32_t prescale = strtoul(strArg[1].c_str(), NULL, 16);
+
   // base node and prescale
-  SM->EnableEyeScan(strArg[0], strArg[1]);
+  SM->EnableEyeScan(strArg[0], prescale);
   
   return CommandReturn::OK;
 }
 
-CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+
+CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
   if(2 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
 
-  SM->
+ 
+
+  return CommandReturn::OK;
 }
 
-CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+// Performs a single eye scan
+CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
-  if(2 != strArg.size()) {
+  if(1 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
 
-  SM->
+  std::string baseNode = strArg[0];
+  // Add a dot to baseNode if it does not already have one
+  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
+    baseNode.append(".");
+  }
+
+  printf("The BER is: %f\n", SM->SingleEyeScan(baseNode));
+
+  return CommandReturn::OK;
 }
+

@@ -38,15 +38,19 @@ public:
 
   void DebugDump(std::ostream & output = std::cout);
 
-
-  void throwException(std::string message);
-  void assertNode(std::string node, uint32_t correctVal);
-  void confirmNode(std::string node, uint32_t correctVal);
+  //  void throwException(std::string message);
+  
+  float SingleEyeScan(std::string baseNode);
+  void EnableEyeScan(std::string baseNode, uint32_t prescale);
   std::vector<eyescanCoords> EyeScan(std::string baseNode, float maxVoltage, float maxPhase, uint16_t prescale);
   
 
 private:  
   IPBusStatus * statusDisplay;
+
+  void assertNode(std::string node, uint32_t correctVal);
+  void confirmNode(std::string node, uint32_t correctVal);
+
 };
 
 

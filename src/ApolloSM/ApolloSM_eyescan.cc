@@ -213,7 +213,10 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   // Calculate min voltage and phase from max
   //  float minVoltage = -1*maxVoltage;
   //  float minPhase = -1*maxPhase;
- 
+
+  // For compiler error of unused argument
+  baseNode.append("0");
+
   uint8_t maxVoltage = 127;
   //uint8_t minVoltage = -1*maxVoltage;
   int minVoltage = -127;
@@ -228,11 +231,11 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
     
     // set voltage offset
     //    printf("writing voltage %x\n", voltage);
-    if(0 > voltage) {
-      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
-    } else {
-      SetEyeScanVoltage(baseNode, voltage);
-    }
+    //if(0 > voltage) {
+    //  SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
+    //} else {
+    //  SetEyeScanVoltage(baseNode, voltage);
+    //}
     // check that voltage offset is actually set correctly
 //    if(GetEyeScanVoltage() != voltage) {
 //      // something went wrong, stop scan
@@ -240,7 +243,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 //    
     for(int phase = minPhase; phase <= maxPhase; phase++) {
       // set phase offset
-      SetEyeScanPhase(baseNode, phase & 0xFFF);
+      //SetEyeScanPhase(baseNode, phase & 0xFFF);
       
 	//      printf("writing phase %x\n", phase);
       // check that phase offset is actually set correctly
@@ -248,13 +251,16 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 // 	// something went wrong, stop scan
 //      }
 //      
+      printf("%d ", (uint8_t)((-1*voltage) | 0x80));
+      printf("%d\n", phase & 0xFFF);
+
       // set voltage coordinate
       esCoords[coordsIndex].voltage = voltage; 
       // set phase coordinate
       esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1, 0.5 on each side
       // Perform a single scan and set BER coordinate
-      esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
-      
+      //esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
+      esCoords[coordsIndex].BER = 0;
       // going to next coordinate/scan 
       coordsIndex++;
     }

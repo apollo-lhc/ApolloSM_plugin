@@ -198,7 +198,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   
   // Make sure all DRP attributes are set up for eye scan 
   //EnableEyeScan(baseNode, prescale);
-  EnableEyeScan(baseNode, 0x1);
+  //EnableEyeScan(baseNode, 0x1);
   
   // declare vector of all eye scan plot coordinates
   std::vector<eyescanCoords> esCoords;
@@ -215,26 +215,34 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   //  float minPhase = -1*maxPhase;
  
   uint8_t maxVoltage = 127;
-  uint8_t minVoltage = -1*maxVoltage;
+  //uint8_t minVoltage = -1*maxVoltage;
+  int minVoltage = -127;
   uint16_t maxPhase = 31;
-  uint16_t minPhase = -1*maxPhase;
-  
+  //uint16_t minPhase = -31;
+  int minPhase = -31;
   
   // Set offsets and perform eyescan
-  for(uint8_t voltage = minVoltage; voltage <= maxVoltage; voltage++) {
+  for(int voltage = minVoltage; voltage <= maxVoltage; voltage++) {
     // Allocate memory for new coordinate
     esCoords.push_back(emptyCoord);
     
     // set voltage offset
-    SetEyeScanVoltage(baseNode, voltage);
+    //    printf("writing voltage %x\n", voltage);
+    if(0 > voltage) {
+      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
+    } else {
+      SetEyeScanVoltage(baseNode, voltage);
+    }
     // check that voltage offset is actually set correctly
 //    if(GetEyeScanVoltage() != voltage) {
 //      // something went wrong, stop scan
 //    }    
 //    
-    for(uint16_t phase = minPhase; phase <= maxPhase; phase++) {
+    for(int phase = minPhase; phase <= maxPhase; phase++) {
       // set phase offset
-      SetEyeScanPhase(baseNode, phase);
+      SetEyeScanPhase(baseNode, phase & 0xFFF);
+      
+	//      printf("writing phase %x\n", phase);
       // check that phase offset is actually set correctly
 //      if(GetEyeScanPhase() != phase) {
 // 	// something went wrong, stop scan
@@ -243,7 +251,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
       // set voltage coordinate
       esCoords[coordsIndex].voltage = voltage; 
       // set phase coordinate
-      esCoords[coordsIndex].phase = phase/(maxVoltage*2); // Normalized to 1, 0.5 on each side
+      esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1, 0.5 on each side
       // Perform a single scan and set BER coordinate
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
       

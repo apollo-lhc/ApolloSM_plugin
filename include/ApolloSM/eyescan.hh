@@ -3,7 +3,7 @@
 
 // All necessary information to plot an eyescan
 struct eyescanCoords {
-  float voltage;
+  uint8_t voltage;
   float phase;
   float BER;
 };

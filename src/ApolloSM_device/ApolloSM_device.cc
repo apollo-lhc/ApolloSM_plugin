@@ -155,6 +155,11 @@ void ApolloSMDevice::LoadCommandList(){
 	       "  SingleEyeScan <base node>\n");
     AddCommandAlias("singlees","SingleEyeScan");
 
+    AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
+	       "Perform an eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  EyeScan <base node>\n");
+    AddCommandAlias("es","EyeScan");
 
 }
 
@@ -454,8 +459,53 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
     baseNode.append(".");
   }
 
+  printf("The base node is %s\n", baseNode.c_str());
+
   printf("The BER is: %f\n", SM->SingleEyeScan(baseNode));
 
   return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+
+  // For now we only want the base node and a txt file to write to
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+  
+  std::string baseNode = strArg[0];
+  // Add a dot to baseNode if it does not already have one
+  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
+    baseNode.append(".");
+  }
+
+  std::string fileName = strArg[1];
+  if(0 != fileName.compare(fileName.size()-4,4,".txt")) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  printf("The base node is %s\n", baseNode.c_str());
+  printf("The file to write to is %s\n", fileName.c_str());
+  
+  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode);
+
+//  int fd = open(fileName, O_CREAT | O_RDWR, 0644);
+//
+//  if(0 > fd) {
+//    printf("Error trying to open file %s\n", fileName.c_str());
+//    return CommandReturn::OK;
+//  }
+//
+
+  FILE * dataFile = fopen(fileName.c_str(), "w");
+  
+  for(int i = 0; i < (int)esCoords.size(); i++) {
+    fprintf(dataFile, "%d ", esCoords[i].voltage);
+    fprintf(dataFile, "%f ", esCoords[i].phase);
+    fprintf(dataFile, "%f\n", esCoords[i].BER);
+  }
+
+  return CommandReturn::OK;
+
 }
 

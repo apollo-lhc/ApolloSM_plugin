@@ -69,12 +69,12 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   
   // *** ES_QUALIFIER I think assert all 0s
   for(int i = 0; i < 5; i++) {
-    assertNode(baseNode + "QUALIFIER" + std::to_string(i), ES_QUALIFIER);
+    assertNode(baseNode + "QUALIFIER_" + std::to_string(i), ES_QUALIFIER);
   }
 
   // ** ES_QUAL_MASK assert all 1s
   for(int i = 0; i < 5; i++) {
-    assertNode(baseNode + "QUAL_MASK" + std::to_string(i), ES_QUAL_MASK);
+    assertNode(baseNode + "QUAL_MASK_" + std::to_string(i), ES_QUAL_MASK);
   }
   
   // ** ES_SDATA_MASK 
@@ -190,14 +190,15 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
 }
 
 // ==================================================
-/*
-std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, float maxVoltage, float maxPhase, uint16_t prescale) {
+ 
+std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*maxVoltage*/, float /*maxPhase*/, uint16_t /*prescale*/) {
   
   // declare vector of vector of eye scan data
   //  std::vector<std::vector<eyescanData> esData;
   
   // Make sure all DRP attributes are set up for eye scan 
-  EnableEyeScan(baseNode, prescale);
+  //EnableEyeScan(baseNode, prescale);
+  EnableEyeScan(baseNode, 0x1);
   
   // declare vector of all eye scan plot coordinates
   std::vector<eyescanCoords> esCoords;
@@ -205,77 +206,85 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, float maxVolt
   eyescanCoords emptyCoord;
   // index for vector of coordinates
   int coordsIndex = 0;
-
+  
   // Generate all voltage and phase offsets to be used in eyescan based on range (maxes) specified
   //std::vector<std::vector<float>> offsets = GenerateOffsets(maxVoltage, maxPhase);
   
   // Calculate min voltage and phase from max
-  float minVoltage = -1*maxVoltage;
-  float minPhase = -1*maxPhase;
-
+  //  float minVoltage = -1*maxVoltage;
+  //  float minPhase = -1*maxPhase;
+ 
+  uint8_t maxVoltage = 127;
+  uint8_t minVoltage = -1*maxVoltage;
+  uint16_t maxPhase = 31;
+  uint16_t minPhase = -1*maxPhase;
+  
+  
   // Set offsets and perform eyescan
-  for(float voltage = minVoltage; voltage <= maxVoltage; voltage++) {
+  for(uint8_t voltage = minVoltage; voltage <= maxVoltage; voltage++) {
     // Allocate memory for new coordinate
     esCoords.push_back(emptyCoord);
     
     // set voltage offset
-    SetEyeScanVoltage(voltage);
+    SetEyeScanVoltage(baseNode, voltage);
     // check that voltage offset is actually set correctly
-    if(GetEyeScanVoltage() != voltage) {
-      // something went wrong, stop scan
-    }    
-    
-    for(float phase = minPhase; phase <= maxPhase; phase++) {
+//    if(GetEyeScanVoltage() != voltage) {
+//      // something went wrong, stop scan
+//    }    
+//    
+    for(uint16_t phase = minPhase; phase <= maxPhase; phase++) {
       // set phase offset
-      SetEyeScanPhase(phase);
+      SetEyeScanPhase(baseNode, phase);
       // check that phase offset is actually set correctly
-      if(GetEyeScanPhase() != phase) {
-	// something went wrong, stop scan
-      }
-      
+//      if(GetEyeScanPhase() != phase) {
+// 	// something went wrong, stop scan
+//      }
+//      
       // set voltage coordinate
       esCoords[coordsIndex].voltage = voltage; 
       // set phase coordinate
-      esCoords[coordsIndex].phase = phase;
+      esCoords[coordsIndex].phase = phase/(maxVoltage*2); // Normalized to 1, 0.5 on each side
       // Perform a single scan and set BER coordinate
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
-
+      
       // going to next coordinate/scan 
       coordsIndex++;
     }
   }
-
+  
   // IMPORTANT: in 2D array, if top left is [0][0], then negative phases are on the left and negative voltages are on the TOP. remember this when plotting. (even though eyes are symmetrical)  
-
+  
   return esCoords;
 }
-*/
+
 
 // ================================================================================
+/*
 // Functions
 
 // Generate all voltage and phase offsets to be used in eyescan based on range (maxes) specified
-//std::vector<std::vector<float>> ApolloSM::GenerateOffsets(float maxVoltage, float maxPhase) {
-//  // declare vectors
-//  std::vector<std::vector<float>> offsets;
-//  std::vector<float> empty;
-//  
-//  offsets.push_back(empty); // allocate memory for voltages
-//  offsets.push_back(empty); // allocate memory for phases  
-//  
-//  // calculate minimum voltage and phase
-//  float minVoltage = -1*maxVoltage;
-//  float minPhase = -1*maxPhase;
-//  
-//  // generate all voltage offsets
-//  for(i = minVoltage; i <= maxVoltage; i++) {
-//    offsets[VERT_INDEX].push_back(i);
-//  }
-//  
-//  // generate all phase offsets
-//  for(i = minPhase; i <= maxPhase; i++) {
-//    offsets[HORZ_INDEX].push_back(i);
-//  }
-//  
-//  return offsets;
-//}
+  std::vector<std::vector<float>> ApolloSM::GenerateOffsets(float maxVoltage, float maxPhase) {
+   // declare vectors
+   std::vector<std::vector<float>> offsets;
+   std::vector<float> empty;
+   
+   offsets.push_back(empty); // allocate memory for voltages
+   offsets.push_back(empty); // allocate memory for phases  
+   
+   // calculate minimum voltage and phase
+   float minVoltage = -1*maxVoltage;
+   float minPhase = -1*maxPhase;
+   
+   // generate all voltage offsets
+   for(i = minVoltage; i <= maxVoltage; i++) {
+     offsets[VERT_INDEX].push_back(i);
+   }
+   
+   // generate all phase offsets
+   for(i = minPhase; i <= maxPhase; i++) {
+     offsets[HORZ_INDEX].push_back(i);
+   }
+   
+   return offsets;
+ }
+*/

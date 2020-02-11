@@ -269,7 +269,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
       esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1, 0.5 on each side
       // Perform a single scan and set BER coordinate
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
-      esCoords[coordsIndex].BER = 0;
+      //esCoords[coordsIndex].BER = 0;
       // going to next coordinate/scan 
       coordsIndex++;
       resizeCount++;

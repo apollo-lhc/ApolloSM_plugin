@@ -236,22 +236,22 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 
 
     // set voltage offset
-    //    printf("writing voltage %x\n", voltage);
-    //if(0 > voltage) {
-    //  SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
-    //} else {
-    //  SetEyeScanVoltage(baseNode, voltage);
-    //}
-    // check that voltage offset is actually set correctly
+    printf("writing voltage %d\n", voltage);
+    if(0 > voltage) {
+      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
+    } else {
+      SetEyeScanVoltage(baseNode, voltage);
+    }
+    //check that voltage offset is actually set correctly
 //    if(GetEyeScanVoltage() != voltage) {
 //      // something went wrong, stop scan
 //    }    
 //    
     for(int phase = minPhase; phase <= maxPhase; phase++) {
       // set phase offset
-      //SetEyeScanPhase(baseNode, phase & 0xFFF);
+      SetEyeScanPhase(baseNode, phase & 0xFFF);
       
-	//      printf("writing phase %x\n", phase);
+      printf("writing phase %d\n", phase);
       // check that phase offset is actually set correctly
 //      if(GetEyeScanPhase() != phase) {
 // 	// something went wrong, stop scan
@@ -260,15 +260,15 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 
       esCoords.resize(resizeCount);
 
-      printf("%d ", (uint8_t)((-1*voltage) | 0x80));
-      printf("%d\n", phase & 0xFFF);
+      //      printf("%d ", (uint8_t)((-1*voltage) | 0x80));
+      //printf("%d\n", phase & 0xFFF);
 
       // set voltage coordinate
       esCoords[coordsIndex].voltage = voltage; 
       // set phase coordinate
       esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1, 0.5 on each side
       // Perform a single scan and set BER coordinate
-      //esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
+      esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
       esCoords[coordsIndex].BER = 0;
       // going to next coordinate/scan 
       coordsIndex++;

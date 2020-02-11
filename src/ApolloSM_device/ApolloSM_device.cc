@@ -499,11 +499,15 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 
   FILE * dataFile = fopen(fileName.c_str(), "w");
   
+  printf("The size of esCoords is: %d\n", (int)esCoords.size());
+
   for(int i = 0; i < (int)esCoords.size(); i++) {
     fprintf(dataFile, "%d ", esCoords[i].voltage);
     fprintf(dataFile, "%f ", esCoords[i].phase);
     fprintf(dataFile, "%f\n", esCoords[i].BER);
   }
+
+  fclose(dataFile);
 
   return CommandReturn::OK;
 

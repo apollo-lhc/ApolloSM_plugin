@@ -219,7 +219,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   //  float minPhase = -1*maxPhase;
 
   // For compiler error of unused argument
-  baseNode.append("0");
+  std::string bootleg = baseNode;
 
   uint8_t maxVoltage = 7;
   //uint8_t minVoltage = -1*maxVoltage;

@@ -150,16 +150,18 @@ void ApolloSM::SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t hor
 #define WAIT 0x1
 #define END 0x5
 #define RUN 0x1
-#define DONT_RUN 0x0
+#define STOP_RUN 0x0
 
 // Performs a single eye scan and returns the BER
 float ApolloSM::SingleEyeScan(std::string baseNode) {
   // confirm we are in WAIT, if not, stop scan
-  confirmNode(baseNode + "CTRL_STATUS", WAIT);
+  //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
+  RegWriteRegister(baseNode + "CONTROL", STOP_RUN);
 
   // assert RUN
-  assertNode(baseNode + "RUN", RUN);
-  
+  //  assertNode(baseNode + "RUN", RUN);
+  RegWriteRegister(baseNode + "CONTROL", RUN);  
+
   // poll END
   int count = 0;
   while(1000 > count) {
@@ -180,7 +182,8 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
   float sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
   
   // de-assert RUN (aka go back to WAIT)
-  assertNode(baseNode + "RUN", DONT_RUN);
+  //  assertNode(baseNode + "RUN", STOP_RUN);
+  RegWriteRegister(baseNode + "CONTROL", STOP_RUN);
 
   // Figure out the prescale to calculate BER
   uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
@@ -203,10 +206,11 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   // declare vector of all eye scan plot coordinates
   std::vector<eyescanCoords> esCoords;
   // empty coordinate
-  eyescanCoords emptyCoord;
+  //  eyescanCoords emptyCoord;
   // index for vector of coordinates
   int coordsIndex = 0;
-  
+  int resizeCount = 1;
+
   // Generate all voltage and phase offsets to be used in eyescan based on range (maxes) specified
   //std::vector<std::vector<float>> offsets = GenerateOffsets(maxVoltage, maxPhase);
   
@@ -227,8 +231,10 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   // Set offsets and perform eyescan
   for(int voltage = minVoltage; voltage <= maxVoltage; voltage++) {
     // Allocate memory for new coordinate
-    esCoords.push_back(emptyCoord);
+    //    esCoords.push_back(emptyCoord);
     
+
+
     // set voltage offset
     //    printf("writing voltage %x\n", voltage);
     //if(0 > voltage) {
@@ -251,6 +257,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 // 	// something went wrong, stop scan
 //      }
 //      
+
+      esCoords.resize(resizeCount);
+
       printf("%d ", (uint8_t)((-1*voltage) | 0x80));
       printf("%d\n", phase & 0xFFF);
 
@@ -263,6 +272,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
       esCoords[coordsIndex].BER = 0;
       // going to next coordinate/scan 
       coordsIndex++;
+      resizeCount++;
     }
   }
   

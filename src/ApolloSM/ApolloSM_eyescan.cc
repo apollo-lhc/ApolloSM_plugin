@@ -221,12 +221,12 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   // For compiler error of unused argument
   std::string bootleg = baseNode;
 
-  uint8_t maxVoltage = 7;
+  uint8_t maxVoltage = 126;
   //uint8_t minVoltage = -1*maxVoltage;
-  int minVoltage = -7;
-  uint16_t maxPhase = 3;
+  int minVoltage = -126;
+  uint16_t maxPhase = 30;
   //uint16_t minPhase = -31;
-  int minPhase = -3;
+  int minPhase = -30;
   
   // Set offsets and perform eyescan
   for(int voltage = minVoltage; voltage <= maxVoltage; voltage++) {
@@ -236,7 +236,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 
 
     // set voltage offset
-    printf("writing voltage %d\n", voltage);
+    //    printf("writing voltage %d\n", voltage);
     if(0 > voltage) {
       SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
     } else {
@@ -251,7 +251,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
       // set phase offset
       SetEyeScanPhase(baseNode, phase & 0xFFF);
       
-      printf("writing phase %d\n", phase);
+      //printf("writing phase %d\n", phase);
       // check that phase offset is actually set correctly
 //      if(GetEyeScanPhase() != phase) {
 // 	// something went wrong, stop scan

@@ -137,13 +137,9 @@ bool ApolloSM::PowerDownCM(int CM_ID, int wait /*seconds*/){
 }
 
 void ApolloSM::unblockAXI() {
-
-  int UNBLOCK = 1;
-
-  RegWriteRegister("C2C1_AXI_FW.UNBLOCK",     UNBLOCK);
-  RegWriteRegister("C2C1_AXILITE_FW.UNBLOCK", UNBLOCK);
-  RegWriteRegister("C2C2_AXI_FW.UNBLOCK",     UNBLOCK);
-  RegWriteRegister("C2C2_AXILITE_FW.UNBLOCK", UNBLOCK);
-  
+  RegWriteAction("C2C1_AXI_FW.UNBLOCK");
+  RegWriteAction("C2C1_AXILITE_FW.UNBLOCK");
+  RegWriteAction("C2C2_AXI_FW.UNBLOCK");
+  RegWriteAction("C2C2_AXILITE_FW.UNBLOCK");  
   return;
 }

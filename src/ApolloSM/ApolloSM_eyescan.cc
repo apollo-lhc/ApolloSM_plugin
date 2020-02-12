@@ -234,11 +234,12 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
     //    esCoords.push_back(emptyCoord);
     
 
-
     // set voltage offset
     //    printf("writing voltage %d\n", voltage);
     if(0 > voltage) {
-      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
+      uint8_t unsignedV = (uint8_t)((-1*voltage) | (0x80));
+      //      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
+      SetEyeScanVoltage(baseNode, unsignedV);
     } else {
       SetEyeScanVoltage(baseNode, voltage);
     }

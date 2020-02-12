@@ -134,6 +134,11 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Usage: \n"\
 	       "  dump_debug\n");
 
+    AddCommand("unblockAXI",&ApolloSMDevice::unblockAXI,
+	       "Unblocks all four C2CX AXI and AXILITE bits\n"\
+	       "Usage: \n"\
+	       "  unblockAXI\n");
+
 }
 
 //If there is a file currently open, it closes it                                                             
@@ -348,3 +353,12 @@ CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strAr
   outfile.close();  
   return CommandReturn::OK;
 }
+
+CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strArg*/,
+						std::vector<uint64_t> /*intArg*/){
+
+  SM->unblockAXI();  
+
+  return CommandReturn::OK;						   
+}
+						 

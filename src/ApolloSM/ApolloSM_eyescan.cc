@@ -3,6 +3,8 @@
 #include <ApolloSM/ApolloSM_Exceptions.hh> // EYESCAN_ERROR
 #include <vector>
 
+#include <math.h> // pow
+
 // ================================================================================
 // Definitions
 
@@ -189,7 +191,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
   uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
 
   // return BER
-  return errorCount/(prescale*sampleCount);
+  return errorCount/(pow(2,(1+prescale))*sampleCount);
 }
 
 // ==================================================

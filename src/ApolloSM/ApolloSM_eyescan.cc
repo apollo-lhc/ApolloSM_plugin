@@ -183,12 +183,17 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
   float errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
   float sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
   
+  // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
+
+  // Figure out the prescale to calculate BER
+  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
+
   // de-assert RUN (aka go back to WAIT)
   //  assertNode(baseNode + "RUN", STOP_RUN);
   RegWriteRegister(baseNode + "CONTROL", STOP_RUN);
 
   // Figure out the prescale to calculate BER
-  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
+  //  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
 
   // return BER
   return errorCount/(pow(2,(1+prescale))*sampleCount);
@@ -226,9 +231,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   uint8_t maxVoltage = 126;
   //uint8_t minVoltage = -1*maxVoltage;
   int minVoltage = -126;
-  uint16_t maxPhase = 126;
+  uint16_t maxPhase = 254;
   //uint16_t minPhase = -31;
-  int minPhase = -126;
+  int minPhase = -254;
   
   // Set offsets and perform eyescan
   for(int voltage = minVoltage; voltage <= maxVoltage; voltage++) {
@@ -250,7 +255,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 //      // something went wrong, stop scan
 //    }    
 //    
-    for(int phase = minPhase; phase <= maxPhase; phase+=4) {
+    for(int phase = minPhase; phase <= maxPhase; phase+=8) {
       // set phase offset
       SetEyeScanPhase(baseNode, phase & 0xFFF);
       

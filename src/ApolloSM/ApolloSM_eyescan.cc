@@ -102,8 +102,23 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
 //    throwException("invalid fpga id");
 //  }
 
-  printf("the size of RX_DATA_WIDTH is: %x", GetRegSize(baseNode + "RX_DATA_WIDTH"));
-  printf("the mask of RX_DATA_WIDTH is: %x", GetRegMask(baseNode + "RX_DATA_WIDTH"));
+  uint32_t mask = GetRegMask(baseNode + "RX_DATA_WIDTH");
+  int count;
+  for(count = 0; mask; mask >>= 1) {
+    count += mask&1;
+  }
+  printf("count is %d\n", count);
+
+//  FPGA_ID = 0;
+//  uint32_t busSize = GetRegSize(baseNode+"RX_DATA_WIDTH");
+//  if(SEVEN_BUS_SIZE == busSize) {
+//    FPGA_ID = SEVEN_FPGA;
+//  } else if (USP_BUS_SIZE == busSize) {
+//    FPGA_ID = USP_FPGA;
+//  }
+//  if(0 == FPGA_ID) {
+//    throwException("bus size does not match any known FPGA bus size\n");
+//  }
 
   // For reading, so I use does not equal, !=, or mask, &? 
 
@@ -156,12 +171,13 @@ float GetEyeScanVoltage() {
   return i;
 }
 
-void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset) {
+void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign) {
   // change int to hex
   // write the hex
 
   // write the hex
-  RegWriteRegister(baseNode + "VERT_OFFSET", vertOffset);
+  RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
+  RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
 }
 
 
@@ -173,32 +189,23 @@ float GetEyeScanPhase() {
   return i;
 }
 
-void ApolloSM::SetEyeScanPhase(std::string baseNode, uint16_t horzOffset) {
+void ApolloSM::SetEyeScanPhase(std::string baseNode, uint16_t horzOffset, uint32_t sign) {
 
   // change int to hex
   //  uint16_t horz_offset = 
 
   // write the hex
-  RegWriteRegister(baseNode + "HORZ_OFFSET", horzOffset);
+  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
+  RegWriteRegister(baseNode + "HORZ_OFFSET_SIGN", sign);
 }
  
-void ApolloSM::SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t horzOffset) {
+void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint16_t /*horzOffset*/) {
   // Set offsets
 
   // set voltage offset
-  SetEyeScanVoltage(baseNode, vertOffset);
-  // check that voltage offset is actually set correctly
-//  if(GetEyeScanVoltage() != vertOffset) {
-//    throwException("Cannot set voltage offset properly\n");
-//  }    
-//  
+  //  SetEyeScanVoltage(baseNode, vertOffset);
   // set phase offset
-  SetEyeScanPhase(baseNode, horzOffset);
-  // check that phase offset is actually set correctly
-//  if(GetEyeScanPhase() != horzOffset) {
-//    throwException("Cannot set voltage phase properly\n");
-//  }
-//    
+  //  SetEyeScanPhase(baseNode, horzOffset);
 }
  
 // ==================================================
@@ -239,8 +246,9 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
   
   // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
 
-  // Figure out the prescale to calculate BER
+  // Figure out the prescale and data width to calculate BER
   uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
+  uint32_t dataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
 
   // de-assert RUN (aka go back to WAIT)
   //  assertNode(baseNode + "RUN", STOP_RUN);
@@ -250,7 +258,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
   //  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
 
   // return BER
-  return errorCount/(pow(2,(1+prescale))*sampleCount);
+  return errorCount/(pow(2,(1+prescale))*sampleCount*dataWidth);
 }
 
 // ==================================================
@@ -282,34 +290,37 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   for(int voltage = minVoltage; voltage <= maxVoltage; voltage++) {
     
     // set voltage offset
-    if(0 > voltage) {
-      uint8_t unsignedV = (uint8_t)((-1*voltage) | (0x80));
-      //      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
-      SetEyeScanVoltage(baseNode, unsignedV);
+//    if(0 > voltage) {
+    // The OR is to set the 8th bit of VERT_OFFSET which tells VERT_OFFSET we have a negative voltage
+//      uint8_t unsignedV = (uint8_t)((-1*voltage) | (0x80));
+//      //      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
+//      SetEyeScanVoltage(baseNode, unsignedV);
+//    } else {
+//      SetEyeScanVoltage(baseNode, voltage);
+//    }
+//
+
+    uint32_t POSITIVE = 0;
+    uint32_t NEGATIVE = 1;
+
+    if(voltage < 0) {
+      SetEyeScanVoltage(baseNode, (uint8_t)(-1*voltage), NEGATIVE); 
     } else {
-      SetEyeScanVoltage(baseNode, voltage);
+      SetEyeScanVoltage(baseNode, voltage, POSITIVE);
     }
-    //check that voltage offset is actually set correctly
-//    if(GetEyeScanVoltage() != voltage) {
-//      // something went wrong, stop scan
-//    }    
-//    
     for(int phase = minPhase; phase <= maxPhase; phase+=8) {
       // set phase offset
-      SetEyeScanPhase(baseNode, phase & 0xFFF);
-      
-      //printf("writing phase %d\n", phase);
-      // check that phase offset is actually set correctly
-//      if(GetEyeScanPhase() != phase) {
-// 	// something went wrong, stop scan
-//      }
-//      
+      //      SetEyeScanPhase(baseNode, phase & 0xFFF);
+      if(phase < 0) {
+	SetEyeScanPhase(baseNode, phase & 0x7FF, NEGATIVE);
+      } else {
+	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
+      }
 
       esCoords.resize(resizeCount);
 
-      // record voltage coordinate
+      // record voltage and phase coordinates
       esCoords[coordsIndex].voltage = voltage; 
-      // record phase coordinate
       esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1 UI, 0.5 UI on each side
       // Perform a single scan and record BER coordinate
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode);

@@ -313,9 +313,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   uint8_t maxVoltage = 126;
   //uint8_t minVoltage = -1*maxVoltage;
   int minVoltage = -126;
-  uint16_t maxPhase = 254;
+  uint16_t maxPhase = 512;
   //uint16_t minPhase = -31;
-  int minPhase = -254;
+  int minPhase = -512;
   
   // Set offsets and perform eyescan
   for(int voltage = minVoltage; voltage <= maxVoltage; voltage++) {

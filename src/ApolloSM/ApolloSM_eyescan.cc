@@ -21,6 +21,51 @@
 #define RX_DATA_WIDTH 0x4 // We use 32 bit
 #define RX_INT_DATAWIDTH 0x1 // We use 32 bit
 
+#define SEVEN_FPGA 1
+#define SEVEN_BUS_SIZE 3
+#define USP_FPGA 2
+#define USP_BUS_SIZE 4
+// ==================================================
+// identifies what FPGA to scan
+
+//std::map<std::string, int> static const FPGA_IDMap = 
+//  {
+//    {"seven", 1},
+//    {"usp", 2}
+//  };
+//
+int static volatile FPGA_ID;
+//
+//int static getFPGA_ID() {
+//  return FPGA_ID;
+//}
+//
+//void static setFPGA_ID(std::string ID) {
+//  it = FPGA_IDMap.find(ID);
+//  if(it != FPGA_IDMap.end()) {
+//    FPGA_ID = it->second;
+//  }
+//}
+//
+//void static zeroFPGA_ID() {
+//  FPGA_ID = 0;
+//} 
+// ==================================================
+// identifies bus data width
+std::map<int, int> static const busWidthMap = 
+  {
+    // read hex value (DRP encoding) vs bus width (attribute encoding)
+    {2, 16},
+    {3, 20},
+    {4, 32},
+    {5, 40},
+    {6, 64},
+    {7, 80}
+    // currently unsupported values
+//,
+    //{8, 128},
+    //{9, 160}
+  };
 // ==================================================
 
 // Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
@@ -49,8 +94,17 @@ void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
 // To set up all attributes for an eye scan
 void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // ** must do this
-  // *** not quite sure
-  
+  // *** not quite sure 
+
+//  zeroFPGA_ID();
+//  setFPGA_ID(fpga_id);
+//  if(0 == getFPGA_ID()) {
+//    throwException("invalid fpga id");
+//  }
+
+  printf("the size of RX_DATA_WIDTH is: %x", GetRegSize(baseNode + "RX_DATA_WIDTH"));
+  printf("the mask of RX_DATA_WIDTH is: %x", GetRegMask(baseNode + "RX_DATA_WIDTH"));
+
   // For reading, so I use does not equal, !=, or mask, &? 
 
   // ** ES_EYE_SCAN_EN assert 1
@@ -158,11 +212,11 @@ void ApolloSM::SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t hor
 float ApolloSM::SingleEyeScan(std::string baseNode) {
   // confirm we are in WAIT, if not, stop scan
   //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
-  RegWriteRegister(baseNode + "CONTROL", STOP_RUN);
+  RegWriteRegister(baseNode + "RUN", STOP_RUN);
 
   // assert RUN
   //  assertNode(baseNode + "RUN", RUN);
-  RegWriteRegister(baseNode + "CONTROL", RUN);  
+  RegWriteRegister(baseNode + "RUN", RUN);  
 
   // poll END
   int count = 0;
@@ -190,7 +244,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
 
   // de-assert RUN (aka go back to WAIT)
   //  assertNode(baseNode + "RUN", STOP_RUN);
-  RegWriteRegister(baseNode + "CONTROL", STOP_RUN);
+  RegWriteRegister(baseNode + "RUN", STOP_RUN);
 
   // Figure out the prescale to calculate BER
   //  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
@@ -203,27 +257,16 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
  
 std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*maxVoltage*/, float /*maxPhase*/, uint16_t /*prescale*/) {
   
-  // declare vector of vector of eye scan data
-  //  std::vector<std::vector<eyescanData> esData;
-  
   // Make sure all DRP attributes are set up for eye scan 
   //EnableEyeScan(baseNode, prescale);
   //EnableEyeScan(baseNode, 0x1);
   
   // declare vector of all eye scan plot coordinates
   std::vector<eyescanCoords> esCoords;
-  // empty coordinate
-  //  eyescanCoords emptyCoord;
+
   // index for vector of coordinates
   int coordsIndex = 0;
   int resizeCount = 1;
-
-  // Generate all voltage and phase offsets to be used in eyescan based on range (maxes) specified
-  //std::vector<std::vector<float>> offsets = GenerateOffsets(maxVoltage, maxPhase);
-  
-  // Calculate min voltage and phase from max
-  //  float minVoltage = -1*maxVoltage;
-  //  float minPhase = -1*maxPhase;
 
   // For compiler error of unused argument
   std::string bootleg = baseNode;
@@ -237,12 +280,8 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   
   // Set offsets and perform eyescan
   for(int voltage = minVoltage; voltage <= maxVoltage; voltage++) {
-    // Allocate memory for new coordinate
-    //    esCoords.push_back(emptyCoord);
     
-
     // set voltage offset
-    //    printf("writing voltage %d\n", voltage);
     if(0 > voltage) {
       uint8_t unsignedV = (uint8_t)((-1*voltage) | (0x80));
       //      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
@@ -268,56 +307,23 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 
       esCoords.resize(resizeCount);
 
-      //      printf("%d ", (uint8_t)((-1*voltage) | 0x80));
-      //printf("%d\n", phase & 0xFFF);
-
-      // set voltage coordinate
+      // record voltage coordinate
       esCoords[coordsIndex].voltage = voltage; 
-      // set phase coordinate
-      esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1, 0.5 on each side
-      // Perform a single scan and set BER coordinate
+      // record phase coordinate
+      esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1 UI, 0.5 UI on each side
+      // Perform a single scan and record BER coordinate
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
       printf("%f\n", esCoords[coordsIndex].BER);
-      //esCoords[coordsIndex].BER = 0;
+      
       // going to next coordinate/scan 
       coordsIndex++;
       resizeCount++;
     }
   }
-  
-  // IMPORTANT: in 2D array, if top left is [0][0], then negative phases are on the left and negative voltages are on the TOP. remember this when plotting. (even though eyes are symmetrical)  
-  
+
+//  // reset FPGA_ID
+//  zeroFPGA_ID();
+//  
   return esCoords;
 }
 
-
-// ================================================================================
-/*
-// Functions
-
-// Generate all voltage and phase offsets to be used in eyescan based on range (maxes) specified
-  std::vector<std::vector<float>> ApolloSM::GenerateOffsets(float maxVoltage, float maxPhase) {
-   // declare vectors
-   std::vector<std::vector<float>> offsets;
-   std::vector<float> empty;
-   
-   offsets.push_back(empty); // allocate memory for voltages
-   offsets.push_back(empty); // allocate memory for phases  
-   
-   // calculate minimum voltage and phase
-   float minVoltage = -1*maxVoltage;
-   float minPhase = -1*maxPhase;
-   
-   // generate all voltage offsets
-   for(i = minVoltage; i <= maxVoltage; i++) {
-     offsets[VERT_INDEX].push_back(i);
-   }
-   
-   // generate all phase offsets
-   for(i = minPhase; i <= maxPhase; i++) {
-     offsets[HORZ_INDEX].push_back(i);
-   }
-   
-   return offsets;
- }
-*/

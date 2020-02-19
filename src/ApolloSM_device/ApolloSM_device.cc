@@ -146,7 +146,7 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("SetOffsets",&ApolloSMDevice::SetOffsets,
 	       "Set up voltage and phase offsets for eyescan\n"   \
 	       "Usage: \n"                              \
-	       "  SetOffsets <voltage> <phase> \n");
+	       "  SetOffsets <base node> <voltage> <phase> \n");
     AddCommandAlias("vpoff","SetOffsets");
 
     AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
@@ -158,7 +158,8 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
 	       "Perform an eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  EyeScan <base node>\n");
+	       "  EyeScan <base node>\n", 
+	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
 
 }

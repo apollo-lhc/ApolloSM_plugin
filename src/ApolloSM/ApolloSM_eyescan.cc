@@ -215,14 +215,15 @@ float GetEyeScanPhase() {
   return i;
 }
 
-void ApolloSM::SetEyeScanPhase(std::string baseNode, uint16_t horzOffset, uint32_t sign) {
+void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset) {//, uint32_t /*sign*/) {
 
   // change int to hex
   //  uint16_t horz_offset = 
 
   // write the hex
-  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
-  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
+  //  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
+  //  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
+  RegWriteRegister(baseNode + "HORZ_OFFSET", horzOffset + 4096);
 }
  
 void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint16_t /*horzOffset*/) {
@@ -344,13 +345,14 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
 
       // set phase offset
       //      SetEyeScanPhase(baseNode, phase & 0xFFF);
-      if(phase < 0) {
-	//	SetEyeScanPhase(baseNode, phase & 0x7FF, NEGATIVE);
-	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
-      } else {
-	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
-      }
-
+//      if(phase < 0) {
+//	SetEyeScanPhase(baseNode, phase & 0x7FF, NEGATIVE);
+//	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
+//      } else {
+//	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
+//      }
+//
+      SetEyeScanPhase(baseNode, phase);
       esCoords.resize(resizeCount);
 
       // record voltage and phase coordinates

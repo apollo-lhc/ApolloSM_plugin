@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <math.h> // pow
+#include <map>
 
 // ================================================================================
 // Definitions
@@ -273,8 +274,13 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
 
   // Figure out the prescale and data width to calculate BER
   uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
-  uint32_t dataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
-
+  uint32_t regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
+  int regDataWidthInt = (int)regDataWidth;
+  //std::map<int, int>::iterator it = busWidthMap.find(regDataWidthInt);
+  // should check if int is at the end
+  //  int actualDataWidth = it->second;
+  int actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+  
   // de-assert RUN (aka go back to WAIT)
   //  assertNode(baseNode + "RUN", STOP_RUN);
   RegWriteRegister(baseNode + "RUN", STOP_RUN);
@@ -283,7 +289,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
   //  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
 
   // return BER
-  return errorCount/(pow(2,(1+prescale))*sampleCount*dataWidth);
+  return errorCount/(pow(2,(1+prescale))*sampleCount*actualDataWidth);
 }
 
 // ==================================================

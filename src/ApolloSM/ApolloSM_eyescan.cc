@@ -133,28 +133,53 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   assertNode(baseNode + "PRESCALE", prescale);
 
   // *** PMA_CFG confirm all 0s
-  confirmNode(baseNode + "PMA_CFG", PMA_CFG);
-
-  // ** PMA_RSV2[5] assert 1 OB
-  assertNode(baseNode + "PMA_RSV2", PMA_RSV2);
+  if(SEVEN_BUS_SIZE == count) {
+    confirmNode(baseNode + "PMA_CFG", PMA_CFG);
+  }
   
+  // ** PMA_RSV2[5] assert 1 
+  if(SEVEN_BUS_SIZE == count) {
+    assertNode(baseNode + "PMA_RSV2", PMA_RSV2);
+  }
+  
+  int qualSize = 0;
+  if(SEVEN_BUS_SIZE == count) {
+    qualSize = 5;
+  } else {
+    qualSize = 10;
+  }
+
   // *** ES_QUALIFIER I think assert all 0s
-  for(int i = 0; i < 5; i++) {
+  for(int i = 0; i < qualSize; i++) {
     assertNode(baseNode + "QUALIFIER_" + std::to_string(i), ES_QUALIFIER);
   }
 
   // ** ES_QUAL_MASK assert all 1s
-  for(int i = 0; i < 5; i++) {
+  for(int i = 0; i < qualSize; i++) {
     assertNode(baseNode + "QUAL_MASK_" + std::to_string(i), ES_QUAL_MASK);
   }
   
-  // ** ES_SDATA_MASK 
-  assertNode(baseNode + "OFFSET_DATA_MASK_0", 0x00FF);
-  assertNode(baseNode + "OFFSET_DATA_MASK_1", 0x0000);
-  assertNode(baseNode + "OFFSET_DATA_MASK_2", 0xFF00);
-  assertNode(baseNode + "OFFSET_DATA_MASK_3", 0xFFFF);
-  assertNode(baseNode + "OFFSET_DATA_MASK_4", 0xFFFF);
- 
+  // ** ES_SDATA_MASK
+  // use a for loop or something
+  if(SEVEN_BUS_SIZE == count) {
+    assertNode(baseNode + "OFFSET_DATA_MASK_0", 0x00FF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_1", 0x0000);
+    assertNode(baseNode + "OFFSET_DATA_MASK_2", 0xFF00);
+    assertNode(baseNode + "OFFSET_DATA_MASK_3", 0xFFFF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_4", 0xFFFF);
+  } else {
+    assertNode(baseNode + "OFFSET_DATA_MASK_0", 0xFFFF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_1", 0xFFFF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_2", 0xFFFF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_3", 0x0000);
+    assertNode(baseNode + "OFFSET_DATA_MASK_4", 0x0000);
+    assertNode(baseNode + "OFFSET_DATA_MASK_5", 0xFFFF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_6", 0xFFFF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_7", 0xFFFF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_8", 0xFFFF);
+    assertNode(baseNode + "OFFSET_DATA_MASK_9", 0xFFFF);
+  }
+
   // ** RX_DATA_WIDTH confirm 0x4 
   confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH);
   
@@ -196,7 +221,7 @@ void ApolloSM::SetEyeScanPhase(std::string baseNode, uint16_t horzOffset, uint32
 
   // write the hex
   RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
-  RegWriteRegister(baseNode + "HORZ_OFFSET_SIGN", sign);
+  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
 }
  
 void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint16_t /*horzOffset*/) {
@@ -308,7 +333,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
     } else {
       SetEyeScanVoltage(baseNode, voltage, POSITIVE);
     }
+
     for(int phase = minPhase; phase <= maxPhase; phase+=8) {
+
       // set phase offset
       //      SetEyeScanPhase(baseNode, phase & 0xFFF);
       if(phase < 0) {

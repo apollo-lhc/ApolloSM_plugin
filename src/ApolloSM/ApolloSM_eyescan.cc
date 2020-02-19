@@ -345,7 +345,8 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
       // set phase offset
       //      SetEyeScanPhase(baseNode, phase & 0xFFF);
       if(phase < 0) {
-	SetEyeScanPhase(baseNode, phase & 0x7FF, NEGATIVE);
+	//	SetEyeScanPhase(baseNode, phase & 0x7FF, NEGATIVE);
+	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
       } else {
 	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
       }

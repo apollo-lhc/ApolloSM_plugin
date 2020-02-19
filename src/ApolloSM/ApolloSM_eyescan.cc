@@ -223,7 +223,8 @@ void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset
   // write the hex
   //  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
   //  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
-  RegWriteRegister(baseNode + "HORZ_OFFSET", horzOffset + 4096);
+  // Only the last twelve bits are allowed. 
+  RegWriteRegister(baseNode + "HORZ_OFFSET", (horzOffset + 4096)&0x0FFF);
 }
  
 void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint16_t /*horzOffset*/) {

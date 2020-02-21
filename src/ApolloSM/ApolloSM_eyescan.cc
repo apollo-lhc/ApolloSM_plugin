@@ -268,7 +268,8 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
     
     // poll END
     int count = 0;
-    while(1000 > count) {
+    // one second max
+    while(1000000 > count) {
       if(END == RegReadRegister(baseNode + "CTRL_STATUS")) {
 	// Scan has ended
 	break;
@@ -276,7 +277,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
       // sleep 1 millisecond
       usleep(1000);
       count++;
-      if(1000 == count) {
+      if(1000000 == count) {
 	throwException("BER sequence did not reach end in one second\n");
       }
     }	  

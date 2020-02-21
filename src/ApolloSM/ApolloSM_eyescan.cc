@@ -243,55 +243,84 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 #define RUN 0x1
 #define STOP_RUN 0x0
 
+#define PRECISION 0.00000001 // 10^-9
+
+#define PRESCALE_STEP 3
+#define MAX_PRESCALE 12
+
 // Performs a single eye scan and returns the BER
 float ApolloSM::SingleEyeScan(std::string baseNode) {
-  // confirm we are in WAIT, if not, stop scan
-  //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
-  RegWriteRegister(baseNode + "RUN", STOP_RUN);
 
-  // assert RUN
-  //  assertNode(baseNode + "RUN", RUN);
-  RegWriteRegister(baseNode + "RUN", RUN);  
+  float BER;
+ 
+  bool loop;
 
-  // poll END
-  int count = 0;
-  while(1000 > count) {
-    if(END == RegReadRegister(baseNode + "CTRL_STATUS")) {
-      // Scan has ended
-      break;
+  loop = true;
+
+  while(loop) {
+    // confirm we are in WAIT, if not, stop scan
+    //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
+    RegWriteRegister(baseNode + "RUN", STOP_RUN);
+    
+    // assert RUN
+    //  assertNode(baseNode + "RUN", RUN);
+    RegWriteRegister(baseNode + "RUN", RUN);  
+    
+    // poll END
+    int count = 0;
+    while(1000 > count) {
+      if(END == RegReadRegister(baseNode + "CTRL_STATUS")) {
+	// Scan has ended
+	break;
+      }
+      // sleep 1 millisecond
+      usleep(1000);
+      count++;
+      if(1000 == count) {
+	throwException("BER sequence did not reach end in one second\n");
+      }
+    }	  
+    
+    // read error and sample count
+    float errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
+    float sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
+    
+    // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
+    
+    // Figure out the prescale and data width to calculate BER
+    uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
+    uint32_t regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
+    int regDataWidthInt = (int)regDataWidth;
+    //std::map<int, int>::iterator it = busWidthMap.find(regDataWidthInt);
+    // should check if int is at the end
+    //  int actualDataWidth = it->second;
+    int actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+    
+    // de-assert RUN (aka go back to WAIT)
+    //  assertNode(baseNode + "RUN", STOP_RUN);
+    RegWriteRegister(baseNode + "RUN", STOP_RUN);
+    
+    // Figure out the prescale to calculate BER
+    //  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
+    
+    // calculate BER
+    BER = errorCount/(pow(2,(1+prescale))*sampleCount*actualDataWidth);
+    
+    // If we are not in the precision we want AND did not yet perform an eye scan with the max prescale
+    if((BER < PRECISION) && prescale != MAX_PRESCALE) {
+      prescale+=PRESCALE_STEP;
+      if(prescale > MAX_PRESCALE) {
+	prescale = MAX_PRESCALE;
+      }
+      assertNode(baseNode + "PRESCALE", prescale);
+      // useless but just to be paranoid
+      loop = true;
+    } else {
+      loop = false;
     }
-    // sleep 1 millisecond
-    usleep(1000);
-    count++;
-    if(1000 == count) {
-      throwException("BER sequence did not reach end in one second\n");
-    }
-  }	  
+  }
 
-  // read error and sample count
-  float errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
-  float sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
-  
-  // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
-
-  // Figure out the prescale and data width to calculate BER
-  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
-  uint32_t regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
-  int regDataWidthInt = (int)regDataWidth;
-  //std::map<int, int>::iterator it = busWidthMap.find(regDataWidthInt);
-  // should check if int is at the end
-  //  int actualDataWidth = it->second;
-  int actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
-  
-  // de-assert RUN (aka go back to WAIT)
-  //  assertNode(baseNode + "RUN", STOP_RUN);
-  RegWriteRegister(baseNode + "RUN", STOP_RUN);
-
-  // Figure out the prescale to calculate BER
-  //  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
-
-  // return BER
-  return errorCount/(pow(2,(1+prescale))*sampleCount*actualDataWidth);
+  return BER;
 }
 
 // ==================================================
@@ -315,12 +344,12 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   uint8_t maxVoltage = 126;
   //uint8_t minVoltage = -1*maxVoltage;
   int minVoltage = -126;
-  uint16_t maxPhase = 127;
+  uint16_t maxPhase = 31;
   //uint16_t minPhase = -31;
-  int minPhase = -127;
+  int minPhase = -31;
   
   // Set offsets and perform eyescan
-  for(int voltage = minVoltage; voltage <= maxVoltage; voltage++) {
+  for(int voltage = minVoltage; voltage <= maxVoltage; voltage+=8) {
     
     // set voltage offset
 //    if(0 > voltage) {
@@ -342,7 +371,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
       SetEyeScanVoltage(baseNode, voltage, POSITIVE);
     }
 
-    for(int phase = minPhase; phase <= maxPhase; phase+=4) {
+    for(int phase = minPhase; phase <= maxPhase; phase+=8) {
 
       // set phase offset
       //      SetEyeScanPhase(baseNode, phase & 0xFFF);

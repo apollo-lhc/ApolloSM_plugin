@@ -257,6 +257,9 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
 
   loop = true;
 
+  // Re-zero prescale
+  assertNode(baseNode + "PRESCALE", 0x1);
+
   while(loop) {
     // confirm we are in WAIT, if not, stop scan
     //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
@@ -305,7 +308,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
     //  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
     
     // calculate BER
-    BER = errorCount/(pow(2,(1+prescale))*sampleCount*actualDataWidth);
+    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     
     // If we are not in the precision we want AND did not yet perform an eye scan with the max prescale
     if((BER < PRECISION) && prescale != MAX_PRESCALE) {
@@ -391,7 +394,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
       esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1 UI, 0.5 UI on each side
       // Perform a single scan and record BER coordinate
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
-      printf("%f\n", esCoords[coordsIndex].BER);
+      printf("%.9f\n", esCoords[coordsIndex].BER);
       
       // going to next coordinate/scan 
       coordsIndex++;

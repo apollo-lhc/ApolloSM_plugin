@@ -464,7 +464,23 @@ int main(int argc, char** argv) {
   if(NULL != SM) {
     delete SM;
   }
+
+  std::stringstream outfileName;
+  outfileName << "/var/log/Apollo_debug_dump_";  
+
+  char buffer[128];
+  time_t unixTime=time(NULL);
+  struct tm * timeinfo = localtime(&unixTime);
+  strftime(buffer,128,"%F-%T-%Z",timeinfo);
+  outfileName << buffer;
+
+  outfileName << ".dat";
   
+  std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);
+  outfile << outfileName.str() << std::endl;
+  SM->DebugDump(outfile);
+  outfile.close();  
+
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
   syslog(LOG_INFO,"SM boot Daemon ended\n");

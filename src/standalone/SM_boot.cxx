@@ -459,12 +459,8 @@ int main(int argc, char** argv) {
     SM->RegReadRegister("SLAVE_I2C.HB_SET2");
 
   }
-  
-  //Clean up
-  if(NULL != SM) {
-    delete SM;
-  }
 
+  //Dump registers on power down
   std::stringstream outfileName;
   outfileName << "/var/log/Apollo_debug_dump_";  
 
@@ -480,6 +476,12 @@ int main(int argc, char** argv) {
   outfile << outfileName.str() << std::endl;
   SM->DebugDump(outfile);
   outfile.close();  
+
+  
+  //Clean up
+  if(NULL != SM) {
+    delete SM;
+  }
 
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);

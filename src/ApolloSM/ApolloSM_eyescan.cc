@@ -331,6 +331,10 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
  
 std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIncrement, int vertIncrement, int maxPhase) {//, float /*maxVoltage*/, float /*maxPhase*/, uint16_t /*prescale*/) {
   
+  if(1/horzIncrement != 0) {
+    throwException("Please enter a horizontal increment divisible into 1\n");
+  }
+
   // Make sure all DRP attributes are set up for eye scan 
   //EnableEyeScan(baseNode, prescale);
   //EnableEyeScan(baseNode, 0x1);
@@ -353,6 +357,11 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
   // Set offsets and perform eyescan
   // +1 helps with the fact that 127 is a prime number
   for(int voltage = minVoltage; voltage <= (maxVoltage+1); voltage+=vertIncrement) {
+
+    if(128 == voltage) {
+      voltage = 127;
+    }
+
     uint32_t POSITIVE = 0;
     uint32_t NEGATIVE = 1;
 

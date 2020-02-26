@@ -158,7 +158,7 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
 	       "Perform an eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  EyeScan <base node>\n", 
+	       "  EyeScan <base node> <file> <horizontal increment double> <vertical increment integer> <max phase integer> \n", 
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
 
@@ -469,8 +469,8 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
 
 CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
 
-  // For now we only want the base node and a txt file to write to
-  if(2 != strArg.size()) {
+  // base node, text file, horizontal increment double, vertical increment integer, max phase integer
+  if(5 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
   
@@ -488,7 +488,13 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   printf("The base node is %s\n", baseNode.c_str());
   printf("The file to write to is %s\n", fileName.c_str());
   
-  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode);
+  double horzIncrement = atof(strArg[2].c_str());
+  int vertIncrement = atoi(strArg[3].c_str());
+  int maxPhase = atoi(strArg[4].c_str());
+
+  printf("We have %f %d %d\n", horzIncrement, vertIncrement, maxPhase);
+
+  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement, maxPhase);
 
 //  int fd = open(fileName, O_CREAT | O_RDWR, 0644);
 //

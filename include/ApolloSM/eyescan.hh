@@ -4,8 +4,8 @@
 // All necessary information to plot an eyescan
 struct eyescanCoords {
   int voltage;
-  float phase;
-  float BER;
+  double phase;
+  double BER;
 };
 
 #endif

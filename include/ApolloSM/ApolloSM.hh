@@ -43,7 +43,7 @@ public:
   float SingleEyeScan(std::string baseNode);
   void EnableEyeScan(std::string baseNode, uint32_t prescale);
   void SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t horzOffset);
-  std::vector<eyescanCoords> EyeScan(std::string baseNode);//, float maxVoltage, float maxPhase, uint16_t prescale);
+  std::vector<eyescanCoords> EyeScan(std::string baseNode, double horzIncrement, int vertIncrement, int maxPhase);//, float maxVoltage, float maxPhase, uint16_t prescale);
   
 
 private:  

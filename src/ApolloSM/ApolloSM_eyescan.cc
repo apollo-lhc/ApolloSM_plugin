@@ -303,10 +303,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
     // de-assert RUN (aka go back to WAIT)
     //  assertNode(baseNode + "RUN", STOP_RUN);
     RegWriteRegister(baseNode + "RUN", STOP_RUN);
-    
-    // Figure out the prescale to calculate BER
-    //  uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
-    
+        
     // calculate BER
     BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     
@@ -328,8 +325,11 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
 }
 
 // ==================================================
+
+#define MAXUI 0.5
+#define MINUI -0.5
  
-std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*maxVoltage*/, float /*maxPhase*/, uint16_t /*prescale*/) {
+std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIncrement, int vertIncrement, int maxPhase) {//, float /*maxVoltage*/, float /*maxPhase*/, uint16_t /*prescale*/) {
   
   // Make sure all DRP attributes are set up for eye scan 
   //EnableEyeScan(baseNode, prescale);
@@ -342,58 +342,17 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
   int coordsIndex = 0;
   int resizeCount = 1;
 
-  // For compiler error of unused argument
-  std::string bootleg = baseNode;
-
   // =========================
   uint8_t maxVoltage = 127;
-  //uint8_t minVoltage = -1*maxVoltage;
   int minVoltage = -127;
-  int vertStepSize = 15;
 
-  float maxPhaseUI = 0.5;
-  float minPhaseUI = maxPhaseUI*(-1);
-  float UIWidth = maxPhaseUI - minPhaseUI;
-  float horzStepUI = 0.1; //atof(argv[2]);
+  double phaseMultiplier = maxPhase/MAXUI;
 
-  float maxPhase = 31; // atof(argv[1]);
-  float minPhase = maxPhase*(-1);;
-  float width = maxPhase*2;
-  float horzStep = (width)/(UIWidth/horzStepUI);
-  // For example, if our UI width was 1 (the entire UI), then the number
-  // of horizontal INCREMENTS it would take to cover UI width is 
-  // UIWidth/horzStepUI. If horzStepF = 0.25, it would take  
-  // UIWidth/horzStepUI = 4 INCREMENTS since we have -0.5, -0.25, 0, 0.25, 0.5.
-  // 5 points, 4 increments. Now to find out how BIG the increment is for
-  // maxPhase = 31, we use intPhaseWidth = 62 and our increment SIZE
-  // would be 62/4 = 15.5. We can either floor or ceil this. 
-  // In the loop we ceil
-  
-//  std::vector<float> UI;
-//  for(float phase = minPhaseUI; phase<= maxPhaseUI; phase+= horzStepUI) {
-//    UI.push_back(phase);
-//  }
-  std::vector<float> phaseCoords;
-  for(float phase = minPhase; phase<= maxPhase; phase+= horzStep) {
-    phaseCoords.push_back(phase);
-  }
-  
   // =========================
 
   // Set offsets and perform eyescan
-  for(int voltage = minVoltage; voltage <= maxVoltage; voltage+=vertStepSize) {
-    
-    // set voltage offset
-//    if(0 > voltage) {
-    // The OR is to set the 8th bit of VERT_OFFSET which tells VERT_OFFSET we have a negative voltage
-//      uint8_t unsignedV = (uint8_t)((-1*voltage) | (0x80));
-//      //      SetEyeScanVoltage(baseNode, (uint8_t)((-1*voltage) | (0x80)));
-//      SetEyeScanVoltage(baseNode, unsignedV);
-//    } else {
-//      SetEyeScanVoltage(baseNode, voltage);
-//    }
-//
-
+  // +1 helps with the fact that 127 is a prime number
+  for(int voltage = minVoltage; voltage <= (maxVoltage+1); voltage+=vertIncrement) {
     uint32_t POSITIVE = 0;
     uint32_t NEGATIVE = 1;
 
@@ -403,31 +362,25 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode) {//, float /*
       SetEyeScanVoltage(baseNode, voltage, POSITIVE);
     }
 
-    //    for(float phase = minPhase; phase <= maxPhase; phase+=horzStep) {
+    //    for(double phase = minPhase; phase <= maxPhase; phase+=horzStep) {
 
-    for(int i = 0; i < (int)phaseCoords.size(); i++) {
+    for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
       
-      // set phase offset
-      //      SetEyeScanPhase(baseNode, phase & 0xFFF);
-//      if(phase < 0) {
-//	SetEyeScanPhase(baseNode, phase & 0x7FF, NEGATIVE);
-//	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
-//      } else {
-//	SetEyeScanPhase(baseNode, phase & 0x7FF, POSITIVE);
-//      }
-//
-      int phaseInt = (int)ceil(phaseCoords[i]);
+      int phaseInt;
+
+      if(phase < 0) {
+	phaseInt = ceil(phase*phaseMultiplier);
+      } else {
+	phaseInt = floor(phase*phaseMultiplier);
+      }
       
       SetEyeScanPhase(baseNode, phaseInt);
       esCoords.resize(resizeCount);
 
       // record voltage and phase coordinates
       esCoords[coordsIndex].voltage = voltage; 
-      esCoords[coordsIndex].phase = ceil(phaseCoords[i]);
-      printf("%d %f\n", voltage, ceil(phaseCoords[i]));
-      //      esCoords[coordsIndex].phase = phase/(float)(maxPhase*2); // Normalized to 1 UI, 0.5 UI on each side
-      // Perform a single scan and record BER coordinate
-      
+      esCoords[coordsIndex].phase = phase;
+      printf("%d %d\n", voltage, phaseInt);      
 
       esCoords[coordsIndex].BER = 0; //SingleEyeScan(baseNode);
       //printf("%.9f\n", esCoords[coordsIndex].BER);

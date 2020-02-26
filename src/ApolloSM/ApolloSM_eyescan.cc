@@ -389,9 +389,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
       // record voltage and phase coordinates
       esCoords[coordsIndex].voltage = voltage; 
       esCoords[coordsIndex].phase = phase;
-      printf("%d %d\n", voltage, phaseInt);      
+      //      printf("%d %d\n", voltage, phaseInt);      
 
-      esCoords[coordsIndex].BER = 0; //SingleEyeScan(baseNode);
+      esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
       //printf("%.9f\n", esCoords[coordsIndex].BER);
       
       // going to next coordinate/scan 

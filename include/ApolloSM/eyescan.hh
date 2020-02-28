@@ -6,6 +6,8 @@ struct eyescanCoords {
   int voltage;
   double phase;
   double BER;
+  uint8_t voltageReg;
+  uint16_t phaseReg;
 };
 
 #endif

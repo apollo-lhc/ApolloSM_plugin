@@ -246,7 +246,7 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 #define PRECISION 0.00000001 // 10^-9
 
 #define PRESCALE_STEP 3
-#define MAX_PRESCALE 12
+#define MAX_PRESCALE 3
 
 // Performs a single eye scan and returns the BER
 float ApolloSM::SingleEyeScan(std::string baseNode) {
@@ -258,7 +258,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
   loop = true;
 
   // Re-zero prescale
-  assertNode(baseNode + "PRESCALE", 0x1);
+  assertNode(baseNode + "PRESCALE", 0x0);
 
   while(loop) {
     // confirm we are in WAIT, if not, stop scan
@@ -307,7 +307,8 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
     // calculate BER
     BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     
-    // If we are not in the precision we want AND did not yet perform an eye scan with the max prescale
+    // If BER is lower than precision we need to check with a higher prescale to ensure that
+    // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
     if((BER < PRECISION) && prescale != MAX_PRESCALE) {
       prescale+=PRESCALE_STEP;
       if(prescale > MAX_PRESCALE) {
@@ -392,7 +393,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
       //      printf("%d %d\n", voltage, phaseInt);      
 
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode);
-      //printf("%.9f\n", esCoords[coordsIndex].BER);
+      
+
+      printf("%.9f\n", esCoords[coordsIndex].BER);
       
       // going to next coordinate/scan 
       coordsIndex++;

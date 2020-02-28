@@ -398,7 +398,8 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
       esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET") & 0x0FFF;
 
-      printf("%.9f\n", esCoords[coordsIndex].BER);
+      //      printf("%.9f\n", esCoords[coordsIndex].BER);
+      printf("%d\n", esCoords[coordsIndex].voltage);
       
       // going to next coordinate/scan 
       coordsIndex++;

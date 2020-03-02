@@ -67,6 +67,18 @@ std::map<int, int> static const busWidthMap =
     //{8, 128},
     //{9, 160}
   };
+
+// Identifies RXOUT_DIV to use for max phase 
+std::map<uint32_t, int> static const rxoutDivMap = 
+  {
+    // RXOUT_DIV hex value (DRP encoding) vs max horizontal offset
+    // https://www.xilinx.com/support/documentation/application_notes/xapp1198-eye-scan.pdf pgs 8 and 9
+    {0, 32},
+    {1, 64},
+    {2, 128},
+    {3, 256},
+    {4, 512}
+  };
 // ==================================================
 
 // Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
@@ -305,7 +317,8 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
     RegWriteRegister(baseNode + "RUN", STOP_RUN);
         
     // calculate BER
-    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
+    //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
+    BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
     
     // If BER is lower than precision we need to check with a higher prescale to ensure that
     // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
@@ -330,7 +343,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode) {
 #define MAXUI 0.5
 #define MINUI -0.5
  
-std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIncrement, int vertIncrement, int maxPhase) {//, float /*maxVoltage*/, float /*maxPhase*/, uint16_t /*prescale*/) {
+std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIncrement, int vertIncrement) {
   
 //  if(1/horzIncrement != 0) {
 //    throwException("Please enter a horizontal increment divisible into 1\n");
@@ -351,18 +364,23 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
   uint8_t maxVoltage = 127;
   int minVoltage = -127;
 
+
+  // Figure out RXOUT_DIV to set max phase
+  uint32_t rxoutDiv = RegReadRegister(baseNode + "RXOUT_DIV");
+  // should check if int is at the end
+  int maxPhase = rxoutDivMap.find(rxoutDiv)->second;
+
+  printf("The max phase is: %d\n", maxPhase);
+
   double phaseMultiplier = maxPhase/MAXUI;
 
   // =========================
 
   // Set offsets and perform eyescan
-  // +1 helps with the fact that 127 is a prime number
-  for(int voltage = minVoltage; voltage <= (maxVoltage+1); voltage+=vertIncrement) {
+  for(int voltage = minVoltage; voltage <= maxVoltage; voltage+=vertIncrement) {
 
-    if(128 == voltage) {
-      voltage = 127;
-    }
-
+    // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
+    // For bit 7 (8th bit) of ES_VERT_OFFSET
     uint32_t POSITIVE = 0;
     uint32_t NEGATIVE = 1;
 
@@ -371,8 +389,6 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
     } else {
       SetEyeScanVoltage(baseNode, voltage, POSITIVE);
     }
-
-    //    for(double phase = minPhase; phase <= maxPhase; phase+=horzStep) {
 
     for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
       

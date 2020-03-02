@@ -469,8 +469,8 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
 
 CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
 
-  // base node, text file, horizontal increment double, vertical increment integer, max phase integer
-  if(5 != strArg.size()) {
+  // base node, text file, horizontal increment double, vertical increment integer
+  if(4 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
   
@@ -490,11 +490,10 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   
   double horzIncrement = atof(strArg[2].c_str());
   int vertIncrement = atoi(strArg[3].c_str());
-  int maxPhase = atoi(strArg[4].c_str());
 
-  printf("We have %f %d %d\n", horzIncrement, vertIncrement, maxPhase);
+  printf("We have horz increment %f and vert increment %d\n", horzIncrement, vertIncrement);
 
-  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement, maxPhase);
+  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement);
 
 //  int fd = open(fileName, O_CREAT | O_RDWR, 0644);
 //

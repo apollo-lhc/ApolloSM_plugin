@@ -19,8 +19,12 @@
 #define PMA_RSV2 0x1
 #define ES_QUALIFIER 0x0000
 #define ES_QUAL_MASK 0xFFFF
-#define RX_DATA_WIDTH 0x4 // We use 32 bit
-#define RX_INT_DATAWIDTH 0x1 // We use 32 bit
+
+#define RX_DATA_WIDTH_SEVEN 0x4 // We use 32 bit
+#define RX_INT_DATAWIDTH_SEVEN 0x1 // We use 32 bit
+
+#define RX_DATA_WIDTH_USP 0x4 // We use 32 bit
+#define RX_INT_DATAWIDTH_USP 0x0 // We use 32 bit
 
 #define SEVEN_FPGA 1
 #define SEVEN_BUS_SIZE 3
@@ -193,11 +197,24 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
     assertNode(baseNode + "OFFSET_DATA_MASK_9", 0xFFFF);
   }
 
-  // ** RX_DATA_WIDTH confirm 0x4 
-  confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH);
-  
-  // ** RX_INT_DATAWIDTH confirm 0x1
-  confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH);
+  // ** RX_DATA_WIDTH confirm 0x4
+  // Both 7 series and USP are 0x4 (32 bit bus width) 
+  if(SEVEN_BUS_SIZE == count) {
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_SEVEN);
+  } else {
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_USP);
+  }  
+
+  // ** RX_INT_DATAWIDTH confirm
+  // 7 series is 1
+  // usp is either 0 or 1 but the default (when powered up) seems to be 0. 
+  // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf pg 317 gives only a little more info
+  // look for "internal data width"
+  if(SEVEN_BUS_SIZE == count) {
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_SEVEN);
+  } else {
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_USP);
+  }
 }
 
 // ==================================================
@@ -384,6 +401,8 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
     uint32_t POSITIVE = 0;
     uint32_t NEGATIVE = 1;
 
+    printf("%d\n", voltage);
+
     if(voltage < 0) {
       SetEyeScanVoltage(baseNode, (uint8_t)(-1*voltage), NEGATIVE); 
     } else {
@@ -415,7 +434,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
       esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET") & 0x0FFF;
 
       //      printf("%.9f\n", esCoords[coordsIndex].BER);
-      printf("%d\n", esCoords[coordsIndex].voltage);
+      //      printf("%d\n", esCoords[coordsIndex].voltage);
       
       // going to next coordinate/scan 
       coordsIndex++;

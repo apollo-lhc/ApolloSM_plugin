@@ -158,7 +158,7 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
 	       "Perform an eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  EyeScan <base node> <file> <horizontal increment double> <vertical increment integer> <max phase integer> \n", 
+	       "  EyeScan <base node> <file> <horizontal increment double> <vertical increment integer> \n", 
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
 

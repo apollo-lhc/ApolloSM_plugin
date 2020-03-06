@@ -315,7 +315,7 @@ int main(int argc, char** argv) {
 	   configOptions.count("sensorsThroughZynq") ? "CONFIG_FILE" : "DEFAULT");
 
     if(configOptions.count("sensorsThroughZynq")) {
-      syslog(LOG_INFO, "count of sensorsThroughZynq is: %lu\n", configOptions.count("sensorsThroughZynq"));
+      syslog(LOG_INFO, "count of sensorsThroughZynq is somehow nonzero\n");
     }
 
   }catch(const boost::program_options::error &ex){

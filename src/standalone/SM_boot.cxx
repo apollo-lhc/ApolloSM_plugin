@@ -314,6 +314,10 @@ int main(int argc, char** argv) {
 	   sensorsThroughZynq ? "Reading" : "Not reading",
 	   configOptions.count("sensorsThroughZynq") ? "CONFIG_FILE" : "DEFAULT");
 
+    if(configOptions.count("sensorsThroughZynq")) {
+      syslog(LOG_INFO, "count of sensorsThroughZynq is: %lu\n", configOptions.count("sensorsThroughZynq"));
+    }
+
   }catch(const boost::program_options::error &ex){
     syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
   }
@@ -414,6 +418,8 @@ int main(int argc, char** argv) {
 	  temps = {0,0,0,0,false};
 	  sendTemps(SM, temps);
 	}
+      } else {
+	syslog(LOG_INFO, "sensorsThroughZynq is somehow false????");
       }
 
       //Check if we are shutting down

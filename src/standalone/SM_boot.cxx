@@ -377,6 +377,7 @@ int main(int argc, char** argv) {
   
     //Set uC temp sensors as disabled
     if(!sensorsThroughZynq){
+      temperatures temps;  
       temps = {0,0,0,0,false};
       sendTemps(SM, temps);
     }

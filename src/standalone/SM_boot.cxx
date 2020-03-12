@@ -314,9 +314,9 @@ int main(int argc, char** argv) {
 	   sensorsThroughZynq ? "Reading" : "Not reading",
 	   configOptions.count("sensorsThroughZynq") ? "CONFIG_FILE" : "DEFAULT");
 
-    if(configOptions.count("sensorsThroughZynq")) {
-      syslog(LOG_INFO, "count of sensorsThroughZynq is somehow nonzero\n");
-    }
+    //    if(configOptions.count("sensorsThroughZynq")) {
+    //   syslog(LOG_INFO, "count of sensorsThroughZynq is somehow nonzero\n");
+    //  }
 
   }catch(const boost::program_options::error &ex){
     syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
@@ -375,6 +375,12 @@ int main(int argc, char** argv) {
       sleep(powerupTime);
     }
   
+    //Set uC temp sensors as disabled
+    if(!sensorsThroughZynq){
+      temps = {0,0,0,0,false};
+      sendTemps(SM, temps);
+    }
+
 
     // ==================================
     // Main DAEMON loop
@@ -391,7 +397,8 @@ int main(int argc, char** argv) {
       //=================================
 
       //Process CM temps
-      if(true == sensorsThroughZynq) {
+      //      if(true == sensorsThroughZynq) {
+      if(sensorsThroughZynq) {
 	temperatures temps;  
       	if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
 	  try{

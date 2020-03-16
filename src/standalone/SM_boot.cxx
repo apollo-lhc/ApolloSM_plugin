@@ -31,6 +31,8 @@
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
 
+#define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
+
 // ====================================================================================================
 // signal handling
 bool static volatile loop;
@@ -260,7 +262,8 @@ int main(int argc, char** argv) {
   int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
   bool powerupCMuC = true;
   int powerupTime = DEFAULT_POWERUP_TIME;
- 
+  bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
+
   // fileOptions is for parsing config files
   boost::program_options::options_description fileOptions{"File"};
   //sigh... with boost comes compilcated c++ magic
@@ -273,7 +276,10 @@ int main(int argc, char** argv) {
      "power up CM uC")
     ("cm_powerup_time",
      boost::program_options::value<int>()->default_value(DEFAULT_POWERUP_TIME), 
-     "uC powerup wait time");
+     "uC powerup wait time")
+    ("sensorsThroughZynq",
+     boost::program_options::value<bool>()->default_value(DEFAULT_SENSORS_THROUGH_ZYNQ),
+     "read sensor data through zynq");
 
   boost::program_options::variables_map configOptions;  
   try{
@@ -300,7 +306,18 @@ int main(int argc, char** argv) {
 	   "Setting uC power-up time to %d seconds (%s)\n",
 	   powerupTime,
 	   configOptions.count("cm_powerup_time") ? "CONFIG FILE" : "DEFAULT");
-        
+    if(configOptions.count("sensorsThroughZynq")) {
+      sensorsThroughZynq = configOptions["sensorsThroughZynq"].as<bool>();
+    }
+    syslog(LOG_INFO,
+	   "%s sensors through Zynq (%s)\n",
+	   sensorsThroughZynq ? "Reading" : "Not reading",
+	   configOptions.count("sensorsThroughZynq") ? "CONFIG_FILE" : "DEFAULT");
+
+    //    if(configOptions.count("sensorsThroughZynq")) {
+    //   syslog(LOG_INFO, "count of sensorsThroughZynq is somehow nonzero\n");
+    //  }
+
   }catch(const boost::program_options::error &ex){
     syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
   }
@@ -358,6 +375,13 @@ int main(int argc, char** argv) {
       sleep(powerupTime);
     }
   
+    //Set uC temp sensors as disabled
+    if(!sensorsThroughZynq){
+      temperatures temps;  
+      temps = {0,0,0,0,false};
+      sendTemps(SM, temps);
+    }
+
 
     // ==================================
     // Main DAEMON loop
@@ -374,31 +398,36 @@ int main(int argc, char** argv) {
       //=================================
 
       //Process CM temps
-      temperatures temps;  
-      if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
-	try{
-	  temps = sendAndParse(SM);
-	}catch(std::exception & e){
-	  syslog(LOG_INFO,e.what());
-	  //ignoring any exception here for now
+      //      if(true == sensorsThroughZynq) {
+      if(sensorsThroughZynq) {
+	temperatures temps;  
+      	if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
+	  try{
+	    temps = sendAndParse(SM);
+	  }catch(std::exception & e){
+	    syslog(LOG_INFO,e.what());
+	    //ignoring any exception here for now
+	    temps = {0,0,0,0,false};
+	  }
+	  
+	  if(0 == CM_running ){
+	    //Drop the non uC temps
+	    temps.FIREFLYTemp = 0;
+	    temps.FPGATemp = 0;
+	    temps.REGTemp = 0;
+	  }
+	  CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
+	  
+	  sendTemps(SM, temps);
+	  if(!temps.validData){
+	    syslog(LOG_INFO,"Error in parsing data stream\n");
+	  }
+	}else{
 	  temps = {0,0,0,0,false};
+	  sendTemps(SM, temps);
 	}
-	
-	if(0 == CM_running ){
-	  //Drop the non uC temps
-	  temps.FIREFLYTemp = 0;
-	  temps.FPGATemp = 0;
-	  temps.REGTemp = 0;
-	}
-	CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
-
-	sendTemps(SM, temps);
-	if(!temps.validData){
-	  syslog(LOG_INFO,"Error in parsing data stream\n");
-	}
-      }else{
-	temps = {0,0,0,0,false};
-	sendTemps(SM, temps);
+      } else {
+	syslog(LOG_INFO, "sensorsThroughZynq is somehow false????");
       }
 
       //Check if we are shutting down

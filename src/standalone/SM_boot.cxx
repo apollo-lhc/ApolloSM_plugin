@@ -324,14 +324,15 @@ int main(int argc, char** argv) {
     // parse command line
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
   } catch(const boost::program_options::error &ex) {
-    fprintf(stderr, "Caught exception while parsing command line: %s \n", ex.what());        
+    fprintf(stderr, "Caught exception while parsing command line: %s \n", ex.what());       
+    exit(EXIT_FAILURE); 
   }
 
   // Check for non default config file
   if(commandLineVM.count("config_file")) {
     configFile = commandLineVM["config_file"].as<std::string>();
   }  
-  fprintf(stdout, "config file path: %s", configFile.c_str());
+  fprintf(stdout, "config file path: %s\n", configFile.c_str());
 
   // Now the config file may be loaded
   fprintf(stdout, "Reading from config file now\n");
@@ -340,9 +341,11 @@ int main(int argc, char** argv) {
     configFileVM = loadConfig(configFile, fileOptions);
   } catch(const boost::program_options::error &ex) {
     fprintf(stdout, "Caught exception in function loadConfig(): %s \n", ex.what());        
+    exit(EXIT_FAILURE);   
   }
 
   // Look at the config file and command line and see if we should change the parameters from their default values
+  // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
   setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
   setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
 //  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true);

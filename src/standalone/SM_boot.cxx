@@ -324,8 +324,8 @@ int main(int argc, char** argv) {
     // parse command line
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
   } catch(const boost::program_options::error &ex) {
-    fprintf(stderr, "Caught exception while parsing command line: %s \n", ex.what());       
-    exit(EXIT_FAILURE); 
+    fprintf(stderr, "Caught exception while parsing command line: %s \nTerminating SM_boot\n", ex.what());       
+    return -1;
   }
 
   // Check for non default config file
@@ -340,8 +340,8 @@ int main(int argc, char** argv) {
     // parse config file
     configFileVM = loadConfig(configFile, fileOptions);
   } catch(const boost::program_options::error &ex) {
-    fprintf(stdout, "Caught exception in function loadConfig(): %s \n", ex.what());        
-    exit(EXIT_FAILURE);   
+    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating SM_boot\n", ex.what());        
+    return -1;
   }
 
   // Look at the config file and command line and see if we should change the parameters from their default values

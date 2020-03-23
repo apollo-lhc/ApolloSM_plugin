@@ -278,7 +278,7 @@ int main(int argc, char** argv) {
     // parse command line
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
   } catch(const boost::program_options::error &ex) {
-    fprintf(stderr, "Caught exception while parsing command line: %s \nTerminating SM_boot\n", ex.what());       
+    fprintf(stderr, "Caught exception while parsing command line: %s. Try (--). ex: --polltime \nTerminating SM_boot\n", ex.what());       
     return -1;
   }
 
@@ -298,7 +298,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // Look at the config file and command line and see if we should change the parameters from their default values
+  // Look at the config file and command line and determine if we should change the parameters from their default values
   // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
   setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
   setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
@@ -355,9 +355,7 @@ int main(int argc, char** argv) {
   close(STDERR_FILENO);
 
   // ============================================================================
-  // Now that syslog is available, we can continue to look at the config file and command line and see if we should change the parameters from their default values.
-//  setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
-//  setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
+  // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
   setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true);
   setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
   setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);

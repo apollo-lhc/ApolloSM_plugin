@@ -21,7 +21,7 @@
 
 #include <syslog.h>  ///for syslog
 
-#include <standalone/parseOptions.hh>
+#include <standalone/parseOptions.hh> // setOptions // setParamValues
 
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000

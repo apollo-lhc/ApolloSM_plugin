@@ -27,11 +27,11 @@
 #include <boost/program_options.hpp>  //for configfile parsing
 #include <fstream>
 
-#include <tclap/CmdLine.h> //TCLAP parser
+//#include <tclap/CmdLine.h> //TCLAP parser
 
 #include <syslog.h>  ///for syslog
 
-#include <standalone/parseOptions.hh>
+#include <standalone/parseOptions.hh> // setOptions // setParamValues
 
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
@@ -131,7 +131,7 @@ int main(int argc, char ** argv) {
     // parse command line
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
   } catch(const boost::program_options::error &ex) {
-    fprintf(stderr, "Caught exception while parsing command line: %s. Try (--). ex: --polltime \nTerminating SM_boot\n", ex.what());       
+    fprintf(stderr, "Caught exception while parsing command line: %s. Try (--). ex: --polltime \nTerminating ps_monitor\n", ex.what());       
     return -1;
   }
 
@@ -147,7 +147,7 @@ int main(int argc, char ** argv) {
     // parse config file
     configFileVM = loadConfig(configFile, fileOptions);
   } catch(const boost::program_options::error &ex) {
-    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating SM_boot\n", ex.what());        
+    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating ps_monitor\n", ex.what());        
     return -1;
   }
  

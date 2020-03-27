@@ -34,6 +34,55 @@
 #define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
 
 // ====================================================================================================
+void daemonizeMyself(std::string pidFileName, std::string runPath) {
+
+  pid_t pid, sid;
+  pid = fork();
+  if(pid < 0){
+    //Something went wrong.
+    //log something
+    exit(EXIT_FAILURE);
+  }else if(pid > 0){
+    //We are the parent and created a child with pid pid
+    FILE * pidFile = fopen(pidFileName.c_str(),"w");
+    fprintf(pidFile,"%d\n",pid);
+    fclose(pidFile);
+    exit(EXIT_SUCCESS);
+  }else{
+    // I'm the child!
+    //open syslog
+    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
+  }
+ 
+  
+  //Change the file mode mask to allow read/write
+  umask(0);
+ 
+  //Start logging
+  syslog(LOG_INFO,"Opened log file\n");
+ 
+  // create new SID for the daemon.
+  sid = setsid();
+  if (sid < 0) {
+    syslog(LOG_ERR,"Failed to change SID\n");
+    exit(EXIT_FAILURE);
+  }
+  syslog(LOG_INFO,"Set SID to %d\n",sid);
+ 
+  //Move to RUN_DIR
+  if ((chdir(runPath.c_str())) < 0) {
+    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
+    exit(EXIT_FAILURE);
+  }
+  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
+ 
+  //Everything looks good, close the standard file fds.
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+}
+
+// ====================================================================================================
 // signal handling
 bool static volatile loop;
 void static signal_handler(int const signum) {
@@ -355,50 +404,52 @@ int main(int argc, char** argv) {
 
   // ============================================================================
   // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
-    //open syslog
-    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
-  }
+  daemonizeMyself(pidFileName, runPath);
 
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-
-  //Start logging
-  syslog(LOG_INFO,"Opened log file\n");
-
-  // create new SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    syslog(LOG_ERR,"Failed to change SID\n");
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Set SID to %d\n",sid);
-
-  //Move to RUN_DIR
-  if ((chdir(runPath.c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
+//  pid_t pid, sid;
+//  pid = fork();
+//  if(pid < 0){
+//    //Something went wrong.
+//    //log something
+//    exit(EXIT_FAILURE);
+//  }else if(pid > 0){
+//    //We are the parent and created a child with pid pid
+//    FILE * pidFile = fopen(pidFileName.c_str(),"w");
+//    fprintf(pidFile,"%d\n",pid);
+//    fclose(pidFile);
+//    exit(EXIT_SUCCESS);
+//  }else{
+//    // I'm the child!
+//    //open syslog
+//    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
+//  }
+//
+//  
+//  //Change the file mode mask to allow read/write
+//  umask(0);
+//
+//  //Start logging
+//  syslog(LOG_INFO,"Opened log file\n");
+//
+//  // create new SID for the daemon.
+//  sid = setsid();
+//  if (sid < 0) {
+//    syslog(LOG_ERR,"Failed to change SID\n");
+//    exit(EXIT_FAILURE);
+//  }
+//  syslog(LOG_INFO,"Set SID to %d\n",sid);
+//
+//  //Move to RUN_DIR
+//  if ((chdir(runPath.c_str())) < 0) {
+//    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
+//    exit(EXIT_FAILURE);
+//  }
+//  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
+//
+//  //Everything looks good, close the standard file fds.
+//  close(STDIN_FILENO);
+//  close(STDOUT_FILENO);
+//  close(STDERR_FILENO);
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and see if we should change the parameters from their default values.

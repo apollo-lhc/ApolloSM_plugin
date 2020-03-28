@@ -17,13 +17,12 @@
 #include <boost/program_options.hpp>
 #include <fstream>
 
-#include <syslog.h>  ///for syslog
-
+#include <syslog.h> ///for syslog
 #include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
+#include <standalone/daemon.hh>       // daemonizeThisProgram // signal_handler // loop // changeSignal
 
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
-
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
@@ -32,15 +31,6 @@
 #define DEFAULT_POWERUP_TIME 5
 
 #define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
-
-// ====================================================================================================
-// signal handling
-bool static volatile loop;
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -226,50 +216,10 @@ int main(int argc, char** argv) {
 
   // ============================================================================
   // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
-    //open syslog
-    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
-  }
-
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-
-  //Start logging
-  syslog(LOG_INFO,"Opened log file\n");
-
-  // create new SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    syslog(LOG_ERR,"Failed to change SID\n");
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Set SID to %d\n",sid);
-
-  //Move to RUN_DIR
-  if ((chdir(runPath.c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
+  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
+  Daemon SM_bootDaemon;
+  SM_bootDaemon.daemonizeThisProgram(pidFileName, runPath);
+    //  daemonizeMyself(pidFileName, runPath);
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
@@ -284,16 +234,18 @@ int main(int argc, char** argv) {
   // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
+  SM_bootDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  SM_bootDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  //  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
+ //  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
+ //  //setup SA
+ //  sa_INT.sa_handler  = signal_handler;
+ //  sa_TERM.sa_handler = signal_handler;
+ //  sigemptyset(&sa_INT.sa_mask);
+ //  sigemptyset(&sa_TERM.sa_mask);
+ //  sigaction(SIGINT,  &sa_INT , &old_sa);
+ //  sigaction(SIGTERM, &sa_TERM, NULL);
+  SM_bootDaemon.loop = true;
 
   // ====================================
   // for counting time
@@ -344,7 +296,7 @@ int main(int argc, char** argv) {
     
 
     uint32_t CM_running = 0;
-    while(loop) {
+    while(SM_bootDaemon.loop) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 
@@ -459,6 +411,7 @@ int main(int argc, char** argv) {
   SM->DebugDump(outfile);
   outfile.close();  
 
+  syslog(LOG_INFO,"global worked!\n");
   
   //Clean up
   if(NULL != SM) {

@@ -28,7 +28,7 @@
 #include <fstream>
 
 #include <syslog.h>  ///for syslog
-
+#include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
 #include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 
 #define SEC_IN_US  1000000
@@ -43,13 +43,13 @@
 
 // ====================================================================================================
 // Kill program if it is in background
-bool static volatile loop;
-
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
+//bool static volatile loop;
+//
+//void static signal_handler(int const signum) {
+//  if(SIGINT == signum || SIGTERM == signum) {
+//    loop = false;
+//  }
+//}
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -115,53 +115,53 @@ int main(int argc, char ** argv) {
   // ============================================================================
   // Deamon book-keeping
   // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
-  //  Daemon SM_bootDaemon;
-  //  SM_bootDaemon.daemonizeThisProgram(pidFileName, runPath);
+  Daemon ps_monitorDaemon;
+  ps_monitorDaemon.daemonizeThisProgram(pidFileName, runPath);
 
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
-    //open syslog
-    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
-  }
-
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-
-  //Start logging
-  syslog(LOG_INFO,"Opened log file\n");
-
-  // create new SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    syslog(LOG_ERR,"Failed to change SID\n");
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Set SID to %d\n",sid);
-
-  //Move to RUN_DIR
-  if ((chdir(runPath.c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
+//  pid_t pid, sid;
+//  pid = fork();
+//  if(pid < 0){
+//    //Something went wrong.
+//    //log something
+//    exit(EXIT_FAILURE);
+//  }else if(pid > 0){
+//    //We are the parent and created a child with pid pid
+//    FILE * pidFile = fopen(pidFileName.c_str(),"w");
+//    fprintf(pidFile,"%d\n",pid);
+//    fclose(pidFile);
+//    exit(EXIT_SUCCESS);
+//  }else{
+//    // I'm the child!
+//    //open syslog
+//    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
+//  }
+//
+//  
+//  //Change the file mode mask to allow read/write
+//  umask(0);
+//
+//  //Start logging
+//  syslog(LOG_INFO,"Opened log file\n");
+//
+//  // create new SID for the daemon.
+//  sid = setsid();
+//  if (sid < 0) {
+//    syslog(LOG_ERR,"Failed to change SID\n");
+//    exit(EXIT_FAILURE);
+//  }
+//  syslog(LOG_INFO,"Set SID to %d\n",sid);
+//
+//  //Move to RUN_DIR
+//  if ((chdir(runPath.c_str())) < 0) {
+//    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
+//    exit(EXIT_FAILURE);
+//  }
+//  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
+//
+//  //Everything looks good, close the standard file fds.
+//  close(STDIN_FILENO);
+//  close(STDOUT_FILENO);
+//  close(STDERR_FILENO);
 
   
   // ============================================================================
@@ -174,17 +174,18 @@ int main(int argc, char ** argv) {
   // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
-
+  ps_monitorDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  ps_monitorDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+//  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
+//  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
+//  //setup SA
+//  sa_INT.sa_handler  = signal_handler;
+//  sa_TERM.sa_handler = signal_handler;
+//  sigemptyset(&sa_INT.sa_mask);
+//  sigemptyset(&sa_TERM.sa_mask);
+//  sigaction(SIGINT,  &sa_INT , &old_sa);
+//  sigaction(SIGTERM, &sa_TERM, NULL);
+  ps_monitorDaemon.loop = true;
 
   // ==================================================
   // If /var/run/utmp does not exist we are done
@@ -240,7 +241,7 @@ int main(int argc, char ** argv) {
     SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
     SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
  
-    while(loop){
+    while(ps_monitorDaemon.loop){
       readSet_ret = readSet;
       int pselRet = pselect(maxFDp1,&readSet_ret,NULL,NULL,&timeout,NULL);
       if(0 == pselRet){
@@ -277,7 +278,7 @@ int main(int argc, char ** argv) {
 
   // ==================================================
   // Clean up. Close and delete everything.
-    
+  syslog(LOG_INFO, "global worked!\n");
   // Delete SM
   if(NULL != SM) {
     delete SM;

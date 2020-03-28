@@ -37,7 +37,7 @@
 #include <fstream>
 
 #include <ApolloSM/uioLabelFinder.hh>
-
+#include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
 #include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 
 //extern int errno;
@@ -50,12 +50,12 @@
 
 // ====================================================================================================
 // signal handling
-bool static volatile loop;
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
+bool static volatile * loop; // xvc_server, unlike the other daemons, uses loop in two diferent places, so we need this to point to xvc_serverDaemon loop
+// void static signal_handler(int const signum) {
+//   if(SIGINT == signum || SIGTERM == signum) {
+//     loop = false;
+//   }
+// }
 
 // ==================================================
 
@@ -292,53 +292,57 @@ int main(int argc, char **argv) {
  
   // ============================================================================
   // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-//    std::string pidFileName = DEFAULT_PID_FILE;
-//    pidFileName+=daemonName;
-//    pidFileName+=".pid";
-    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
-    openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
-  }
-  
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-  
-  //  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
-  syslog(LOG_INFO,"starting %s", daemonName);
-  
+  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
+  Daemon xvc_serverDaemon;
+  xvc_serverDaemon.daemonizeThisProgram(pidFileName, runPath);
 
-  // create new SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    syslog(LOG_ERR,"Failed to change SID\n");
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Set SID to %d\n",sid);
-
-  //Move to RUN_DIR
-  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
+//  pid_t pid, sid;
+//  pid = fork();
+//  if(pid < 0){
+//    //Something went wrong.
+//    //log something
+//    exit(EXIT_FAILURE);
+//  }else if(pid > 0){
+//    //We are the parent and created a child with pid pid
+////    std::string pidFileName = DEFAULT_PID_FILE;
+////    pidFileName+=daemonName;
+////    pidFileName+=".pid";
+//    FILE * pidFile = fopen(pidFileName.c_str(),"w");
+//    fprintf(pidFile,"%d\n",pid);
+//    fclose(pidFile);
+//    exit(EXIT_SUCCESS);
+//  }else{
+//    // I'm the child!
+//    openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
+//  }
+//  
+//  
+//  //Change the file mode mask to allow read/write
+//  umask(0);
+//  
+//  //  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
+//  syslog(LOG_INFO,"starting %s", daemonName);
+//  
+//
+//  // create new SID for the daemon.
+//  sid = setsid();
+//  if (sid < 0) {
+//    syslog(LOG_ERR,"Failed to change SID\n");
+//    exit(EXIT_FAILURE);
+//  }
+//  syslog(LOG_INFO,"Set SID to %d\n",sid);
+//
+//  //Move to RUN_DIR
+//  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
+//    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
+//    exit(EXIT_FAILURE);
+//  }
+//  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
+//
+//  //Everything looks good, close the standard file fds.
+//  close(STDIN_FILENO);
+//  close(STDOUT_FILENO);
+//  close(STDERR_FILENO);
 
   // ============================================================================
 
@@ -454,18 +458,22 @@ int main(int argc, char **argv) {
   // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
+  xvc_serverDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  xvc_serverDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
 
-  while (loop) {
+//  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
+//  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
+//  //setup SA
+//  sa_INT.sa_handler  = signal_handler;
+//  sa_TERM.sa_handler = signal_handler;
+//  sigemptyset(&sa_INT.sa_mask);
+//  sigemptyset(&sa_TERM.sa_mask);
+//  sigaction(SIGINT,  &sa_INT , &old_sa);
+//  sigaction(SIGTERM, &sa_TERM, NULL);
+  loop = &(xvc_serverDaemon.loop);
+  xvc_serverDaemon.loop = true;
+
+  while (xvc_serverDaemon.loop) {
     fd_set read = conn, except = conn;
     int fd;
 
@@ -517,6 +525,7 @@ int main(int argc, char **argv) {
       }
     }
   }  
+  syslog(LOG_INFO, "global worked!\n");
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
   syslog(LOG_INFO,"%s Daemon ended\n",daemonName);

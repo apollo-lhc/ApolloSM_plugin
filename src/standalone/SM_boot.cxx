@@ -19,7 +19,7 @@
 
 #include <syslog.h> ///for syslog
 #include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
-#include <standalone/daemon.hh>       // daemonizeThisProgram // signal_handler // loop // changeSignal
+#include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
 
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
@@ -219,7 +219,6 @@ int main(int argc, char** argv) {
   // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
   Daemon SM_bootDaemon;
   SM_bootDaemon.daemonizeThisProgram(pidFileName, runPath);
-    //  daemonizeMyself(pidFileName, runPath);
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.

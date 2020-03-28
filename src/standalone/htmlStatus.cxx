@@ -247,8 +247,6 @@ int main(int argc, char** argv) {
     syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
   }
 
-  syslog(LOG_INFO,"global worked!\n");
-
   //Close ApolloSM and END
   if(NULL != SM) {
     delete SM;

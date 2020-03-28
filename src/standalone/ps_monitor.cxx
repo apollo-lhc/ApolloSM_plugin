@@ -278,7 +278,7 @@ int main(int argc, char ** argv) {
 
   // ==================================================
   // Clean up. Close and delete everything.
-  syslog(LOG_INFO, "global worked!\n");
+
   // Delete SM
   if(NULL != SM) {
     delete SM;

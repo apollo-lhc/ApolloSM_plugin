@@ -525,7 +525,7 @@ int main(int argc, char **argv) {
       }
     }
   }  
-  syslog(LOG_INFO, "global worked!\n");
+
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
   syslog(LOG_INFO,"%s Daemon ended\n",daemonName);

@@ -232,7 +232,7 @@ int main(int argc, char** argv) {
   //PS heartbeat
   SM->RegReadRegister("SLAVE_I2C.HB_SET1");
   SM->RegReadRegister("SLAVE_I2C.HB_SET2");
-  syslog(LOG_INFO, "global worked!\n");  
+
   //Clean up
   if(NULL != SM) {
     delete SM;

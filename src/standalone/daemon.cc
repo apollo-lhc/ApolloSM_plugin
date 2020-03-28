@@ -36,8 +36,6 @@ void Daemon::daemonizeThisProgram(std::string pidFileName, std::string runPath) 
     openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
   }
 
-  syslog(LOG_INFO, "Factorize successful!\n");
-  
   //Change the file mode mask to allow read/write
   umask(0);
  

@@ -18,7 +18,5 @@ boost::program_options::variables_map loadConfig(std::string const & configFileN
     boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
   }
 
-  syslog(LOG_INFO, "load worked!!\n");
-
   return vm;
 }

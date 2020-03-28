@@ -17,15 +17,14 @@
 #include <boost/program_options.hpp>
 #include <fstream>
 
-#include <tclap/CmdLine.h> //TCLAP parser
+//#include <tclap/CmdLine.h> //TCLAP parser
 
 #include <syslog.h>  ///for syslog
 
-#include <standalone/daemon.hh>
+#include <standalone/daemon.hh> // daemonizeThisProgram // signal_handler // loop // changeSignal
 
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
-
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
@@ -35,66 +34,14 @@
 
 #define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
 
-// ====================================================================================================}
-//void daemonizeMyself(std::string pidFileName, std::string runPath) {
-//
-//  pid_t pid, sid;
-//  pid = fork();
-//  if(pid < 0){
-//    //Something went wrong.
-//    //log something
-//    exit(EXIT_FAILURE);
-//  }else if(pid > 0){
-//    //We are the parent and created a child with pid pid
-//    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-//    fprintf(pidFile,"%d\n",pid);
-//    fclose(pidFile);
-//    exit(EXIT_SUCCESS);
-//  }else{
-//    // I'm the child!
-//    //open syslog
-//    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
-//  }
-//
-//  syslog(LOG_INFO, "Factorize successful!\n");
-//  
-//  //Change the file mode mask to allow read/write
-//  umask(0);
-// 
-//  //Start logging
-//  syslog(LOG_INFO,"Opened log file\n");
-// 
-//  // create new SID for the daemon.
-//  sid = setsid();
-//  if (sid < 0) {
-//    syslog(LOG_ERR,"Failed to change SID\n");
-//    exit(EXIT_FAILURE);
-//  }
-//  syslog(LOG_INFO,"Set SID to %d\n",sid);
-// 
-//  //Move to RUN_DIR
-//  if ((chdir(runPath.c_str())) < 0) {
-//    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
-//    exit(EXIT_FAILURE);
-//  }
-//  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
-// 
-//  //Everything looks good, close the standard file fds.
-//  close(STDIN_FILENO);
-//  close(STDOUT_FILENO);
-//  close(STDERR_FILENO);
-//}
-
 // ====================================================================================================
 // signal handling
-bool static volatile loop;
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
-
-
+//bool static volatile loop;
+// void static signal_handler(int const signum) {
+//   if(SIGINT == signum || SIGTERM == signum) {
+//     loop = false;
+//   }
+// }
 
 // ====================================================================================================
 // Read from config files and set up all parameters
@@ -118,36 +65,6 @@ boost::program_options::variables_map loadConfig(std::string const & configFileN
 }
 
 // // ====================================================================================================
-// // Function to set the parameter by parsing the command line. In particular, we ensure that the command line default does not override config options obtained from the config file.
-// void setParam(void * param, std::string paramString, boost::program_options::variables_map vm, bool param_from_config) {
-//   
-//   // Set parameter but make sure that the command line default does not override config options obtained from the config file. Every parameter must go through this nested if statement sequence.
-//   
-//   // Set parameter
-//   if(vm.count(paramString)) {
-//     // The parameter exists, but was it defaulted?
-//     if(vm[paramString].defaulted()) {
-//       // We have a defaulted parameter, but do we have a config option obtained from the config file?
-//       if(param_from_config) {
-// 	// We have a config option obtained from the config file. Do nothing
-// 	syslog(LOG_INFO, "Setting %s to (CONFIG FILE)\n", paramString);
-// 	return;
-//       } else {
-// 	// We do not have a config option obtained from the config file. Our default can be used.
-// 	*param = vm[paramString].as<typeof(*param)>();	
-// 	syslog(LOG_INFO, "Setting %s to (DEFAULT)\n", paramString);
-// 	return;
-//       } 
-//     } else { 
-//       // We have a non-defaulted parameter option set from the command line! This trumps everything
-//       *param = vm[paramString].as<typeof(*param)>();      
-//       syslog(LOG_INFO, "Setting %s to (COMMAND LINE)\n", paramString);
-//       return;
-//     }
-//   }
-//   
-// }
-
 // Function to add parameters/options. Saves a few lines of code. Not necessary.
 template <class T>
 void setOption(boost::program_options::options_description * fileOptions, boost::program_options::options_description * commandLineOptions, std::string paramName, std::string paramDesc, T /*param*/) {
@@ -327,24 +244,6 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
 
 int main(int argc, char** argv) { 
 
-//  TCLAP::CmdLine cmd("ApolloSM boot interface");
-//  TCLAP::ValueArg<std::string> configFile("c",                 //one char flag
-//					  "config_file",       // full flag name
-//					  "config file",       //description
-//					  false,               //required argument
-//					  DEFAULT_CONFIG_FILE, //Default value
-//					  "string",            //type
-//					  cmd);
-//  TCLAP::ValueArg<std::string>    runPath    ("r","run_path","run path",false,DEFAULT_RUN_DIR ,"string",cmd);
-//  TCLAP::ValueArg<std::string>    pidFileName("p","pid_file","pid file",false,DEFAULT_PID_FILE,"string",cmd);
-//
-//  try {
-//    cmd.parse(argc, argv);
-//  }catch (TCLAP::ArgException &e) {
-//    fprintf(stderr, "Failed to Parse Command Line\n");
-//    return -1;
-//  }
-
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
   std::string configFile  = DEFAULT_CONFIG_FILE;
   std::string runPath     = DEFAULT_RUN_DIR;
@@ -407,52 +306,9 @@ int main(int argc, char** argv) {
 
   // ============================================================================
   // Deamon book-keeping
-  daemonizeMyself(pidFileName, runPath);
-
-//  pid_t pid, sid;
-//  pid = fork();
-//  if(pid < 0){
-//    //Something went wrong.
-//    //log something
-//    exit(EXIT_FAILURE);
-//  }else if(pid > 0){
-//    //We are the parent and created a child with pid pid
-//    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-//    fprintf(pidFile,"%d\n",pid);
-//    fclose(pidFile);
-//    exit(EXIT_SUCCESS);
-//  }else{
-//    // I'm the child!
-//    //open syslog
-//    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
-//  }
-//
-//  
-//  //Change the file mode mask to allow read/write
-//  umask(0);
-//
-//  //Start logging
-//  syslog(LOG_INFO,"Opened log file\n");
-//
-//  // create new SID for the daemon.
-//  sid = setsid();
-//  if (sid < 0) {
-//    syslog(LOG_ERR,"Failed to change SID\n");
-//    exit(EXIT_FAILURE);
-//  }
-//  syslog(LOG_INFO,"Set SID to %d\n",sid);
-//
-//  //Move to RUN_DIR
-//  if ((chdir(runPath.c_str())) < 0) {
-//    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
-//    exit(EXIT_FAILURE);
-//  }
-//  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
-//
-//  //Everything looks good, close the standard file fds.
-//  close(STDIN_FILENO);
-//  close(STDOUT_FILENO);
-//  close(STDERR_FILENO);
+  Daemon SM_bootDaemon;
+  SM_bootDaemon.daemonizeThisProgram(pidFileName, runPath);
+    //  daemonizeMyself(pidFileName, runPath);
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and see if we should change the parameters from their default values.
@@ -463,226 +319,24 @@ int main(int argc, char** argv) {
   setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
   setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
 
-//  // parameters to get from command line or config file
-//  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
-//  bool powerupCMuC = true;
-//  int powerupTime = DEFAULT_POWERUP_TIME;
-//  bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
-//  // These "sister" variables, if true, ensure that the command line default does not override the config file 
-////  bool polltime_from_config    = false;
-////  bool powerupCMuC_from_config = false;
-////  bool powerupTime_from_config = false;
-////  bool sTZ_from_config         = false;  
-//
-//  // =========================
-//  // parse command line and config file to set parameters
-//  boost::program_options::options_description fileOptions{"File"}; // for parsing config file
-//  boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
-//  setOption(&fileOptions, &commandLineOptions, "polltime"          , "polling interval"             , polltime_in_seconds);
-//  setOption(&fileOptions, &commandLineOptions, "cm_powerup"        , "power up CM uC"               , powerupCMuC);
-//  setOption(&fileOptions, &commandLineOptions, "cm_powerup_time"   , "uC power up wait time"        , powerupTime);
-//  setOption(&fileOptions, &commandLineOptions, "sensorsThroughZynq", "read sensor data through Zynq", sensorsThroughZynq);
-//  boost::program_options::variables_map configFileVM; // for parsing config file
-//  boost::program_options::variables_map commandLineVM; // for parsing command line
-//  syslog(LOG_INFO, "Reading from config file now\n");
-//  try {
-//    // parse config file
-//    configFileVM = loadConfig(configFile, fileOptions);
-//  } catch(const boost::program_options::error &ex) {
-//    syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());        
-//  }
-//  syslog(LOG_INFO, "Parsing command line now\n");
-//  try {
-//    // parse command line
-//    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
-//  } catch(const boost::program_options::error &ex) {
-//    syslog(LOG_INFO, "Caught exception while parsing command line: %s \n", ex.what());        
-//  }
-//
-//  // Look at the config file and command line and see if we should change the parameters from their default values
-//  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM);
-//  setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM);
-//  setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM);
-//  setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM);
-
-//  // Read from configuration file and set up parameters
-//  syslog(LOG_INFO,"Reading from config file now\n");
-//
-//  // fileOptions is for parsing config files
-//  boost::program_options::options_description fileOptions{"File"};
-//  //sigh... with boost comes compilcated c++ magic
-//  fileOptions.add_options() 
-//    ("polltime", 
-//     boost::program_options::value<int>(),//->default_value(DEFAULT_POLLTIME_IN_SECONDS), 
-//     "polling interval")
-//    ("cm_powerup",
-//     boost::program_options::value<bool>(),//->default_value(true), 
-//     "power up CM uC")
-//    ("cm_powerup_time",
-//     boost::program_options::value<int>(),//->default_value(DEFAULT_POWERUP_TIME), 
-//     "uC powerup wait time")
-//    ("sensorsThroughZynq",
-//     boost::program_options::value<bool>(),//->default_value(DEFAULT_SENSORS_THROUGH_ZYNQ),
-//     "read sensor data through zynq");
-//
-//  boost::program_options::variables_map configOptions;  
-//  try{
-//    configOptions = loadConfig(configFile.getValue(),fileOptions);
-//    // Check for information in configOptions. If they exist set the corresponding "from_config" variable to true so that the command line default doesn't override what we have
-//    if(configOptions.count("polltime")) {
-//      polltime_in_seconds = configOptions["polltime"].as<int>();
-//      polltime_from_config = true;
-//    }  
-//    if(configOptions.count("cm_powerup")) {
-//      powerupCMuC = configOptions["cm_powerup"].as<bool>();
-//      powerupCMuc_from_config = true;
-//    }  
-//    if(configOptions.count("cm_powerup_time")) {
-//      powerupTime = configOptions["cm_powerup_time"].as<int>();
-//      powerupTime_from_config = true;
-//    }  
-//    if(configOptions.count("sensorsThroughZynq")) {
-//      sensorsThroughZynq = configOptions["sensorsThroughZynq"].as<bool>();
-//      sTZ_from_config = true;
-//    }
-//
-//  }catch(const boost::program_options::error &ex){
-//    syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
-//  }
-//  
-//  // ============================================================================
-//  // Parsing command line. Parameters set from the command line will override any parameters set from the config file above.
-//  
-//  syslog(LOG_INFO, "Reading from command line now\n");
-//
-//  // commandLineOptions is for parsing the command line
-//  boost::program_options::options_descriptions commandLineOptions{"Options"};
-//  //sigh... with boost comes compilcated c++ magic
-//  commandLineOptions.add_options() 
-//    ("polltime", 
-//     boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), 
-//     "polling interval")
-//    ("cm_powerup",
-//     boost::program_options::value<bool>()->default_value(true), 
-//     "power up CM uC")
-//    ("cm_powerup_time",
-//     boost::program_options::value<int>()->default_value(DEFAULT_POWERUP_TIME), 
-//     "uC powerup wait time")
-//    ("sensorsThroughZynq",
-//     boost::program_options::value<bool>()->default_value(DEFAULT_SENSORS_THROUGH_ZYNQ),
-//     "read sensor data through zynq");
-//
-//  boost::program_options::variables_map commandLineVM;  
-//  try{
-//
-//    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
-// 
-//    //    setParam(param, map, from_config);    
-////    setParam(&polltime_in_seconds, "polltime_in_seconds", commandLineVM, polltime_from_config);
-////    setParam(&powerupCMuC,       , "powerupCMuC",         commandLineVM, powerupCMuC_from_config);
-////    setParam(&powerupTime,       , "powerupTime",         commandLineVM, powerupTime_from_config);
-////    setParam(&sensorsThroughZynq , "sensorsThroughZynq",  commandLineVM, sTZ_from_config);
-//
-//    // Set polltime
-//    if(commandLineVM.count("polltime")) {
-//      // polltime exists, but was it defaulted?
-//      if(commandLineVM["polltime"].defaulted()) {
-//	// We have a defaulted polltime, but do we have a config option obtained from the config file?
-//	if(polltime_from_config) {
-//	  // We have a config option obtained from the config file. Do nothing
-//	  syslog(LOG_INFO, "Setting polltime to %d (CONFIG FILE)\n", polltime_in_seconds);
-//	} else {
-//	  // We do not have a config option obtained from the config file. Our default can be used.
-//	  polltime_in_seconds = commandLineVM["polltime"].as<int>();
-//	  syslog(LOG_INFO, "Setting polltime to %d (DEFAULT)\n", polltime_in_seconds);
-//	} 
-//      } else { 
-//	// We have a non-defaulted parameter option set from the command line! This trumps everything
-//	polltime_in_seconds = commandLineVM["polltime"].as<int>();
-//	syslog(LOG_INFO, "Setting polltime to %d (COMMAND LINE)\n", polltime_in_seconds);
-//      }
-//    }
-//
-//    // Set cm_powerup
-//    if(commandLineVM.count("cm_powerup")) {
-//      // cm_powerup exists, but was it defaulted?
-//      if(commandLineVM["cm_powerup"].defaulted()) {
-//	// We have a defaulted cm_powerup, but do we have a config option obtained from the config file?
-//	if(powerupCMuC_from_config) {
-//	  // We have a config option obtained from the config file. Do nothing
-//	  syslog(LOG_INFO, "Setting cm_powerup to %s (CONFIG FILE)\n", powerupCMuC ? "true" : "false");
-//	} else {
-//	  // We do not have a config option obtained from the config file. Our default can be used.
-//	  powerupCMuC = commandLineVM["cm_powerup"].as<bool>();
-//	  syslog(LOG_INFO, "Setting cm_powerup to %s (DEFAULT)\n", powerupCMuC ? "true" : "false");
-//	} 
-//      } else { 
-//	// We have a non-defaulted parameter option set from the command line! This trumps everything
-//	powerupCMuC = commandLineVM["cm_powerup"].as<bool>();
-//	syslog(LOG_INFO, "Setting cm_powerup to %s (COMMAND LINE)\n", powerupCMuC ? "true" : "false");
-//      }
-//    }
-//
-//    // Set cm_powerup_time
-//    if(commandLineVM.count("cm_powerup_time")) {
-//      // cm_powerup_time exists, but was it defaulted?
-//      if(commandLineVM["cm_powerup_time"].defaulted()) {
-//	// We have a defaulted cm_powerup_time, but do we have a config option obtained from the config file?
-//	if(powerupTime_from_config) {
-//	  // We have a config option obtained from the config file. Do nothing
-//	  syslog(LOG_INFO, "Setting cm_powerup_time to %d (CONFIG FILE)\n", powerupTime);
-//	} else {
-//	  // We do not have a config option obtained from the config file. Our default can be used.
-//	  powerupTime = commandLineVM["cm_powerup_time"].as<int>();
-//	  syslog(LOG_INFO, "Setting cm_powerup_time to %d (DEFAULT)\n", powerupTime);
-//	} 
-//      } else { 
-//	// We have a non-defaulted parameter option set from the command line! This trumps everything
-//	powerupTime = commandLineVM["cm_powerup_time"].as<int>();
-//	syslog(LOG_INFO, "Setting cm_powerup_time to %d (COMMAND LINE)\n", powerupTime);
-//      }
-//    }
-//
-//    // Set sensorsThroughZynq
-//    if(commandLineVM.count("sensorsThroughZynq")) {
-//      // sensorsThroughZynq exists, but was it defaulted?
-//      if(commandLineVM["sensorsThroughZynq"].defaulted()) {
-//	// We have a defaulted sensorsThroughZynq, but do we have a config option obtained from the config file?
-//	if(sTZ_from_config) {
-//	  // We have a config option obtained from the config file. Do nothing
-//	  syslog(LOG_INFO, "Setting sensorsThroughZynq to %s (CONFIG FILE)\n", sensorsThroughZynq ? "true" : "false");
-//	} else {
-//	  // We do not have a config option obtained from the config file. Our default can be used.
-//	  sensorsThroughZynq = commandLineVM["sensorsThroughZynq"].as<bool>();
-//	  syslog(LOG_INFO, "Setting sensorsThroughZynq to %s (DEFAULT)\n", sensorsThroughZynq ? "true" : "false");
-//	} 
-//      } else { 
-//	// We have a non-defaulted parameter option set from the command line! This trumps everything
-//	sensorsThroughZynq = commandLineVM["sensorsThroughZynq"].as<bool>();
-//	syslog(LOG_INFO, "Setting sensorsThroughZynq to %s (COMMAND LINE)\n", sensorsThroughZynq ? "true" : "false");
-//      }
-//    }
-//
-//  }catch(const boost::program_options::error &ex){
-//    syslog(LOG_INFO, "Caught exception while parsing command line: %s \n", ex.what());    
-//  }
-//
   // ============================================================================
   // Daemon code setup
 
   // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
+  SM_bootDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  SM_bootDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  //  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
+ //  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
+ //  //setup SA
+ //  sa_INT.sa_handler  = signal_handler;
+ //  sa_TERM.sa_handler = signal_handler;
+ //  sigemptyset(&sa_INT.sa_mask);
+ //  sigemptyset(&sa_TERM.sa_mask);
+ //  sigaction(SIGINT,  &sa_INT , &old_sa);
+ //  sigaction(SIGTERM, &sa_TERM, NULL);
+  SM_bootDaemon.loop = true;
 
   // ====================================
   // for counting time
@@ -733,7 +387,7 @@ int main(int argc, char** argv) {
     
 
     uint32_t CM_running = 0;
-    while(loop) {
+    while(SM_bootDaemon.loop) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 

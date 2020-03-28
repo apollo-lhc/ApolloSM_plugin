@@ -3,10 +3,21 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <syslog.h>
+#include <signal.h>
+#include <string.h>
 
+// this allows sig_handler to access the class variable "loop" without being a class function
+bool static volatile * globalLoop;
+  
+Daemon::Daemon(){
+  globalLoop = &loop;
+}
 
-void daemonizeMyself(std::string pidFileName, std::string runPath) {
+Daemon::~Daemon(){
+}
 
+//void daemonizeMyself(std::string pidFileName, std::string runPath) {
+void Daemon::daemonizeThisProgram(std::string pidFileName, std::string runPath) {
   pid_t pid, sid;
   pid = fork();
   if(pid < 0){
@@ -52,4 +63,20 @@ void daemonizeMyself(std::string pidFileName, std::string runPath) {
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
+}
+
+//void static signal_handler(int const signum) {
+// sigaction does not seem happy when this is a class function
+void signal_handler(int const signum) {
+  if(SIGINT == signum || SIGTERM == signum) {
+    *globalLoop = false;
+  }
+}
+
+void Daemon::changeSignal(struct sigaction * newAction, struct sigaction * oldAction, int const signum) {
+  memset(newAction,0,sizeof(*newAction)); //Clear struct
+  // set up the action
+  newAction->sa_handler = signal_handler;
+  sigemptyset(&(newAction->sa_mask));
+  sigaction(signum, newAction, oldAction);
 }

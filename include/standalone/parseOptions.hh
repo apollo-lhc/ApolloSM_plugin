@@ -10,7 +10,7 @@
 // ====================================================================================================
 // Function declarations
 
-//boost::program_options::variables_map loadConfig(std::string const & configFileName, boost::program_options::options_description const & fileOptions);
+boost::program_options::variables_map loadConfig(std::string const & configFileName, boost::program_options::options_description const & fileOptions);
 					   
 template <typename T>
 void setOption(boost::program_options::options_description * fileOptions, boost::program_options::options_description * commandLineOptions, std::string paramName, std::string paramDesc, T param);

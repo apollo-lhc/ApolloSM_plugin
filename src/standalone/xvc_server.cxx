@@ -208,7 +208,7 @@ int handle_data(int fd) {
       return 1;
     }
 
-  } while (loop);
+  } while (*loop);
   /* Note: Need to fix JTAG state updates, until then no exit is allowed */
   return 0;
 }

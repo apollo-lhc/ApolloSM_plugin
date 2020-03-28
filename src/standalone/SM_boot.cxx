@@ -306,6 +306,7 @@ int main(int argc, char** argv) {
 
   // ============================================================================
   // Deamon book-keeping
+  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
   Daemon SM_bootDaemon;
   SM_bootDaemon.daemonizeThisProgram(pidFileName, runPath);
     //  daemonizeMyself(pidFileName, runPath);

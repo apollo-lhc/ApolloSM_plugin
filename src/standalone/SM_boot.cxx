@@ -14,6 +14,7 @@
 
 #include <BUException/ExceptionBase.hh>
 
+
 #include <boost/program_options.hpp>
 #include <fstream>
 
@@ -23,6 +24,9 @@
 
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
+
+// value doesn't matter, as long as it is defined
+#define SAY_STATUS_DONE_ANYWAY 1
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
@@ -151,6 +155,104 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
   updateTemp(SM,"SLAVE_I2C.S5.VAL", temps.REGTemp);
 }
 
+// ====================================================================================================
+// Program CM FPGAs
+int programCMFPGA(ApolloSM * SM, FILE * logFile, int CM_ID) {
+  bool NOFILE = 2;
+  bool SUCCESS = 1;
+  bool FAIL = 0;   
+  
+  int wait_time = 5; // 1 second
+  
+  std::string FPGA;
+  std::string FPGAinitial;
+  switch(CM_ID) {
+  case 1: 
+    // Kintex
+    FPGA.append("Kintex");
+    FPGAinitial.append("K");
+  case 2:
+    // Virtex
+    FPGA.append("Virtex");
+    FPGAinitial.append("V");
+  default:
+    fprintf(logFile, "Invalid CM ID: %d\n", CM_ID);
+    fflush(logFile);
+    // Maybe something less harsh
+    return FAIL;
+  }
+
+  try {
+    // ==============================
+    // Power up CM. Currently not doing anything about time out.    
+    bool success = SM->PowerUpCM(CM_ID,wait_time);
+    if(success) {
+      fprintf(logFile, "CM %d is powered up\n", CM_ID);
+      fflush(logFile);
+    } else {
+      fprintf(logFile, "CM %d failed to powered up in time\n", CM_ID);
+      fflush(logFile);
+    }
+
+    std::string CM_CTRL = "CM.CM" + std::to_string(CM_ID) + ".CTRL.";
+
+    // Check CM is actually powered up and "good". 1 is good 0 is bad.
+    if(!checkNode(SM, logFile, CM_CTRL + "PWR_GOOD",    1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_CTRL + "ISO_ENABLED", 1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_CTRL + "STATE",       4)) {return FAIL;}
+
+    // Optionally run svfplayer commands to program CM FPGAs    
+
+    // Check that CM file exists
+    FILE * f = fopen(("/fw/CM/CM_" + FPGA + ".svf").c_str(), "rb");
+    if(NULL == f) {
+      return NOFILE;
+    } 
+    fclose(f);
+    
+    // Program FPGA
+    SM->svfplayer("/fw/CM/CM_" + FPGA +".svf", "XVC1");
+    
+    std::string CM_C2C = "CM.CM" + std::to_string(CM_ID) + ".C2C.";
+    
+    // Check CM.CM*.C2C clocks are locked
+    if(!checkNode(SM, logFile, CM_C2C + "CPLL_LOCK",       1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_GT_PLL_LOCK", 1)) {return FAIL;}
+    
+    // Get FPGA out of error state
+    SM->RegWriteRegister(CM_C2C + "INITIALIZE", 1);
+    usleep(1000000);
+    SM->RegWriteRegister(CM_C2C + "INITIALIZE", 0);
+    
+    // Check that phy lane is up, link is good, and that there are no errors.
+    if(!checkNode(SM, logFile, CM_C2C + "MB_ERROR",     0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "CONFIG_ERROR", 0)) {return FAIL;}
+    //if(!checkNode(SM, logFile, CM_C2C + "LINK_ERROR",   0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_HARD_ERR", 0)) {return FAIL;}
+    //if(!checkNode(SM, logFile, CM_C2C + "PHY_SOFT_ERR", 0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_MMCM_LOL", 0)) {return FAIL;} 
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_LANE_UP",  1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "LINK_GOOD",    1)) {return FAIL;}
+    
+    // Write to the "unblock" bits of the AXI*_FW slaves
+    SM->RegWriteRegister("C2C" + std::to_string(CM_ID) + "_AXI_FW.UNBLOCK", 1);
+    SM->RegWriteRegister("C2C" + std::to_string(CM_ID) + "_AXILITE_FW.UNBLOCK", 1);
+    
+    // Print firmware build date for FPGA
+    printBuildDate(SM, logFile, CM_ID);
+    
+  } catch(BUException::exBase const & e) {
+    fprintf(logFile, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
+    fflush(logFile);
+    return FAIL;
+  } catch (std::exception const & e) {
+    fprintf(logFile, "Caught std::exception: %s\n", e.what());
+    fflush(logFile);
+    return FAIL;
+    }
+    
+  return SUCCESS;
+}
 
 int main(int argc, char** argv) { 
 
@@ -202,7 +304,7 @@ int main(int argc, char** argv) {
     configFileVM = loadConfig(configFile, fileOptions);
   } catch(const boost::program_options::error &ex) {
     fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating SM_boot\n", ex.what());        
-    return -1;
+    return -1;  
   }
 
   // Look at the config file and command line and determine if we should change the parameters from their default values
@@ -233,6 +335,7 @@ int main(int argc, char** argv) {
   // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
+  // struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
   SM_bootDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   SM_bootDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
   //  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
@@ -244,6 +347,7 @@ int main(int argc, char** argv) {
  //  sigemptyset(&sa_TERM.sa_mask);
  //  sigaction(SIGINT,  &sa_INT , &old_sa);
  //  sigaction(SIGTERM, &sa_TERM, NULL);
+  // sigaction(SIGTERM, &sa_TERM, &oldTERM_sa);
   SM_bootDaemon.loop = true;
 
   // ====================================
@@ -272,7 +376,6 @@ int main(int argc, char** argv) {
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
     syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
   
-
     // ====================================
     // Turn on CM uC      
     if (powerupCMuC){
@@ -288,6 +391,33 @@ int main(int argc, char** argv) {
       sendTemps(SM, temps);
     }
 
+    // ==================================
+    // Program CM FPGAs and kill program upon failure
+    int firstCM_ID = 1;
+    int lastCM_ID = 2;
+    for(int i = firstCM_ID; i <= lastCM_ID; i++) {
+      switch(programCMFPGA(SM, logFile, i)) {
+      case 0:
+	      //  fail
+	      return 0;
+      case 1: 
+	      // success
+	      break;
+      case 2:
+	      // A CM file does not exist
+	      fprintf(logFile, "CM %dfile does not exist\n", i);
+	      fflush(logFile);
+	      break;
+      }
+    }
+
+    // Do we set this bit if the CM files do not exist?
+    //Set the power-up done bit to 1 for the IPMC to read
+#ifdef SAY_STATUS_DONE_ANYWAY
+    SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
+    fprintf(logFile,"Set STATUS.DONE to 1\n");
+    fflush(logFile);
+#endif
 
     // ==================================
     // Main DAEMON loop
@@ -417,7 +547,8 @@ int main(int argc, char** argv) {
 
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
+//  sigaction(SIGTERM, &oldTERM_sa, NULL);
   syslog(LOG_INFO,"SM boot Daemon ended\n");
-  
+
   return 0;
 }

@@ -36,12 +36,9 @@
 
 #include <fstream>
 
-//TCLAP parser
-//#include <tclap/CmdLine.h>
-
 #include <ApolloSM/uioLabelFinder.hh>
 
-#include <standalone/parseOptions.hh> // setOptions // setParamValues
+#include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 
 //extern int errno;
 
@@ -59,25 +56,6 @@ void static signal_handler(int const signum) {
     loop = false;
   }
 }
-
-// ==================================================
-
-// boost::program_options::variables_map loadConfig(std::string const & configFileName,
-// 						 boost::program_options::options_description const & fileOptions) {
-//   // This is a container for the information that fileOptions will get from the config file
-//   boost::program_options::variables_map vm;  
-// 
-//   // Check if config file exists
-//   std::ifstream ifs{configFileName};
-//   syslog(LOG_INFO, "Config file \"%s\" %s\n",configFileName.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
-// 
-//   if(ifs) {
-//     // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
-//     boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
-//   }
-// 
-//   return vm;
-// }
 
 // ==================================================
 
@@ -247,43 +225,8 @@ int main(int argc, char **argv) {
  
   int port;
   std::string xvcName;
-  
-//  try {
-//    TCLAP::CmdLine cmd("Apollo XVC.",
-//		       ' ',
-//		       "XVC");
-//   
-//    // XVC name base
-//    TCLAP::ValueArg<std::string> xvcPreFix("v",              //one char flag
-//					       "xvc",      // full flag name
-//					       "xvc prefix",//description
-//					       true,            //required
-//					       std::string(""),  //Default is empty
-//					       "string",         // type
-//					       cmd);
-//
-//    // port number
-//    TCLAP::ValueArg<int> xvcPort("p",              //one char flag
-//				 "port",      // full flag name
-//				 "xvc port number",//description
-//				 true,            //required
-//				 -1,  //Default is empty
-//				 "int",         // type
-//				 cmd);
-//
-//  
-//    //Parse the command line arguments
-//    cmd.parse(argc,argv);
-//
-//    port = xvcPort.getValue();
-//    xvcName=xvcPreFix.getValue();
-//    uioLabel = xvcPreFix.getValue();
-//  }catch (TCLAP::ArgException &e) {  
-//    syslog(LOG_ERR, "Error %s for arg %s\n",
-//	   e.error().c_str(), e.argId().c_str());
-//    return 0;
-//  }
 
+  // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
   std::string configFile  = DEFAULT_CONFIG_FILE;
   std::string runPath     = DEFAULT_RUN_DIR;
   std::string pidFileName = DEFAULT_PID_FILE;

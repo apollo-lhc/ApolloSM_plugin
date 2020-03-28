@@ -502,6 +502,7 @@ int main(int argc, char** argv) {
   SM->DebugDump(outfile);
   outfile.close();  
 
+  syslog(LOG_INFO,"global worked!\n");
   
   //Clean up
   if(NULL != SM) {

@@ -4,7 +4,7 @@
 #include <IPBusIO/IPBusConnection.hh>
 #include <IPBusStatus/IPBusStatus.hh>
 #include <BUException/ExceptionBase.hh>
-
+#include <ApolloSM/eyescan.hh>
 
 #include <iostream>
 
@@ -39,9 +39,21 @@ public:
   void DebugDump(std::ostream & output = std::cout);
 
   void unblockAXI();
+  //  void throwException(std::string message);
+  
+  float SingleEyeScan(std::string baseNode);
+  void EnableEyeScan(std::string baseNode, uint32_t prescale);
+  void SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t horzOffset);
+  std::vector<eyescanCoords> EyeScan(std::string baseNode, double horzIncrement, int vertIncrement);
 
 private:  
   IPBusStatus * statusDisplay;
+
+  void assertNode(std::string node, uint32_t correctVal);
+  void confirmNode(std::string node, uint32_t correctVal);
+
+  void SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign);
+  void SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset);//, uint32_t sign);
 };
 
 

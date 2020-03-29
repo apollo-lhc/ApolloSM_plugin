@@ -17,6 +17,8 @@
 
 #include <boost/algorithm/string/predicate.hpp> //for iequals
 
+#include <stdlib.h> // for strtoul
+
 using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
@@ -138,6 +140,31 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Unblocks all four C2CX AXI and AXILITE bits\n"\
 	       "Usage: \n"\
 	       "  unblockAXI\n");
+    
+    AddCommand("EnableEyeScan",&ApolloSMDevice::EnableEyeScan,
+	       "Set up all attributes for eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  EnableEyeScan <base node> <prescale> \n");
+    AddCommandAlias("esn","EnableEyeScan");
+
+    AddCommand("SetOffsets",&ApolloSMDevice::SetOffsets,
+	       "Set up voltage and phase offsets for eyescan\n"   \
+	       "Usage: \n"                              \
+	       "  SetOffsets <base node> <voltage> <phase> \n");
+    AddCommandAlias("vpoff","SetOffsets");
+
+    AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
+	       "Perform a single eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  SingleEyeScan <base node>\n");
+    AddCommandAlias("singlees","SingleEyeScan");
+
+    AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
+	       "Perform an eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  EyeScan <base node> <file> <horizontal increment double> <vertical increment integer> \n", 
+	       &ApolloSMDevice::RegisterAutoComplete);
+    AddCommandAlias("es","EyeScan");
 
 }
 
@@ -362,3 +389,148 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strA
   return CommandReturn::OK;						   
 }
 						 
+// To set up all attributes for an eye scan
+CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  // For base 0, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
+  uint32_t prescale = strtoul(strArg[1].c_str(), NULL, 0);
+
+  // prescale attribute has only 5 bits of space
+  uint32_t maxPrescaleAllowed = 31;
+
+  // Checks that the prescale is in allowed range
+  if(maxPrescaleAllowed < prescale) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  // base node and prescale
+  SM->EnableEyeScan(strArg[0], prescale);
+  
+  return CommandReturn::OK;
+}
+
+
+CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  // For base 0 in strtoul, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
+
+  // Probably a better function for this
+  uint8_t vertOffset = strtoul(strArg[0].c_str(), NULL, 0);
+  // vertical offset has only 7 bits of space (for magnitude)
+  uint8_t maxVertOffset = 127;
+  
+  // Checks that the vertical offset is in allowed range
+  if(maxVertOffset < vertOffset) {
+    return CommandReturn::BAD_ARGS;
+  }  
+
+  // Probably a better function for this
+  uint8_t horzOffset = strtoul(strArg[1].c_str(), NULL, 0);
+  // vertical offset has only 7 bits of space (for magnitude)
+  //  uint8_t maxVertOffset = 127;
+
+
+//
+//  float horzOffset = strtof(strArg[1].c_str());
+//  float maxHorzOffset = 0.5;
+//
+//  if(maxHorzOffset < horzOffset) {
+//    return CommandReturn::BAD_ARGS;
+//  }
+//
+//  if(0 > horzOffset) {
+//    // no negatives (yet)
+//    return CommandReturn::BAD_ARGS;
+//  }
+//
+//  
+//
+
+  SM->SetOffsets("C2C1_PHY.", vertOffset, horzOffset);
+
+  return CommandReturn::OK;
+}
+
+// Performs a single eye scan
+CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(1 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  std::string baseNode = strArg[0];
+  // Add a dot to baseNode if it does not already have one
+  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
+    baseNode.append(".");
+  }
+
+  printf("The base node is %s\n", baseNode.c_str());
+
+  printf("The BER is: %f\n", SM->SingleEyeScan(baseNode));
+
+  return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+
+  // base node, text file, horizontal increment double, vertical increment integer
+  if(4 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+  
+  std::string baseNode = strArg[0];
+  // Add a dot to baseNode if it does not already have one
+  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
+    baseNode.append(".");
+  }
+
+  std::string fileName = strArg[1];
+  if(0 != fileName.compare(fileName.size()-4,4,".txt")) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  printf("The base node is %s\n", baseNode.c_str());
+  printf("The file to write to is %s\n", fileName.c_str());
+  
+  double horzIncrement = atof(strArg[2].c_str());
+  int vertIncrement = atoi(strArg[3].c_str());
+
+  printf("We have horz increment %f and vert increment %d\n", horzIncrement, vertIncrement);
+
+  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement);
+
+//  int fd = open(fileName, O_CREAT | O_RDWR, 0644);
+//
+//  if(0 > fd) {
+//    printf("Error trying to open file %s\n", fileName.c_str());
+//    return CommandReturn::OK;
+//  }
+//
+
+  FILE * dataFile = fopen(fileName.c_str(), "w");
+  
+  //FILE * dataFile = stdout;
+  
+  printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+  
+  for(int i = 0; i < (int)esCoords.size(); i++) {
+    fprintf(dataFile, "%.9f ", esCoords[i].phase);
+    fprintf(dataFile, "%d ", esCoords[i].voltage);
+    fprintf(dataFile, "%f ", esCoords[i].BER);
+    fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
+    fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
+  }
+  
+  fclose(dataFile);
+
+  return CommandReturn::OK;
+
+}

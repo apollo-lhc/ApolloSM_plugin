@@ -33,8 +33,9 @@
 #define DEFAULT_RUN_DIR     "/opt/address_tables/"
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
-
 #define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
+#define DEFAULT_PROGRAM_KINTEX false
+#define DEFAULT_PROGRAM_VIRTEX false
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -156,14 +157,73 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
 }
 
 // ====================================================================================================
+// Checks value of nodes and quits program if value was not the expected value
+bool checkNode(ApolloSM * SM, std::string node, int correctVal) {
+  bool GOOD = 1;
+  bool BAD = 0;
+
+  bool readVal;
+  if(correctVal != (readVal = SM->RegReadRegister(node))) {
+    syslog(LOG_ERR, "%s was %d\n", node.c_str(), readVal);     
+    return BAD;
+  }
+  return GOOD;
+}
+
+// ====================================================================================================
+// Read firmware build date and hash
+void printBuildDate(ApolloSM * SM, int CM) {
+
+  // The masks according to BUTool "nodes"
+  uint32_t yearMask  = 0xffff0000;
+  uint32_t monthMask = 0x0000ff00;
+  uint32_t dayMask   = 0x000000ff;
+
+  if(1 == CM) {
+    // Kintex
+    std::string CM_K_BUILD = "CM_K_INFO.BUILD_DATE";
+    uint32_t CM_K_BUILD_DATE = SM->RegReadRegister(CM_K_BUILD);
+      
+    uint16_t yearK;
+    uint8_t  monthK;
+    uint8_t  dayK;
+    // Convert Kintex build dates from strings to ints
+    yearK  = (CM_K_BUILD_DATE & yearMask) >> 16;
+    monthK = (CM_K_BUILD_DATE & monthMask) >> 8;
+    dayK   = (CM_K_BUILD_DATE & dayMask);
+      
+    syslog(LOG_INFO, "Kintex firmware build date\nYYYY MM DD\n");
+    syslog(LOG_INFO, "%x %x %x", yearK, monthK, dayK);
+
+  } else if(2 == CM) {
+    // Virtex
+    std::string CM_V_BUILD = "CM_V_INFO.BUILD_DATE";
+    uint32_t CM_V_BUILD_DATE = SM->RegReadRegister(CM_V_BUILD);
+      
+    uint16_t yearV;
+    uint8_t  monthV;
+    uint8_t  dayV;    
+    // Convert Virtex build dates from strings to ints
+    yearV  = (CM_V_BUILD_DATE & yearMask) >> 16;
+    monthV = (CM_V_BUILD_DATE & monthMask) >> 8;
+    dayV   = (CM_V_BUILD_DATE & dayMask);
+      
+    syslog(LOG_INFO, "Virtex firmware build date\nYYYY/MM/DD\n");
+    syslog(LOG_INFO, "%x %x %x", yearV, monthV, dayV);
+  }
+}
+
+// ====================================================================================================
 // Program CM FPGAs
-int programCMFPGA(ApolloSM * SM, FILE * logFile, int CM_ID) {
+int programCMFPGA(ApolloSM * SM, int CM_ID, bool svfProgram) {
   bool NOFILE = 2;
   bool SUCCESS = 1;
   bool FAIL = 0;   
-  
+
   int wait_time = 5; // 1 second
-  
+
+  std::string CM_IDstr = std::to_string(CM_ID);
+
   std::string FPGA;
   std::string FPGAinitial;
   switch(CM_ID) {
@@ -171,13 +231,14 @@ int programCMFPGA(ApolloSM * SM, FILE * logFile, int CM_ID) {
     // Kintex
     FPGA.append("Kintex");
     FPGAinitial.append("K");
+    break;
   case 2:
     // Virtex
     FPGA.append("Virtex");
     FPGAinitial.append("V");
+    break;
   default:
-    fprintf(logFile, "Invalid CM ID: %d\n", CM_ID);
-    fflush(logFile);
+    syslog(LOG_ERR, "Invalid CM ID: %d\n", CM_ID);     
     // Maybe something less harsh
     return FAIL;
   }
@@ -187,73 +248,71 @@ int programCMFPGA(ApolloSM * SM, FILE * logFile, int CM_ID) {
     // Power up CM. Currently not doing anything about time out.    
     bool success = SM->PowerUpCM(CM_ID,wait_time);
     if(success) {
-      fprintf(logFile, "CM %d is powered up\n", CM_ID);
-      fflush(logFile);
+      syslog(LOG_INFO, "CM %d is powered up\n", CM_ID);
     } else {
-      fprintf(logFile, "CM %d failed to powered up in time\n", CM_ID);
-      fflush(logFile);
+      syslog(LOG_ERR, "CM %d failed to powered up in time\n", CM_ID);
     }
 
-    std::string CM_CTRL = "CM.CM" + std::to_string(CM_ID) + ".CTRL.";
+    std::string CM_CTRL = "CM.CM" + CM_IDstr + ".CTRL.";
 
     // Check CM is actually powered up and "good". 1 is good 0 is bad.
-    if(!checkNode(SM, logFile, CM_CTRL + "PWR_GOOD",    1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM_CTRL + "ISO_ENABLED", 1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM_CTRL + "STATE",       4)) {return FAIL;}
+    if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return FAIL;}
+    if(!checkNode(SM, CM_CTRL + "ISO_ENABLED", 1)) {return FAIL;}
+    if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return FAIL;}
 
+    // ==============================
     // Optionally run svfplayer commands to program CM FPGAs    
-
-    // Check that CM file exists
-    FILE * f = fopen(("/fw/CM/CM_" + FPGA + ".svf").c_str(), "rb");
-    if(NULL == f) {
-      return NOFILE;
-    } 
-    fclose(f);
+    if(svfProgram) {
+      std::string svfFile = "/fw/CM/CM_" + FPGAinitial + ".svf";
+      // Check that CM file exists
+      FILE * f = fopen(svfFile.c_str(), "rb");
+      if(NULL == f) {return NOFILE;} 
+      fclose(f);
     
-    // Program FPGA
-    SM->svfplayer("/fw/CM/CM_" + FPGA +".svf", "XVC1");
+      // Program FPGA
+      syslog(LOG_INFO, "Programming %s with %s\n", FPGA.c_str(), svfFile.c_str());
+      SM->svfplayer(svfFile.c_str(), "XVC1");
     
-    std::string CM_C2C = "CM.CM" + std::to_string(CM_ID) + ".C2C.";
+      std::string CM_C2C = "CM.CM" + CM_IDstr + ".C2C.";
     
-    // Check CM.CM*.C2C clocks are locked
-    if(!checkNode(SM, logFile, CM_C2C + "CPLL_LOCK",       1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM_C2C + "PHY_GT_PLL_LOCK", 1)) {return FAIL;}
+      // Check CM.CM*.C2C clocks are locked
+      if(!checkNode(SM, CM_C2C + "CPLL_LOCK"      , 1)) {return FAIL;}
+      if(!checkNode(SM, CM_C2C + "PHY_GT_PLL_LOCK", 1)) {return FAIL;}
+      
+      // Get FPGA out of error state
+      SM->RegWriteRegister(CM_C2C + "INITIALIZE", 1);
+      usleep(1000000);
+      SM->RegWriteRegister(CM_C2C + "INITIALIZE", 0);
+      
+      // Check that phy lane is up, link is good, and that there are no errors.
+      if(!checkNode(SM, CM_C2C + "MB_ERROR"    , 0)) {return FAIL;}
+      if(!checkNode(SM, CM_C2C + "CONFIG_ERROR", 0)) {return FAIL;}
+      //if(!checkNode(SM, CM_C2C + "LINK_ERROR",   0)) {return FAIL;}
+      if(!checkNode(SM, CM_C2C + "PHY_HARD_ERR", 0)) {return FAIL;}
+      //if(!checkNode(SM, CM_C2C + "PHY_SOFT_ERR", 0)) {return FAIL;}
+      if(!checkNode(SM, CM_C2C + "PHY_MMCM_LOL", 0)) {return FAIL;} 
+      if(!checkNode(SM, CM_C2C + "PHY_LANE_UP" , 1)) {return FAIL;}
+      if(!checkNode(SM, CM_C2C + "LINK_GOOD"   , 1)) {return FAIL;}
     
-    // Get FPGA out of error state
-    SM->RegWriteRegister(CM_C2C + "INITIALIZE", 1);
-    usleep(1000000);
-    SM->RegWriteRegister(CM_C2C + "INITIALIZE", 0);
-    
-    // Check that phy lane is up, link is good, and that there are no errors.
-    if(!checkNode(SM, logFile, CM_C2C + "MB_ERROR",     0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM_C2C + "CONFIG_ERROR", 0)) {return FAIL;}
-    //if(!checkNode(SM, logFile, CM_C2C + "LINK_ERROR",   0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM_C2C + "PHY_HARD_ERR", 0)) {return FAIL;}
-    //if(!checkNode(SM, logFile, CM_C2C + "PHY_SOFT_ERR", 0)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM_C2C + "PHY_MMCM_LOL", 0)) {return FAIL;} 
-    if(!checkNode(SM, logFile, CM_C2C + "PHY_LANE_UP",  1)) {return FAIL;}
-    if(!checkNode(SM, logFile, CM_C2C + "LINK_GOOD",    1)) {return FAIL;}
-    
-    // Write to the "unblock" bits of the AXI*_FW slaves
-    SM->RegWriteRegister("C2C" + std::to_string(CM_ID) + "_AXI_FW.UNBLOCK", 1);
-    SM->RegWriteRegister("C2C" + std::to_string(CM_ID) + "_AXILITE_FW.UNBLOCK", 1);
-    
-    // Print firmware build date for FPGA
-    printBuildDate(SM, logFile, CM_ID);
-    
+      // Write to the "unblock" bits of the AXI*_FW slaves
+      SM->RegWriteRegister("C2C" + CM_IDstr + "_AXI_FW.UNBLOCK", 1);
+      SM->RegWriteRegister("C2C" + CM_IDstr + "_AXILITE_FW.UNBLOCK", 1);
+      
+      // Print firmware build date for FPGA
+      printBuildDate(SM, CM_ID);
+    }  
   } catch(BUException::exBase const & e) {
-    fprintf(logFile, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
-    fflush(logFile);
+    syslog(LOG_ERR, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
     return FAIL;
   } catch (std::exception const & e) {
-    fprintf(logFile, "Caught std::exception: %s\n", e.what());
-    fflush(logFile);
+    syslog(LOG_ERR, "Caught std::exception: %s\n", e.what());
     return FAIL;
-    }
-    
+  }
+  
   return SUCCESS;
 }
 
+// ====================================================================================================
 int main(int argc, char** argv) { 
 
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
@@ -264,6 +323,8 @@ int main(int argc, char** argv) {
   bool powerupCMuC        = true;
   int powerupTime         = DEFAULT_POWERUP_TIME;
   bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
+  bool program_kintex     = DEFAULT_PROGRAM_KINTEX;
+  bool program_virtex     = DEFAULT_PROGRAM_VIRTEX;
   
   // parse command line and config file to set parameters
   boost::program_options::options_description fileOptions{"File"}; // for parsing config file
@@ -278,6 +339,8 @@ int main(int argc, char** argv) {
   setOption(&fileOptions, &commandLineOptions, "cm_powerup"        , "power up CM uC"               , powerupCMuC);
   setOption(&fileOptions, &commandLineOptions, "cm_powerup_time"   , "uC power up wait time"        , powerupTime);
   setOption(&fileOptions, &commandLineOptions, "sensorsThroughZynq", "read sensor data through Zynq", sensorsThroughZynq);
+  setOption(&fileOptions, &commandLineOptions, "program_kintex"    , "program kintex"               , program_kintex);
+  setOption(&fileOptions, &commandLineOptions, "program_virtex"    , "program virtex"               , program_virtex);
   boost::program_options::variables_map configFileVM; // for parsing config file
   boost::program_options::variables_map commandLineVM; // for parsing command line
 
@@ -311,10 +374,6 @@ int main(int argc, char** argv) {
   // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
   setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
   setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
-//  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true);
-//  setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
-//  setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
-//  setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
 
   // ============================================================================
   // Deamon book-keeping
@@ -328,6 +387,8 @@ int main(int argc, char** argv) {
   setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
   setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
   setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
+  setParamValue(&program_kintex     , "program_kintex"    , configFileVM, commandLineVM, true);
+  setParamValue(&program_virtex     , "program_virtex"    , configFileVM, commandLineVM, true);
 
   // ============================================================================
   // Daemon code setup
@@ -393,36 +454,44 @@ int main(int argc, char** argv) {
 
     // ==================================
     // Program CM FPGAs and kill program upon failure
-    int firstCM_ID = 1;
-    int lastCM_ID = 2;
-    for(int i = firstCM_ID; i <= lastCM_ID; i++) {
-      switch(programCMFPGA(SM, logFile, i)) {
-      case 0:
-	      //  fail
-	      return 0;
-      case 1: 
-	      // success
-	      break;
-      case 2:
-	      // A CM file does not exist
-	      fprintf(logFile, "CM %dfile does not exist\n", i);
-	      fflush(logFile);
-	      break;
-      }
+    int kintex = 1;
+    switch(programCMFPGA(SM, kintex, program_kintex)) {
+    case 0:
+      // fail
+      return -1;
+    case 1: 
+      // success
+      break;
+    case 2:
+      // A CM svf file does not exist
+      syslog(LOG_ERR, "CM%d svf file does not exist\n", kintex);
+      return -1;
+    }
+    
+    int virtex = 2;
+    switch(programCMFPGA(SM, kintex, program_virtex)) {
+    case 0:
+      // fail
+      return -1;
+    case 1: 
+      // success
+      break;
+    case 2:
+      // A CM svf file does not exist
+      syslog(LOG_ERR, "CM%d svf file does not exist\n", virtex);
+      return -1;
     }
 
     // Do we set this bit if the CM files do not exist?
     //Set the power-up done bit to 1 for the IPMC to read
 #ifdef SAY_STATUS_DONE_ANYWAY
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
-    fprintf(logFile,"Set STATUS.DONE to 1\n");
-    fflush(logFile);
+    syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
 #endif
 
     // ==================================
     // Main DAEMON loop
-    syslog(LOG_INFO,"Starting Monitoring loop\n");
-    
+    syslog(LOG_INFO,"Starting Monitoring loop\n");    
 
     uint32_t CM_running = 0;
     while(SM_bootDaemon.loop) {
@@ -484,8 +553,7 @@ int main(int argc, char** argv) {
 	}
       }
       //=================================
-
-
+      
       // monitoring sleep
       clock_gettime(CLOCK_REALTIME, &stopTS);
       // sleep for 10 seconds minus how long it took to read and send temperature    
@@ -502,12 +570,10 @@ int main(int argc, char** argv) {
           
   }
 
-
   //make sure the CM is off
   //Shutdown the command module (if up)
   SM->PowerDownCM(1,5);
   SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",0);
-
   
   //If we are shutting down, do the handshanking.
   if(inShutdown){

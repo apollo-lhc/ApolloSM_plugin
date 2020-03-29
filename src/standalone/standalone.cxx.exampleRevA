@@ -1,3 +1,4 @@
+// 3-28-2020 Felex
 #include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <BUException/ExceptionBase.hh>
@@ -10,14 +11,13 @@
 
 // ====================================================================================================
 // Define all your defaults here
-#define DEFAULT_CONFIG_FILE         "/etc/eyescan"
-#define DEFAULT_RUN_DIR             "/opt/address_tables/"
-#define DEFAULT_PID_FILE            "/var/run/eyescan.pid"
-#define DEFAULT_POLLTIME_IN_MINUTES 30 
-#define DEFAULT_BASE_NODE           "C2C1_PHY."
-#define DEFAULT_FILE_NAME           "c2c1_phy.txt"
-#define DEFAULT_HORZ_INCREMENT      0.02 // UI is from -0.5 to 0.5
-#define DEFAULT_VERT_INCREMENT      2    // Voltage is from -127 to 127
+#define DEFAULT_CONFIG_FILE "..."
+#define DEFAULT_RUN_DIR     "..." 
+#define DEFAULT_PID_FILE    "..."
+#define DEFAULT_A           ...
+#define DEFAULT_B           ...
+#define DEFAULT_C           ...
+etc ...
 
 // ====================================================================================================
 // Define any functions you need here
@@ -26,15 +26,14 @@
 int main(int argc, char** argv) { 
 
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
-  std::string configFile          = DEFAULT_CONFIG_FILE;
-  std::string runPath             = DEFAULT_RUN_DIR;
-  std::string pidFileName         = DEFAULT_PID_FILE;
-  int         polltime_in_minutes = DEFAULT_POLLTIME_IN_MINUTES;
-  std::string baseNode            = DEFAULT_BASE_NODE;
-  std::string fileName            = DEFAULT_FILE_NAME;
-  double      horzIncrement       = DEFAULT_HORZ_INCREMENT;
-  int         vertIncrement       = DEFAULT_VERT_INCREMENT;       
-
+  std::string configFile  = DEFAULT_CONFIG_FILE;
+  std::string runPath     = DEFAULT_RUN_DIR;
+  std::string pidFileName = DEFAULT_PID_FILE;
+  someTypeA A             = DEFAULT_A;     
+  someTypeB B             = DEFAULT_B;     
+  someTypeC C             = DEFAULT_C;    
+  etc ...
+  
   // parse command line and config file to set parameters
   boost::program_options::options_description fileOptions{"File"}; // for parsing config file
   boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
@@ -44,11 +43,10 @@ int main(int argc, char** argv) {
      "config file"); // This is the only option not also in the file option (obviously)
   setOption(&fileOptions, &commandLineOptions, "run_path" , "run path" , runPath);
   setOption(&fileOptions, &commandLineOptions, "pid_file" , "pid file" , pidFileName);
-  setOption(&fileOptions, &commandLineOptions, "polltime" , "polling interval" , polltime_in_minutes);
-  setOption(&fileOptions, &commandLineOptions, "baseNode" , "link to scan" , baseNode);
-  setOption(&fileOptions, &commandLineOptions, "data_file" , "data file" , fileName);
-  setOption(&fileOptions, &commandLineOptions, "horzIncrement" , "phase increment" , horzIncrement);
-  setOption(&fileOptions, &commandLineOptions, "vertIncrement" , "voltage increment" , vertIncrement);
+  setOption(&fileOptions, &commandLineOptions, "name of A", "desc of A", A);
+  setOption(&fileOptions, &commandLineOptions, "name of B", "desc of B", B);
+  setOption(&fileOptions, &commandLineOptions, "name of C", "desc of C", C);
+  etc ...
 
   boost::program_options::variables_map configFileVM; // for parsing config file
   boost::program_options::variables_map commandLineVM; // for parsing command line
@@ -59,7 +57,7 @@ int main(int argc, char** argv) {
     // parse command line
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
   } catch(const boost::program_options::error &ex) {
-    fprintf(stderr, "Caught exception while parsing command line: %s \nTerminating eyescan\n", ex.what());       
+    fprintf(stderr, "Caught exception while parsing command line: %s \nTerminating <daemon name here>\n", ex.what());       
     return -1;
   }
 
@@ -75,36 +73,35 @@ int main(int argc, char** argv) {
     // parse config file
     configFileVM = loadConfig(configFile, fileOptions);
   } catch(const boost::program_options::error &ex) {
-    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating eyescan\n", ex.what());        
+    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating <daemon name here>\n", ex.what());        
     return -1;
   }
 
   // Look at the config file and command line and see if we should change the parameters from their default values
   // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
-  setParamValue(&runPath    , "run_path", configFileVM, commandLineVM, false);
-  setParamValue(&pidFileName, "pid_file", configFileVM, commandLineVM, false);
+  setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
+  setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
 
   // ============================================================================
   // Deamon book-keeping
   // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
-  Daemon eyescanDaemon;
-  eyescanDaemon.daemonizeThisProgram(pidFileName, runPath);
+  Daemon <daemon name here>Daemon;
+  <daemon name here>Daemon.daemonizeThisProgram(pidFileName, runPath);
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
-  setParamValue(&polltime_in_minutes, "polltime" , configFileVM, commandLineVM, true);
-  setParamValue(&baseNode, "baseNode" , configFileVM, commandLineVM, true);
-  setParamValue(&fileName, "data_file" , configFileVM, commandLineVM, true);
-  setParamValue(&horzIncrement, "horzIncrement" , configFileVM, commandLineVM, true);
-  setParamValue(&vertIncrement, "vertIncrement" , configFileVM, commandLineVM, true);
+  setParamValue(&A, "name of A", configFileVM, commandLineVM, true);
+  setParamValue(&B, "name of B", configFileVM, commandLineVM, true);
+  setParamValue(&C, "name of C", configFileVM, commandLineVM, true);
+  etc ...
   
   // ============================================================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
   // struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
-  eyescanDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
-  eyescanDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
-  eyescanDaemon.loop = true;
+  <daemon name here>tDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  <daemon name here>tDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  <daemon name here>tDaemon.loop = true;
 
   // ============================================================================
   // More set up if needed.
@@ -128,56 +125,10 @@ int main(int argc, char** argv) {
 
     // ==================================
 
-    syslog(LOG_INFO, "Starting main eye scan loop\n");
+    syslog(LOG_INFO, <Say you're starting the loop or something>);
 
-    while(eyescanDaemon.loop) {
-      
-      // 1. Eye scan and write to file.
-      // enable eye scan
-      SM->EnableEyeScan(baseNode, 0); // 0 for beginning prescale
-
-      std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement);
-
-      FILE * dataFile = fopen(fileName.c_str(), "w");
-      
-      for(int i = 0; i < (int)esCoords.size(); i++) {
-	fprintf(dataFile, "%.9f ", esCoords[i].phase);
-	fprintf(dataFile, "%d "  , esCoords[i].voltage);
-	fprintf(dataFile, "%f "  , esCoords[i].BER);
-	fprintf(dataFile, "%x "  , esCoords[i].voltageReg & 0xFF);
-	fprintf(dataFile, "%x\n" , esCoords[i].phaseReg & 0xFFF);
-      }
-
-      fclose(dataFile);
-      
-      // 2. Graph it with Python.
-
-      std::string runPython = "python eyescan.py ";
-      runPython.append(fileName);
-      system(runPython.c_str());
-      // python ./root/felex/eyescan.py .txt
-
-      // 3. Upload it.
-
-      std::string png = fileName;
-      png.pop_back();
-      png.pop_back();
-      png.pop_back();
-      png.append("png");
-     
-      std::string copy = "cp ";
-      copy.append(png);
-      copy.append("/var/www/lighttpd");
-      system(copy.c_str());
-
-      // cp basenode.png /var/www/lighttpd
-
-      // 4. Sleep
-
-      for(int i = 0; i < polltime_in_minutes; i++) {
-	usleep(1000000);
-      }
-
+    while(<daemon name here>Daemon.loop) {
+      // The main purpose/work of the daemon goes here.
     }
   }catch(BUException::exBase const & e){
     syslog(LOG_INFO,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
@@ -188,7 +139,7 @@ int main(int argc, char** argv) {
   }
   
   // ============================================================================
-  // Clean up  
+  // Clean up	
   
   // Pre-delete SM clean up stuff if nedeed.
   
@@ -199,7 +150,7 @@ int main(int argc, char** argv) {
 
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-  syslog(LOG_INFO,"eyescan Daemon ended\n");
+  syslog(LOG_INFO,"<daemon name here> Daemon ended\n");
 
   // ============================================================================  
   return 0;

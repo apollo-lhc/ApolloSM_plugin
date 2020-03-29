@@ -14,16 +14,19 @@
 
 #include <BUException/ExceptionBase.hh>
 
+
 #include <boost/program_options.hpp>
 #include <fstream>
 
-#include <tclap/CmdLine.h> //TCLAP parser
-
-#include <syslog.h>  ///for syslog
+#include <syslog.h> ///for syslog
+#include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
+#include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
 
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
 
+// value doesn't matter, as long as it is defined
+#define SAY_STATUS_DONE_ANYWAY 1
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
@@ -31,44 +34,13 @@
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
 
-// ====================================================================================================
-// signal handling
-bool static volatile loop;
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
-
-
-
-// ====================================================================================================
-// Read from config files and set up all parameters
-// For further information see https://theboostcpplibraries.com/boost.program_options
-
-boost::program_options::variables_map loadConfig(std::string const & configFileName,
-						 boost::program_options::options_description const & fileOptions) {
-  // This is a container for the information that fileOptions will get from the config file
-  boost::program_options::variables_map vm;  
-
-  // Check if config file exists
-  std::ifstream ifs{configFileName};
-  syslog(LOG_INFO, "Config file \"%s\" %s\n",configFileName.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
-
-  if(ifs) {
-    // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
-    boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
-  }
-
-  return vm;
-}
+#define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
   return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
 	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
 }
-
 
 // ====================================================================================================
 // Definitions
@@ -183,128 +155,179 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
   updateTemp(SM,"SLAVE_I2C.S5.VAL", temps.REGTemp);
 }
 
+// ====================================================================================================
+// Program CM FPGAs
+int programCMFPGA(ApolloSM * SM, FILE * logFile, int CM_ID) {
+  bool NOFILE = 2;
+  bool SUCCESS = 1;
+  bool FAIL = 0;   
+  
+  int wait_time = 5; // 1 second
+  
+  std::string FPGA;
+  std::string FPGAinitial;
+  switch(CM_ID) {
+  case 1: 
+    // Kintex
+    FPGA.append("Kintex");
+    FPGAinitial.append("K");
+  case 2:
+    // Virtex
+    FPGA.append("Virtex");
+    FPGAinitial.append("V");
+  default:
+    fprintf(logFile, "Invalid CM ID: %d\n", CM_ID);
+    fflush(logFile);
+    // Maybe something less harsh
+    return FAIL;
+  }
+
+  try {
+    // ==============================
+    // Power up CM. Currently not doing anything about time out.    
+    bool success = SM->PowerUpCM(CM_ID,wait_time);
+    if(success) {
+      fprintf(logFile, "CM %d is powered up\n", CM_ID);
+      fflush(logFile);
+    } else {
+      fprintf(logFile, "CM %d failed to powered up in time\n", CM_ID);
+      fflush(logFile);
+    }
+
+    std::string CM_CTRL = "CM.CM" + std::to_string(CM_ID) + ".CTRL.";
+
+    // Check CM is actually powered up and "good". 1 is good 0 is bad.
+    if(!checkNode(SM, logFile, CM_CTRL + "PWR_GOOD",    1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_CTRL + "ISO_ENABLED", 1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_CTRL + "STATE",       4)) {return FAIL;}
+
+    // Optionally run svfplayer commands to program CM FPGAs    
+
+    // Check that CM file exists
+    FILE * f = fopen(("/fw/CM/CM_" + FPGA + ".svf").c_str(), "rb");
+    if(NULL == f) {
+      return NOFILE;
+    } 
+    fclose(f);
+    
+    // Program FPGA
+    SM->svfplayer("/fw/CM/CM_" + FPGA +".svf", "XVC1");
+    
+    std::string CM_C2C = "CM.CM" + std::to_string(CM_ID) + ".C2C.";
+    
+    // Check CM.CM*.C2C clocks are locked
+    if(!checkNode(SM, logFile, CM_C2C + "CPLL_LOCK",       1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_GT_PLL_LOCK", 1)) {return FAIL;}
+    
+    // Get FPGA out of error state
+    SM->RegWriteRegister(CM_C2C + "INITIALIZE", 1);
+    usleep(1000000);
+    SM->RegWriteRegister(CM_C2C + "INITIALIZE", 0);
+    
+    // Check that phy lane is up, link is good, and that there are no errors.
+    if(!checkNode(SM, logFile, CM_C2C + "MB_ERROR",     0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "CONFIG_ERROR", 0)) {return FAIL;}
+    //if(!checkNode(SM, logFile, CM_C2C + "LINK_ERROR",   0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_HARD_ERR", 0)) {return FAIL;}
+    //if(!checkNode(SM, logFile, CM_C2C + "PHY_SOFT_ERR", 0)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_MMCM_LOL", 0)) {return FAIL;} 
+    if(!checkNode(SM, logFile, CM_C2C + "PHY_LANE_UP",  1)) {return FAIL;}
+    if(!checkNode(SM, logFile, CM_C2C + "LINK_GOOD",    1)) {return FAIL;}
+    
+    // Write to the "unblock" bits of the AXI*_FW slaves
+    SM->RegWriteRegister("C2C" + std::to_string(CM_ID) + "_AXI_FW.UNBLOCK", 1);
+    SM->RegWriteRegister("C2C" + std::to_string(CM_ID) + "_AXILITE_FW.UNBLOCK", 1);
+    
+    // Print firmware build date for FPGA
+    printBuildDate(SM, logFile, CM_ID);
+    
+  } catch(BUException::exBase const & e) {
+    fprintf(logFile, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
+    fflush(logFile);
+    return FAIL;
+  } catch (std::exception const & e) {
+    fprintf(logFile, "Caught std::exception: %s\n", e.what());
+    fflush(logFile);
+    return FAIL;
+    }
+    
+  return SUCCESS;
+}
 
 int main(int argc, char** argv) { 
 
-  TCLAP::CmdLine cmd("ApolloSM boot interface");
-  TCLAP::ValueArg<std::string> configFile("c",                 //one char flag
-					  "config_file",       // full flag name
-					  "config file",       //description
-					  false,               //required argument
-					  DEFAULT_CONFIG_FILE, //Default value
-					  "string",            //type
-					  cmd);
-  TCLAP::ValueArg<std::string>    runPath    ("r","run_path","run path",false,DEFAULT_RUN_DIR ,"string",cmd);
-  TCLAP::ValueArg<std::string>    pidFileName("p","pid_file","pid file",false,DEFAULT_PID_FILE,"string",cmd);
+  // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
+  std::string configFile  = DEFAULT_CONFIG_FILE;
+  std::string runPath     = DEFAULT_RUN_DIR;
+  std::string pidFileName = DEFAULT_PID_FILE;
+  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+  bool powerupCMuC        = true;
+  int powerupTime         = DEFAULT_POWERUP_TIME;
+  bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
+  
+  // parse command line and config file to set parameters
+  boost::program_options::options_description fileOptions{"File"}; // for parsing config file
+  boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
+  commandLineOptions.add_options()
+    ("config_file",
+     boost::program_options::value<std::string>(),
+     "config file"); // This is the only option not also in the file option (obviously)
+  setOption(&fileOptions, &commandLineOptions, "run_path"          , "run path"                     , runPath);
+  setOption(&fileOptions, &commandLineOptions, "pid_file"          , "pid file"                     , pidFileName);
+  setOption(&fileOptions, &commandLineOptions, "polltime"          , "polling interval"             , polltime_in_seconds);
+  setOption(&fileOptions, &commandLineOptions, "cm_powerup"        , "power up CM uC"               , powerupCMuC);
+  setOption(&fileOptions, &commandLineOptions, "cm_powerup_time"   , "uC power up wait time"        , powerupTime);
+  setOption(&fileOptions, &commandLineOptions, "sensorsThroughZynq", "read sensor data through Zynq", sensorsThroughZynq);
+  boost::program_options::variables_map configFileVM; // for parsing config file
+  boost::program_options::variables_map commandLineVM; // for parsing command line
 
+  // The command line must be parsed before the config file so that we know if there is a command line specified config file 
+  fprintf(stdout, "Parsing command line now\n");
   try {
-    cmd.parse(argc, argv);
-  }catch (TCLAP::ArgException &e) {
-    fprintf(stderr, "Failed to Parse Command Line\n");
+    // parse command line
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
+  } catch(const boost::program_options::error &ex) {
+    fprintf(stderr, "Caught exception while parsing command line: %s. Try (--). ex: --polltime \nTerminating SM_boot\n", ex.what());       
     return -1;
   }
 
+  // Check for non default config file
+  if(commandLineVM.count("config_file")) {
+    configFile = commandLineVM["config_file"].as<std::string>();
+  }  
+  fprintf(stdout, "config file path: %s\n", configFile.c_str());
 
+  // Now the config file may be loaded
+  fprintf(stdout, "Reading from config file now\n");
+  try {
+    // parse config file
+    configFileVM = loadConfig(configFile, fileOptions);
+  } catch(const boost::program_options::error &ex) {
+    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating SM_boot\n", ex.what());        
+    return -1;  
+  }
+
+  // Look at the config file and command line and determine if we should change the parameters from their default values
+  // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
+  setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
+  setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
+//  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true);
+//  setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
+//  setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
+//  setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
 
   // ============================================================================
   // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen(pidFileName.getValue().c_str(),"w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
-    //open syslog
-    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
-  }
+  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
+  Daemon SM_bootDaemon;
+  SM_bootDaemon.daemonizeThisProgram(pidFileName, runPath);
 
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-
-  //Start logging
-  syslog(LOG_INFO,"Opened log file\n");
-
-  // create new SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    syslog(LOG_ERR,"Failed to change SID\n");
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Set SID to %d\n",sid);
-
-  //Move to RUN_DIR
-  if ((chdir(runPath.getValue().c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.getValue().c_str());    
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.getValue().c_str());    
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-
-  
   // ============================================================================
-  // Read from configuration file and set up parameters
-  syslog(LOG_INFO,"Reading from config file now\n");
-  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
-  bool powerupCMuC = true;
-  int powerupTime = DEFAULT_POWERUP_TIME;
- 
-  // fileOptions is for parsing config files
-  boost::program_options::options_description fileOptions{"File"};
-  //sigh... with boost comes compilcated c++ magic
-  fileOptions.add_options() 
-    ("polltime", 
-     boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), 
-     "polling interval")
-    ("cm_powerup",
-     boost::program_options::value<bool>()->default_value(true), 
-     "power up CM uC")
-    ("cm_powerup_time",
-     boost::program_options::value<int>()->default_value(DEFAULT_POWERUP_TIME), 
-     "uC powerup wait time");
-
-  boost::program_options::variables_map configOptions;  
-  try{
-    configOptions = loadConfig(configFile.getValue(),fileOptions);
-    // Check for information in configOptions
-    if(configOptions.count("polltime")) {
-      polltime_in_seconds = configOptions["polltime"].as<int>();
-    }  
-    syslog(LOG_INFO,
-	   "Setting poll time to %d seconds (%s)\n",
-	   polltime_in_seconds, 
-	   configOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
-    if(configOptions.count("cm_powerup")) {
-      powerupCMuC = configOptions["cm_powerup"].as<bool>();
-    }  
-    syslog(LOG_INFO,
-	   "%s up CM uC @ boot (%s)\n",
-	   powerupCMuC ? "Powering" : "Not powering",
-	   configOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
-    if(configOptions.count("cm_powerup_time")) {
-      powerupTime = configOptions["cm_powerup_time"].as<int>();
-    }  
-    syslog(LOG_INFO,
-	   "Setting uC power-up time to %d seconds (%s)\n",
-	   powerupTime,
-	   configOptions.count("cm_powerup_time") ? "CONFIG FILE" : "DEFAULT");
-        
-  }catch(const boost::program_options::error &ex){
-    syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
-  }
-
+  // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
+  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true);
+  setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
+  setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
+  setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
 
   // ============================================================================
   // Daemon code setup
@@ -312,16 +335,20 @@ int main(int argc, char** argv) {
   // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
+  // struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
+  SM_bootDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  SM_bootDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  //  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
+ //  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
+ //  //setup SA
+ //  sa_INT.sa_handler  = signal_handler;
+ //  sa_TERM.sa_handler = signal_handler;
+ //  sigemptyset(&sa_INT.sa_mask);
+ //  sigemptyset(&sa_TERM.sa_mask);
+ //  sigaction(SIGINT,  &sa_INT , &old_sa);
+ //  sigaction(SIGTERM, &sa_TERM, NULL);
+  // sigaction(SIGTERM, &sa_TERM, &oldTERM_sa);
+  SM_bootDaemon.loop = true;
 
   // ====================================
   // for counting time
@@ -349,7 +376,6 @@ int main(int argc, char** argv) {
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
     syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
   
-
     // ====================================
     // Turn on CM uC      
     if (powerupCMuC){
@@ -358,6 +384,40 @@ int main(int argc, char** argv) {
       sleep(powerupTime);
     }
   
+    //Set uC temp sensors as disabled
+    if(!sensorsThroughZynq){
+      temperatures temps;  
+      temps = {0,0,0,0,false};
+      sendTemps(SM, temps);
+    }
+
+    // ==================================
+    // Program CM FPGAs and kill program upon failure
+    int firstCM_ID = 1;
+    int lastCM_ID = 2;
+    for(int i = firstCM_ID; i <= lastCM_ID; i++) {
+      switch(programCMFPGA(SM, logFile, i)) {
+      case 0:
+	      //  fail
+	      return 0;
+      case 1: 
+	      // success
+	      break;
+      case 2:
+	      // A CM file does not exist
+	      fprintf(logFile, "CM %dfile does not exist\n", i);
+	      fflush(logFile);
+	      break;
+      }
+    }
+
+    // Do we set this bit if the CM files do not exist?
+    //Set the power-up done bit to 1 for the IPMC to read
+#ifdef SAY_STATUS_DONE_ANYWAY
+    SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
+    fprintf(logFile,"Set STATUS.DONE to 1\n");
+    fflush(logFile);
+#endif
 
     // ==================================
     // Main DAEMON loop
@@ -365,7 +425,7 @@ int main(int argc, char** argv) {
     
 
     uint32_t CM_running = 0;
-    while(loop) {
+    while(SM_bootDaemon.loop) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 
@@ -374,31 +434,34 @@ int main(int argc, char** argv) {
       //=================================
 
       //Process CM temps
-      temperatures temps;  
-      if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
-	try{
-	  temps = sendAndParse(SM);
-	}catch(std::exception & e){
-	  syslog(LOG_INFO,e.what());
-	  //ignoring any exception here for now
+      //      if(true == sensorsThroughZynq) {
+      if(sensorsThroughZynq) {
+	temperatures temps;  
+      	if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
+	  try{
+	    temps = sendAndParse(SM);
+	  }catch(std::exception & e){
+	    syslog(LOG_INFO,e.what());
+	    //ignoring any exception here for now
+	    temps = {0,0,0,0,false};
+	  }
+	  
+	  if(0 == CM_running ){
+	    //Drop the non uC temps
+	    temps.FIREFLYTemp = 0;
+	    temps.FPGATemp = 0;
+	    temps.REGTemp = 0;
+	  }
+	  CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
+	  
+	  sendTemps(SM, temps);
+	  if(!temps.validData){
+	    syslog(LOG_INFO,"Error in parsing data stream\n");
+	  }
+	}else{
 	  temps = {0,0,0,0,false};
+	  sendTemps(SM, temps);
 	}
-	
-	if(0 == CM_running ){
-	  //Drop the non uC temps
-	  temps.FIREFLYTemp = 0;
-	  temps.FPGATemp = 0;
-	  temps.REGTemp = 0;
-	}
-	CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
-
-	sendTemps(SM, temps);
-	if(!temps.validData){
-	  syslog(LOG_INFO,"Error in parsing data stream\n");
-	}
-      }else{
-	temps = {0,0,0,0,false};
-	sendTemps(SM, temps);
       }
 
       //Check if we are shutting down
@@ -459,15 +522,33 @@ int main(int argc, char** argv) {
     SM->RegReadRegister("SLAVE_I2C.HB_SET2");
 
   }
+
+  //Dump registers on power down
+  std::stringstream outfileName;
+  outfileName << "/var/log/Apollo_debug_dump_";  
+
+  char buffer[128];
+  time_t unixTime=time(NULL);
+  struct tm * timeinfo = localtime(&unixTime);
+  strftime(buffer,128,"%F-%T-%Z",timeinfo);
+  outfileName << buffer;
+
+  outfileName << ".dat";
   
+  std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);
+  outfile << outfileName.str() << std::endl;
+  SM->DebugDump(outfile);
+  outfile.close();  
+
   //Clean up
   if(NULL != SM) {
     delete SM;
   }
-  
+
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
+//  sigaction(SIGTERM, &oldTERM_sa, NULL);
   syslog(LOG_INFO,"SM boot Daemon ended\n");
-  
+
   return 0;
 }

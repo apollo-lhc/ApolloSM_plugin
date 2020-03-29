@@ -59,6 +59,8 @@ namespace BUTool{
     CommandReturn::status UART_CMD(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status GenerateHTMLStatus(std::vector<std::string>,std::vector<uint64_t>);
 
+    CommandReturn::status unblockAXI(std::vector<std::string>,std::vector<uint64_t>);
+
     CommandReturn::status EnableEyeScan(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status SetOffsets(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status SingleEyeScan(std::vector<std::string>,std::vector<uint64_t>);

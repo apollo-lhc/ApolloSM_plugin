@@ -34,25 +34,30 @@
 #include <vector>
 #include <string>
 
-//TCLAP parser
-#include <tclap/CmdLine.h>
+#include <fstream>
 
 #include <ApolloSM/uioLabelFinder.hh>
+#include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
+#include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 
 //extern int errno;
 
+#define DEFAULT_CONFIG_FILE "/etc/xvc_server"
 #define DEFAULT_RUN_DIR     "/opt/address_tables/"
 #define DEFAULT_PID_FILE    "/var/run/"
-
+#define DEFAULT_XVCPREFIX   ""
+#define DEFAULT_XVCPORT     -1
 
 // ====================================================================================================
 // signal handling
-bool static volatile loop;
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
+bool static volatile * loop; // xvc_server, unlike the other daemons, uses loop in two diferent places, so we need this to point to xvc_serverDaemon loop
+// void static signal_handler(int const signum) {
+//   if(SIGINT == signum || SIGTERM == signum) {
+//     loop = false;
+//   }
+// }
+
+// ==================================================
 
 #define MAP_SIZE      0x10000
 
@@ -203,7 +208,7 @@ int handle_data(int fd) {
       return 1;
     }
 
-  } while (loop);
+  } while (*loop);
   /* Note: Need to fix JTAG state updates, until then no exit is allowed */
   return 0;
 }
@@ -220,98 +225,126 @@ int main(int argc, char **argv) {
  
   int port;
   std::string xvcName;
-  
+
+  // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
+  std::string configFile  = DEFAULT_CONFIG_FILE;
+  std::string runPath     = DEFAULT_RUN_DIR;
+  std::string pidFileName = DEFAULT_PID_FILE;
+  std::string xvcPreFix   = DEFAULT_XVCPREFIX;
+  int xvcPort             = DEFAULT_XVCPORT;
+
+  // parse command line and config file to set parameters
+  boost::program_options::options_description fileOptions{"File"}; // for parsing config file
+  boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
+  commandLineOptions.add_options()
+    ("config_file",
+     boost::program_options::value<std::string>(),
+     "config_file"); // This is the only option not also in the file option (obviously)
+  setOption(&fileOptions, &commandLineOptions, "run_path", "run path"         , runPath);
+  setOption(&fileOptions, &commandLineOptions, "pid_file", "pid file"         , pidFileName);
+  setOption(&fileOptions, &commandLineOptions, "xvc"     , "xvc prefix"       , xvcPreFix);
+  setOption(&fileOptions, &commandLineOptions, "port"    , "xvc port number"  , xvcPort);
+  boost::program_options::variables_map configFileVM; // for parsing config file
+  boost::program_options::variables_map commandLineVM; // for parsing command line
+
+  // The command line must be parsed before the config file so that we know if there is a command line specified config file
+  fprintf(stdout, "Parsing command line now\n");
   try {
-    TCLAP::CmdLine cmd("Apollo XVC.",
-		       ' ',
-		       "XVC");
-   
-    // XVC name base
-    TCLAP::ValueArg<std::string> xvcPreFix("v",              //one char flag
-					       "xvc",      // full flag name
-					       "xvc prefix",//description
-					       true,            //required
-					       std::string(""),  //Default is empty
-					       "string",         // type
-					       cmd);
-
-    // port number
-    TCLAP::ValueArg<int> xvcPort("p",              //one char flag
-				 "port",      // full flag name
-				 "xvc port number",//description
-				 true,            //required
-				 -1,  //Default is empty
-				 "int",         // type
-				 cmd);
-
-  
-    //Parse the command line arguments
-    cmd.parse(argc,argv);
-
-    port = xvcPort.getValue();
-    xvcName=xvcPreFix.getValue();
-    uioLabel = xvcPreFix.getValue();
-  }catch (TCLAP::ArgException &e) {  
-    syslog(LOG_ERR, "Error %s for arg %s\n",
-	   e.error().c_str(), e.argId().c_str());
-    return 0;
+    // parse command line
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
+  } catch(const boost::program_options::error &ex) {
+    fprintf(stderr, "Caught exception while parsing command line: %s. Try (--). ex: --polltime \nTerminating xvc_server\n", ex.what());       
+    return -1;
   }
 
+  // Check for non default config file
+  if(commandLineVM.count("config_file")) {
+    configFile = commandLineVM["config_file"].as<std::string>();
+  }  
+  fprintf(stdout, "config file path: %s\n", configFile.c_str());
+
+  // Now the config file may be loaded
+  fprintf(stdout, "Reading from config file now\n");
+  try {
+    // parse config file
+    configFileVM = loadConfig(configFile, fileOptions);
+  } catch(const boost::program_options::error &ex) {
+    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating xvc_server\n", ex.what());        
+    return -1;
+  }
+ 
+
+  // Look at the config file and command line and determine if we should change the parameters from their default values
+  setParamValue(&runPath    , "run_path", configFileVM, commandLineVM, false);
+  setParamValue(&pidFileName, "pid_file", configFileVM, commandLineVM, false);
+  setParamValue(&xvcPort    , "port"    , configFileVM, commandLineVM, false);
+  setParamValue(&xvcPreFix  , "xvc"     , configFileVM, commandLineVM, false);
+
+  port     = xvcPort;
+  xvcName  = xvcPreFix;
+  uioLabel = xvcPreFix;
 
   //now that we know the port, setup the log
   char daemonName[] = "xvc_server.XXXXXY"; //The 'Y' is so strlen is properly padded
   snprintf(daemonName,strlen(daemonName),"xvc_server.%u",port);
-  
+  pidFileName+=daemonName;
+  pidFileName+=".pid";
+ 
   // ============================================================================
   // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    std::string pidFileName = DEFAULT_PID_FILE;
-    pidFileName+=daemonName;
-    pidFileName+=".pid";
-    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
-  }
+  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
+  Daemon xvc_serverDaemon;
+  xvc_serverDaemon.daemonizeThisProgram(pidFileName, runPath);
 
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-  
-  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
-  syslog(LOG_INFO,"starting %s", daemonName);
-  
+//  pid_t pid, sid;
+//  pid = fork();
+//  if(pid < 0){
+//    //Something went wrong.
+//    //log something
+//    exit(EXIT_FAILURE);
+//  }else if(pid > 0){
+//    //We are the parent and created a child with pid pid
+////    std::string pidFileName = DEFAULT_PID_FILE;
+////    pidFileName+=daemonName;
+////    pidFileName+=".pid";
+//    FILE * pidFile = fopen(pidFileName.c_str(),"w");
+//    fprintf(pidFile,"%d\n",pid);
+//    fclose(pidFile);
+//    exit(EXIT_SUCCESS);
+//  }else{
+//    // I'm the child!
+//    openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
+//  }
+//  
+//  
+//  //Change the file mode mask to allow read/write
+//  umask(0);
+//  
+//  //  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
+//  syslog(LOG_INFO,"starting %s", daemonName);
+//  
+//
+//  // create new SID for the daemon.
+//  sid = setsid();
+//  if (sid < 0) {
+//    syslog(LOG_ERR,"Failed to change SID\n");
+//    exit(EXIT_FAILURE);
+//  }
+//  syslog(LOG_INFO,"Set SID to %d\n",sid);
+//
+//  //Move to RUN_DIR
+//  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
+//    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
+//    exit(EXIT_FAILURE);
+//  }
+//  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
+//
+//  //Everything looks good, close the standard file fds.
+//  close(STDIN_FILENO);
+//  close(STDOUT_FILENO);
+//  close(STDERR_FILENO);
 
-  // create new SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    syslog(LOG_ERR,"Failed to change SID\n");
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Set SID to %d\n",sid);
-
-  //Move to RUN_DIR
-  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-
-
+  // ============================================================================
 
 
   //Find UIO number
@@ -425,18 +458,22 @@ int main(int argc, char **argv) {
   // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
+  xvc_serverDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  xvc_serverDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
 
-  while (loop) {
+//  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
+//  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
+//  //setup SA
+//  sa_INT.sa_handler  = signal_handler;
+//  sa_TERM.sa_handler = signal_handler;
+//  sigemptyset(&sa_INT.sa_mask);
+//  sigemptyset(&sa_TERM.sa_mask);
+//  sigaction(SIGINT,  &sa_INT , &old_sa);
+//  sigaction(SIGTERM, &sa_TERM, NULL);
+  loop = &(xvc_serverDaemon.loop);
+  xvc_serverDaemon.loop = true;
+
+  while (xvc_serverDaemon.loop) {
     fd_set read = conn, except = conn;
     int fd;
 
@@ -488,6 +525,7 @@ int main(int argc, char **argv) {
       }
     }
   }  
+
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
   syslog(LOG_INFO,"%s Daemon ended\n",daemonName);

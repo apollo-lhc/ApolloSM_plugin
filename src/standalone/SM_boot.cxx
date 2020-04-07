@@ -464,7 +464,7 @@ int main(int argc, char** argv) {
     ("cm_powerup"         , boost::program_options::value<bool>()                     , "power up CM uC"               )
     ("cm_powerup_time"    , boost::program_options::value<int>()                      , "uC power up wait time"        )
     ("sensorsThroughZynq" , boost::program_options::value<bool>()                     , "read sensor data through Zynq")
-    ("CM"                 , boost::program_options::value<std::vector<std::string> >(), "power up command module"      )
+    ("CM"                 , boost::program_options::value<std::vector<std::string> >(), "command module: power up"     )
     ("FPGA"               , boost::program_options::value<std::vector<std::string> >(), "FPGAs: program, init, unblock");
     
   // The different options we will retrieve from the config file/command line. setOption is equivalent to calling commandLineOptions.add() and then fileOptions.add()
@@ -478,7 +478,7 @@ int main(int argc, char** argv) {
   //  setOption(&fileOptions, &commandLineOptions, "program_virtex"    , "program virtex"               , program_virtex);
   //  setOption(&fileOptions, &commandLineOptions, "bringup_FPGA"      , "to program CM FPGAs"          , std::string("dummy"));
   int totalNumConfigFileOptions = 0; 
-  boost::program_options::parsed_options configFilePO(&fileOptions); // compiler won't let me merely declare it configFilePO so I initialized it with fileOptions
+  boost::program_options::parsed_options configFilePO(&fileOptions); // compiler won't let me merely declare it configFilePO so I initialized it with fileOptions; would be nice to fix this
   boost::program_options::variables_map configFileVM; // for parsing config file
   boost::program_options::variables_map commandLineVM; // for parsing command line
 
@@ -633,7 +633,7 @@ int main(int argc, char** argv) {
 // 	}
 	numberFPGAs++;
       }	else {
-	syslog(LOG_ERR, "FPGA in config file only accepts 2, 5, 6, or 8 arguments. You have %lu\n", FPGAvec.size());
+	syslog(LOG_ERR, "FPGA in config file only accepts %lu, %lu, %lu, or %lu arguments. You have %lu\n", fpgaAndCM, alsoProgram, alsoInitialize, alsoUnblock, FPGAvec.size());
       }
     }
   }

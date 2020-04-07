@@ -1,0 +1,58 @@
+# In order of chronological precedence (ie. we have to power up the CM(s) before programming FPGAs and program FPGAs before unblocking AXI). Although maybe FPGAs are more fundamental and should go on top.
+
+# On the command line, for some string option, OPT, OPT=x1 x2 would be --OPT "x1 x2"
+
+# 1. Base node of link to scan.
+# 2. 
+
+polltime=30
+
+LINK=C2C1_PHY. 
+
+##   [PWRUP]
+##   # 1. What command module.
+##   # 2. Node to test for power good. 
+##   # 3. Power it up or not. 
+##   # 2 and 3 are necessarily specified together.
+##   CM=CM1 CM.CM1.CTRL.PWR_GOOD true
+##   CM=CM2 CM.CM2.CTRL.PWR_GOOD false
+##   #  CM CM1
+##   #  POWER_GOOD CM1 CM.CM1.bla.clah.PWR_GOOD
+##   #  POWER_UP_CMD CM1 cmpwrup
+##   #  CM CM2
+##   #  POWER_GOOD CM2 CM.CM1.bla.clah.PWR_GOOD
+##   #  POWER_UP_CMD CM2 cmpwrup
+##   
+##   [FPGA]
+##   # 1. What FPGA.
+##   # 2. Associated command module.
+##   # 3. XVC label.
+##   # 4. svf file.
+##   # 5. C2C base node for checking locks, lanes, links, errors, etc.
+##   # 6. Done bit to set if svf programming was successful.
+##   # 7. Node for initialization.
+##   # 8. Axi node to unblock.
+##   # 9. Axilite node to unblock.
+##   # Specify: 1-2, 1-6, 1-7, or 1-9
+##   FPGA=kintex CM1 XVC1 top_K.svf
+##   FPGA=virtex CM2 XVC1 top_V.svf
+##   #  FPGA KINTEX
+##   #  FPGA VIRTEX
+##   #  PROGRAM KINTEX CM1 XVC1 filename
+##   #  PROGRAM VIRTEX CM2 XVC1 filename
+##   
+##   [C2C]
+##   # 1. What FPGA.
+##   # 2. Node for initialization.
+##   # 3. Base node for checking links and errors.
+##   # 4. Node for unblocking.
+##   C2C=kintex CM.CM1.C2C.INITIALIZE CM.CM1.C2C C2C1_AXILITE.UNBLOCK
+##   C2C=virtex CM.CM2.C2C.INITIALIZE CM.CM1.C2C C2C2_AXILITE.UNBLOCK
+##    C2C KINTEX
+##     INIT KINTEX CM.CM1.C2C.INITIALIZE
+##     LINK_GOOD KINTEX CM.CM1.C2C
+##     AXI_RESETS KINTEX C2C1_AXI.UNBLOCK C2C1_AXILITE.UNBLOCK
+##     C2C VIRTEX
+##     INIT VIRTEX CM.CM2.C2C.INITIALIZE
+##     LINK_GOOD VIRTEX CM.CM1.C2C
+##     AXI_RESETS VIRTEX C2C1_AXI.UNBLOCK C2C1_AXILITE.UNBLOCK

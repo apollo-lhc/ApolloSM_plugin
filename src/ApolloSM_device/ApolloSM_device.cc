@@ -65,6 +65,12 @@ void ApolloSMDevice::LoadCommandList(){
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("ro","readoffset");
 
+    AddCommand("readstring",&ApolloSMDevice::ReadString,
+	       "Read and print a block as a string\n" \
+	       "Usage: \n"                           \
+	       "  readstring reg\n",
+	       &ApolloSMDevice::RegisterAutoComplete);
+
 
 
     AddCommand("write",&ApolloSMDevice::Write,

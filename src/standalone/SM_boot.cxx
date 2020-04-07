@@ -22,11 +22,11 @@
 #include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 #include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
 
-#define SEC_IN_US  1000000
-#define NS_IN_US 1000
+#define SEC_IN_US 1000000
+#define NS_IN_US  1000
 
 // value doesn't matter, as long as it is defined
-#define SAY_STATUS_DONE_ANYWAY 1
+//#define SAY_STATUS_DONE_ANYWAY 1
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
@@ -34,8 +34,45 @@
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
 #define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
-#define DEFAULT_PROGRAM_KINTEX false
-#define DEFAULT_PROGRAM_VIRTEX false
+//#define DEFAULT_PROGRAM_KINTEX false
+//#define DEFAULT_PROGRAM_VIRTEX false
+
+// ====================================================================================================
+// These are indices for CMs and FPGAs. For readability
+#define CM_ID        0
+#define CM_PWR_GOOD  1
+#define CM_PWR_UP    2
+
+#define FPGA_NAME    0 
+#define FPGA_CM      1
+#define FPGA_XVC     2
+#define FPGA_SVF     3
+#define FPGA_C2C     4
+#define FPGA_DONE    5
+#define FPGA_INIT    6 
+#define FPGA_AXI     7
+#define FPGA_AXILITE 8
+
+// FPGA done bit
+#define FPGA_PROGRAMMED     1
+#define FPGA_PROGRAM_FAILED 0
+
+// ====================================================================================================
+// Parse a long string into a vector of strings
+std::vector<std::string> split_string(std::string str, std::string delimiter){
+  
+  size_t position = 0;
+  std::string token;
+  std::vector<std::string> vec;
+  while( (position = str.find(delimiter)) != std::string::npos) {
+    token = str.substr(0, position);
+    vec.push_back(token);
+    str.erase(0, position+delimiter.length());
+  }
+  vec.push_back(str);
+
+  return vec;
+}
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -157,14 +194,14 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
 }
 
 // ====================================================================================================
-// Checks value of nodes and quits program if value was not the expected value
-bool checkNode(ApolloSM * SM, std::string node, int correctVal) {
-  bool GOOD = 1;
-  bool BAD = 0;
+// Checks register/node values
+bool checkNode(ApolloSM * SM, std::string node, uint32_t correctVal) {
+  bool GOOD = true;
+  bool BAD  = false;
 
-  bool readVal;
+  uint32_t readVal;
   if(correctVal != (readVal = SM->RegReadRegister(node))) {
-    syslog(LOG_ERR, "%s was %d\n", node.c_str(), readVal);     
+    syslog(LOG_ERR, "%s is, incorrectly, %d\n", node.c_str(), readVal);     
     return BAD;
   }
   return GOOD;
@@ -214,102 +251,176 @@ void printBuildDate(ApolloSM * SM, int CM) {
 }
 
 // ====================================================================================================
-// Program CM FPGAs
-int programCMFPGA(ApolloSM * SM, int CM_ID, bool svfProgram) {
-  bool NOFILE = 2;
-  bool SUCCESS = 1;
-  bool FAIL = 0;   
+// Bring-up CM FPGAs
+int bringupCMFPGAs(ApolloSM * SM, std::vector<std::string> const FPGA) {
+  int const success =  0;
+  int const fail    = -1;
+  int const nofile  = -2;
 
-  int wait_time = 5; // 1 second
+  std::string const fpga_name    = FPGA[FPGA_NAME];
+  std::string const fpga_cm      = FPGA[FPGA_CM];
+  std::string const fpga_xvc     = FPGA[FPGA_XVC];
+  std::string const fpga_svf     = FPGA[FPGA_SVF];
+  std::string const fpga_c2c     = FPGA[FPGA_C2C];
+  // done bit not needed
+  std::string const fpga_init    = FPGA[FPGA_INIT];
+  std::string const fpga_axi     = FPGA[FPGA_AXI];
+  std::string const fpga_axilite = FPGA[FPGA_AXILITE];
 
-  std::string CM_IDstr = std::to_string(CM_ID);
 
-  std::string FPGA;
-  std::string FPGAinitial;
-  switch(CM_ID) {
-  case 1: 
+  //  std::string CM_IDstr = std::to_string(CM_ID);
+
+
+
+  //  std::string FPGA;
+  //  std::string FPGAinitial;
+  //  switch(CM_ID) {
+  //  case 1: 
     // Kintex
-    FPGA.append("Kintex");
-    FPGAinitial.append("K");
-    break;
-  case 2:
-    // Virtex
-    FPGA.append("Virtex");
-    FPGAinitial.append("V");
-    break;
-  default:
-    syslog(LOG_ERR, "Invalid CM ID: %d\n", CM_ID);     
-    // Maybe something less harsh
-    return FAIL;
-  }
+//    FPGA.append("Kintex");
+//    FPGAinitial.append("K");
+//    break;
+//  case 2:
+//    // Virtex
+//    FPGA.append("Virtex");
+//    FPGAinitial.append("V");
+//    break;
+//  default:
+//    syslog(LOG_ERR, "Invalid CM ID: %d\n", CM_ID);     
+//    // Maybe something less harsh
+//    return fail;
+//  }
 
   try {
     // ==============================
     // Power up CM. Currently not doing anything about time out.    
-    bool success = SM->PowerUpCM(CM_ID,wait_time);
-    if(success) {
-      syslog(LOG_INFO, "CM %d is powered up\n", CM_ID);
-    } else {
-      syslog(LOG_ERR, "CM %d failed to powered up in time\n", CM_ID);
-    }
-
-    std::string CM_CTRL = "CM.CM" + CM_IDstr + ".CTRL.";
-
-    // Check CM is actually powered up and "good". 1 is good 0 is bad.
-    if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return FAIL;}
-    if(!checkNode(SM, CM_CTRL + "ISO_ENABLED", 1)) {return FAIL;}
-    if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return FAIL;}
-
-    // ==============================
-    // Optionally run svfplayer commands to program CM FPGAs    
-    if(svfProgram) {
-      std::string svfFile = "/fw/CM/CM_" + FPGAinitial + ".svf";
-      // Check that CM file exists
-      FILE * f = fopen(svfFile.c_str(), "rb");
-      if(NULL == f) {return NOFILE;} 
-      fclose(f);
+    //    bool success = SM->PowerUpCM(CM_ID,wait_time);
+//    if(success) {
+//      syslog(LOG_INFO, "CM %d is powered up\n", CM_ID);
+//    } else {
+//      syslog(LOG_ERR, "CM %d failed to powered up in time\n", CM_ID);
+//    }
     
-      // Program FPGA
-      syslog(LOG_INFO, "Programming %s with %s\n", FPGA.c_str(), svfFile.c_str());
-      SM->svfplayer(svfFile.c_str(), "XVC1");
+// same four possibilities as in main
+    size_t const fpgaAndCM      = 2;
+    size_t const alsoProgram    = 6;
+    size_t const alsoInitialize = 7;
+    size_t const alsoUnblock    = 9;
     
-      std::string CM_C2C = "CM.CM" + CM_IDstr + ".C2C.";
-    
-      // Check CM.CM*.C2C clocks are locked
-      if(!checkNode(SM, CM_C2C + "CPLL_LOCK"      , 1)) {return FAIL;}
-      if(!checkNode(SM, CM_C2C + "PHY_GT_PLL_LOCK", 1)) {return FAIL;}
+    // See ***** for FPGAs in main
+    // figure out what we are suppose to do with the FPGA
+    if(FPGA.size() == fpgaAndCM)
+      {      
+	syslog(LOG_INFO, "For %s FPGA associated with CM%s we do nothing\n", fpga_name.c_str(), fpga_cm.c_str());
+      }
+
+    if(FPGA.size() >= alsoProgram)
+      {
+	// also program fpga
+	syslog(LOG_INFO, "Programming %s FPGA associated with CM%s using XVC label %s and svf file %s and checking clock locks at %s\n", fpga_name.c_str(), fpga_cm.c_str(), fpga_xvc.c_str(), fpga_svf.c_str(), fpga_c2c.c_str());
+	// Check CM is actually powered up and "good". 
+	std::string CM_CTRL = "CM." + fpga_cm + ".CTRL.";
+	if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return fail;}
+	if(!checkNode(SM, CM_CTRL + "ISO_ENABLED", 1)) {return fail;}
+	if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return fail;}
+	// Check that svf file exists
+	FILE * f = fopen(fpga_svf.c_str(), "rb");
+	if(NULL == f) {return nofile;}
+	fclose(f);
+	// program
+	SM->svfplayer(fpga_svf, fpga_xvc);
+	// Check CM.CM*.C2C clocks are locked
+	if(!checkNode(SM, fpga_c2c + ".CPLL_LOCK"      , 1)) {return fail;}
+	if(!checkNode(SM, fpga_c2c + ".PHY_GT_PLL_LOCK", 1)) {return fail;}
+	syslog(LOG_INFO, "Successfully programmed %s FPGA\n", fpga_name.c_str());
+      }
       
-      // Get FPGA out of error state
-      SM->RegWriteRegister(CM_C2C + "INITIALIZE", 1);
-      usleep(1000000);
-      SM->RegWriteRegister(CM_C2C + "INITIALIZE", 0);
+    if(FPGA.size() >= alsoInitialize)
+      {
+	// also initialize
+	syslog(LOG_INFO, "Initializing %s fpga with %s\n", fpga_name.c_str(), fpga_c2c.c_str());
+	// Get FPGA out of error state
+	SM->RegWriteRegister(fpga_c2c + ".INITIALIZE", 1);
+	usleep(1000000);
+	SM->RegWriteRegister(fpga_c2c + ".INITIALIZE", 0);
+	// Check that phy lane is up, link is good, and that there are no errors
+	if(!checkNode(SM, fpga_c2c + ".MB_ERROR"    , 0)) {return fail;}
+	if(!checkNode(SM, fpga_c2c + ".CONFIG_ERROR", 0)) {return fail;}
+	if(!checkNode(SM, fpga_c2c + ".LINK_ERROR",   0)) {return fail;}
+	if(!checkNode(SM, fpga_c2c + ".PHY_HARD_ERR", 0)) {return fail;}
+	if(!checkNode(SM, fpga_c2c + ".PHY_SOFT_ERR", 0)) {return fail;}
+	if(!checkNode(SM, fpga_c2c + ".PHY_MMCM_LOL", 0)) {return fail;} 
+	if(!checkNode(SM, fpga_c2c + ".PHY_LANE_UP" , 1)) {return fail;}
+	if(!checkNode(SM, fpga_c2c + ".LINK_GOOD"   , 1)) {return fail;}
+	syslog(LOG_INFO, "Initialized %s fpga with %s. Lanes up, links good, and no errors.\n", fpga_name.c_str(), fpga_c2c.c_str());
+      }
       
-      // Check that phy lane is up, link is good, and that there are no errors.
-      if(!checkNode(SM, CM_C2C + "MB_ERROR"    , 0)) {return FAIL;}
-      if(!checkNode(SM, CM_C2C + "CONFIG_ERROR", 0)) {return FAIL;}
-      //if(!checkNode(SM, CM_C2C + "LINK_ERROR",   0)) {return FAIL;}
-      if(!checkNode(SM, CM_C2C + "PHY_HARD_ERR", 0)) {return FAIL;}
-      //if(!checkNode(SM, CM_C2C + "PHY_SOFT_ERR", 0)) {return FAIL;}
-      if(!checkNode(SM, CM_C2C + "PHY_MMCM_LOL", 0)) {return FAIL;} 
-      if(!checkNode(SM, CM_C2C + "PHY_LANE_UP" , 1)) {return FAIL;}
-      if(!checkNode(SM, CM_C2C + "LINK_GOOD"   , 1)) {return FAIL;}
+    if(FPGA.size() == alsoUnblock)
+      {
+	// also unblock
+	syslog(LOG_INFO, "Unblocking %s and %s for %s fpga\n", fpga_axi.c_str(), fpga_axilite.c_str(), fpga_name.c_str());
+	SM->RegWriteAction(fpga_axi.c_str());
+	SM->RegWriteAction(fpga_axilite.c_str());
+      }
     
-      // Write to the "unblock" bits of the AXI*_FW slaves
-      SM->RegWriteRegister("C2C" + CM_IDstr + "_AXI_FW.UNBLOCK", 1);
-      SM->RegWriteRegister("C2C" + CM_IDstr + "_AXILITE_FW.UNBLOCK", 1);
+//    std::string CM_CTRL = "CM.CM" + CM_IDstr + ".CTRL.";
+//
+//    // Check CM is actually powered up and "good". 1 is good 0 is bad.
+//    if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return fail;}
+//    if(!checkNode(SM, CM_CTRL + "ISO_ENABLED", 1)) {return fail;}
+//    if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return fail;}
+//
+//    // ==============================
+//    // Optionally run svfplayer commands to program CM FPGAs    
+//    if(svfProgram) {
+//      std::string svfFile = "/fw/CM/CM_" + FPGAinitial + ".svf";
+//      // Check that CM file exists
+//      FILE * f = fopen(svfFile.c_str(), "rb");
+//      if(NULL == f) {return nofile;}
+//      fclose(f);
+//    
+//      // Program FPGA
+//      syslog(LOG_INFO, "Programming %s with %s\n", FPGA.c_str(), svfFile.c_str());
+//      SM->svfplayer(svfFile.c_str(), "XVC1");
+//    
+//      std::string CM_C2C = "CM.CM" + CM_IDstr + ".C2C.";
+//    
+//      // Check CM.CM*.C2C clocks are locked
+//      if(!checkNode(SM, CM_C2C + "CPLL_LOCK"      , 1)) {return fail;}
+//      if(!checkNode(SM, CM_C2C + "PHY_GT_PLL_LOCK", 1)) {return fail;}
+//      
+//      // Get FPGA out of error state
+//      SM->RegWriteRegister(CM_C2C + "INITIALIZE", 1);
+//      usleep(1000000);
+//      SM->RegWriteRegister(CM_C2C + "INITIALIZE", 0);
+//      
+//      // Check that phy lane is up, link is good, and that there are no errors.
+//      if(!checkNode(SM, CM_C2C + "MB_ERROR"    , 0)) {return fail;}
+//      if(!checkNode(SM, CM_C2C + "CONFIG_ERROR", 0)) {return fail;}
+//      if(!checkNode(SM, CM_C2C + "LINK_ERROR",   0)) {return fail;}
+//      if(!checkNode(SM, CM_C2C + "PHY_HARD_ERR", 0)) {return fail;}
+//      if(!checkNode(SM, CM_C2C + "PHY_SOFT_ERR", 0)) {return fail;}
+//      if(!checkNode(SM, CM_C2C + "PHY_MMCM_LOL", 0)) {return fail;} 
+//      if(!checkNode(SM, CM_C2C + "PHY_LANE_UP" , 1)) {return fail;}
+//      if(!checkNode(SM, CM_C2C + "LINK_GOOD"   , 1)) {return fail;}
+//    
+//      // Write to the "unblock" bits of the AXI*_FW slaves
+////      SM->RegWriteRegister("C2C" + CM_IDstr + "_AXI_FW.UNBLOCK", 1);
+////      SM->RegWriteRegister("C2C" + CM_IDstr + "_AXILITE_FW.UNBLOCK", 1);
+//      SM->RegWriteAction("C2C" + CM_IDstr + "_AXI_FW.UNLOCK");
+//      SM->RegWriteAction("C2C" + CM_IDstr + "_AXILITE_FW.UNLOCK");
       
       // Print firmware build date for FPGA
       printBuildDate(SM, CM_ID);
-    }  
   } catch(BUException::exBase const & e) {
     syslog(LOG_ERR, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
-    return FAIL;
+    return fail;
   } catch (std::exception const & e) {
     syslog(LOG_ERR, "Caught std::exception: %s\n", e.what());
-    return FAIL;
+    return fail;
   }
   
-  return SUCCESS;
+  return success;
 }
 
 // ====================================================================================================
@@ -323,24 +434,51 @@ int main(int argc, char** argv) {
   bool powerupCMuC        = true;
   int powerupTime         = DEFAULT_POWERUP_TIME;
   bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
-  bool program_kintex     = DEFAULT_PROGRAM_KINTEX;
-  bool program_virtex     = DEFAULT_PROGRAM_VIRTEX;
-  
-  // parse command line and config file to set parameters
+  std::vector<std::vector<std::string> > CMs;
+  // An example of what CMs may look like
+  //     | (0) ID  | (1) power good node      | (2) power up |
+  // CMs |     CM1 |     CM.CM1.CTRL.PWR_GOOD |     true     |
+  //     |     CM2 |     CM.CM2.CTRL.PWR_GOOD |     false    |
+  std::vector<std::vector<std::string> > FPGAs;
+  // An example of what FPGAs may look like. I made a vector of vector of strings to prevent having to declare 24 different variables (along with CMs). Not sure if this is the best decision -Felex
+  //       |     | (0) name   | (1) CM  | (2) XVC label | (3) svf file  | (4) init node             | (5) C2C base node | (6) done bit                    | (7) axi unblock node | (8) axilite unblock node
+  // FPGAs | (0) |     kintex |     CM1 |     XVC1      |     top_K.svf |     CM.CM1.C2C.INITIALIZE |     CM.CM1.C2C    | PL_MEM.S1.CM.STATUS.DONE_KINTEX |     C2C1_AXI.UNBLOCK |     C2C1_AXILITE.UNBLOCK   
+  //       | (1) |     virtex |     CM2 |     XVC1      |     top_V.svf |     CM.CM2.C2C.INITIALIZE |     CM.CM2.C2C    | PL_MEM.S1.CM.STATUS.DONE_VIRTEX |     C2C2_AXI.UNBLOCK |     C2C2_AXILITE.UNBLOCK   
+
   boost::program_options::options_description fileOptions{"File"}; // for parsing config file
   boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
   commandLineOptions.add_options()
-    ("config_file",
-     boost::program_options::value<std::string>(),
-     "config file"); // This is the only option not also in the file option (obviously)
-  setOption(&fileOptions, &commandLineOptions, "run_path"          , "run path"                     , runPath);
-  setOption(&fileOptions, &commandLineOptions, "pid_file"          , "pid file"                     , pidFileName);
-  setOption(&fileOptions, &commandLineOptions, "polltime"          , "polling interval"             , polltime_in_seconds);
-  setOption(&fileOptions, &commandLineOptions, "cm_powerup"        , "power up CM uC"               , powerupCMuC);
-  setOption(&fileOptions, &commandLineOptions, "cm_powerup_time"   , "uC power up wait time"        , powerupTime);
-  setOption(&fileOptions, &commandLineOptions, "sensorsThroughZynq", "read sensor data through Zynq", sensorsThroughZynq);
-  setOption(&fileOptions, &commandLineOptions, "program_kintex"    , "program kintex"               , program_kintex);
-  setOption(&fileOptions, &commandLineOptions, "program_virtex"    , "program virtex"               , program_virtex);
+    ("config_file"        , boost::program_options::value<std::string>()              , "config file"                  ) // Not in fileOptions (obviously)
+    ("run_path"           , boost::program_options::value<std::string>()              , "run path"                     )
+    ("pid_file"           , boost::program_options::value<std::string>()              , "pid file"                     )
+    ("polltime"           , boost::program_options::value<int>()                      , "polling interval"             )
+    ("cm_powerup"         , boost::program_options::value<bool>()                     , "power up CM uC"               )
+    ("cm_powerup_time"    , boost::program_options::value<int>()                      , "uC power up wait time"        )
+    ("sensorsThroughZynq" , boost::program_options::value<bool>()                     , "read sensor data through Zynq");
+    //    ("CM"                 , boost::program_options::value<std::vector<std::string> >(), "power up command module"      )  // commented out for now
+    //    ("FPGA"               , boost::program_options::value<std::vector<std::string> >(), "FPGAs: program, init, unblock"); // commented out for now               
+  fileOptions.add_options()
+    ("run_path"           , boost::program_options::value<std::string>()              , "run path"                     )
+    ("pid_file"           , boost::program_options::value<std::string>()              , "pid file"                     )
+    ("polltime"           , boost::program_options::value<int>()                      , "polling interval"             )
+    ("cm_powerup"         , boost::program_options::value<bool>()                     , "power up CM uC"               )
+    ("cm_powerup_time"    , boost::program_options::value<int>()                      , "uC power up wait time"        )
+    ("sensorsThroughZynq" , boost::program_options::value<bool>()                     , "read sensor data through Zynq")
+    ("CM"                 , boost::program_options::value<std::vector<std::string> >(), "power up command module"      )
+    ("FPGA"               , boost::program_options::value<std::vector<std::string> >(), "FPGAs: program, init, unblock");
+    
+  // The different options we will retrieve from the config file/command line. setOption is equivalent to calling commandLineOptions.add() and then fileOptions.add()
+//  setOption(&fileOptions, &commandLineOptions, "run_path"          , "run path"                     , runPath);
+//  setOption(&fileOptions, &commandLineOptions, "pid_file"          , "pid file"                     , pidFileName);
+//  setOption(&fileOptions, &commandLineOptions, "polltime"          , "polling interval"             , polltime_in_seconds);
+//  setOption(&fileOptions, &commandLineOptions, "cm_powerup"        , "power up CM uC"               , powerupCMuC);
+//  setOption(&fileOptions, &commandLineOptions, "cm_powerup_time"   , "uC power up wait time"        , powerupTime);
+//  setOption(&fileOptions, &commandLineOptions, "sensorsThroughZynq", "read sensor data through Zynq", sensorsThroughZynq);
+  //  setOption(&fileOptions, &commandLineOptions, "program_kintex"    , "program kintex"               , program_kintex);
+  //  setOption(&fileOptions, &commandLineOptions, "program_virtex"    , "program virtex"               , program_virtex);
+  //  setOption(&fileOptions, &commandLineOptions, "bringup_FPGA"      , "to program CM FPGAs"          , std::string("dummy"));
+  int totalNumConfigFileOptions = 0; 
+  boost::program_options::parsed_options configFilePO(&fileOptions); // compiler won't let me merely declare it configFilePO so I initialized it with fileOptions
   boost::program_options::variables_map configFileVM; // for parsing config file
   boost::program_options::variables_map commandLineVM; // for parsing command line
 
@@ -357,14 +495,23 @@ int main(int argc, char** argv) {
   // Check for non default config file
   if(commandLineVM.count("config_file")) {
     configFile = commandLineVM["config_file"].as<std::string>();
-  }  
-  fprintf(stdout, "config file path: %s\n", configFile.c_str());
+    fprintf(stdout, "config file path: %s (COMMAND LINE)\n", configFile.c_str());
+  } else {
+    fprintf(stdout, "config file path: %s (DEFAULT)\n"     , configFile.c_str());
+  }
 
   // Now the config file may be loaded
   fprintf(stdout, "Reading from config file now\n");
   try {
     // parse config file
-    configFileVM = loadConfig(configFile, fileOptions);
+    // not using loadConfig() because I need more than just the variables map when looking for CMs and FPGAs
+    std::ifstream ifs{configFile};
+    fprintf(stderr, "Config file \"%s\" %s\n",configFile.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
+    if(ifs) {
+      configFilePO = boost::program_options::parse_config_file(ifs, fileOptions);
+      boost::program_options::store(configFilePO, configFileVM);
+      totalNumConfigFileOptions = configFilePO.options.size();
+    }
   } catch(const boost::program_options::error &ex) {
     fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating SM_boot\n", ex.what());        
     return -1;  
@@ -372,7 +519,7 @@ int main(int argc, char** argv) {
 
   // Look at the config file and command line and determine if we should change the parameters from their default values
   // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
-  setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
+  setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false); // false for no syslog
   setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
 
   // ============================================================================
@@ -383,13 +530,117 @@ int main(int argc, char** argv) {
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
-  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true);
+  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true); // true for syslog
   setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
   setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
   setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
-  setParamValue(&program_kintex     , "program_kintex"    , configFileVM, commandLineVM, true);
-  setParamValue(&program_virtex     , "program_virtex"    , configFileVM, commandLineVM, true);
 
+  int numberCMs = 0;
+  int numberFPGAs = 0;
+  // In config file: 1. look for command modules and power them up if required 2. look for FPGAs and program, initialize, and unblock if required
+  for(int i = 0; i < totalNumConfigFileOptions; i++) {
+    // The first argument to add_options() (ex. "polltime" or "run_path")
+    std::string optionName = configFilePO.options[i].string_key;    
+   
+    std::string delimeter = " ";
+    
+    // Find command modules
+    if(optionName.compare("CM") != 0) {
+      std::string CMstr = configFilePO.options[i].value[0].c_str();
+      std::vector<std::string> CMvec = split_string(CMstr, delimeter);
+      // Two possibilities 
+      size_t const dontpowerup = 1;
+      size_t const powerup     = 3;
+      if((CMvec.size() == dontpowerup) || (CMvec.size() == powerup)) {
+	// allocate some more space
+	std::vector<std::string> dummyVS;
+	CMs.push_back(dummyVS);
+//	size_t const CMvecSize = CMvec.size();
+//	switch(true) { // all fallthrough
+//	case CMvecSize >= dontpowerup:
+//	  CMs[numberCMs].push_back(CMvec[CM_ID]);
+//	case CMvecSize >= powerup:
+//	  CMs[numberCMs].push_back(CMvec[CM_PWR_GOOD]);
+//	  CMs[numberCMs].push_back(CMvec[CM_PWR_UP]);
+//	}
+	// See ***** for FPGAs
+	if(CMvec.size() >= dontpowerup) {
+	  CMs[numberCMs].push_back(CMvec[CM_ID]);
+	}
+	if(CMvec.size() == powerup) {
+	  CMs[numberCMs].push_back(CMvec[CM_PWR_GOOD]);
+	  CMs[numberCMs].push_back(CMvec[CM_PWR_UP]);
+	}
+	numberCMs++;
+      } else {
+	syslog(LOG_ERR, "CM in config file only accepts 1 or 3 arguments. You have: %lu\n", CMvec.size());	
+      }
+    }      
+    
+    // Find FPGAs
+    if(optionName.compare("FPGA") != 0) {
+      std::string FPGAstr = configFilePO.options[i].value[0].c_str();
+      std::vector<std::string> FPGAvec = split_string(FPGAstr, delimeter);
+      // Four possibilities
+      size_t const fpgaAndCM      = 2;
+      size_t const alsoProgram    = 6;
+      size_t const alsoInitialize = 7;
+      size_t const alsoUnblock    = 9;
+      if((FPGAvec.size() == fpgaAndCM) || (FPGAvec.size() == alsoProgram) || (FPGAvec.size() == alsoInitialize) || (FPGAvec.size() == alsoUnblock)) {
+	// allocate some more space
+	std::vector<std::string> dummyVS;
+	FPGAs.push_back(dummyVS);
+	// ***** Don't erase this line. Related to other ***** lines.
+ 	// Algorithm: If at least n elems, add the n elems. Then, if at least n1 elems, add the next n1-n elems. Up to some max.
+ 	// Ex: If at least two elems, add both. Then, if at least five elems, add next three. For now, up to eight.
+ 	// Kind of like a switch case. It'd be nice to figure out how to actually use a switch case since it looks (kind of) nicer instead of if.
+	if(FPGAvec.size() >= fpgaAndCM) 
+	  {
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_NAME]);
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_CM]);
+	  } 	 
+	if(FPGAvec.size() >= alsoProgram)
+	  {
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_XVC]);
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_SVF]);
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_C2C]);
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_DONE]);
+	  }
+	if(FPGAvec.size() >= alsoInitialize)
+	  {
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_INIT]);
+	  }
+	if(FPGAvec.size() == alsoUnblock)
+	  {
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_AXI]);
+	    FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_AXILITE]);
+	  }
+	
+	//	//	size_t const FPGAvecSize = FPGAvec.size();
+// 	switch(FPGAvec.size()) { // all fallthrough
+// 	case fpgaAndCM ... (alsoProgram-1):
+// 	  FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_NAME]);
+// 	  FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_CM]);
+// 	case alsoProgram ... (alsoInitialize-1):
+// 	  FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_XVC]);
+// 	  FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_SVF]);
+// 	  FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_C2C]);
+// 	case alsoInitialize ... (alsoUnblock-1):
+// 	  FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_INIT]);
+// 	case alsoUnblock:
+// 	  FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_AXI]);
+// 	  FPGAs[numberFPGAs].push_back(FPGAvec[FPGA_AXILITE]);
+// 	}
+	numberFPGAs++;
+      }	else {
+	syslog(LOG_ERR, "FPGA in config file only accepts 2, 5, 6, or 8 arguments. You have %lu\n", FPGAvec.size());
+      }
+    }
+  }
+  syslog(LOG_INFO, "%d valid CMs and %d valid FPGAs found\n", numberCMs, numberFPGAs);
+  syslog(LOG_INFO, "More information about the CMs and FPGAs found coming soon...\n");
+  // Should print more information about the CMs and FPGAs found
+  
   // ============================================================================
   // Daemon code setup
 
@@ -453,41 +704,81 @@ int main(int argc, char** argv) {
     }
 
     // ==================================
-    // Program CM FPGAs and kill program upon failure
-    int kintex = 1;
-    switch(programCMFPGA(SM, kintex, program_kintex)) {
-    case 0:
-      // fail
-      return -1;
-    case 1: 
-      // success
-      break;
-    case 2:
-      // A CM svf file does not exist
-      syslog(LOG_ERR, "CM%d svf file does not exist\n", kintex);
-      return -1;
-    }
+    // Power up CM(s) and program, initialize, and unblock FPGA(s), if required
     
-    int virtex = 2;
-    switch(programCMFPGA(SM, kintex, program_virtex)) {
-    case 0:
-      // fail
-      return -1;
-    case 1: 
-      // success
-      break;
-    case 2:
-      // A CM svf file does not exist
-      syslog(LOG_ERR, "CM%d svf file does not exist\n", virtex);
-      return -1;
+    // Power up
+    for(int i = 0; i < (int)CMs.size(); i++) {
+      int wait_time = 5; // 5 is 1 second
+      std::string tempCM_ID = CMs[i][CM_ID];
+      tempCM_ID.erase(0,2); // drop the 'CM' (ex. for CM1, tempCM_ID is 1)
+      bool success = SM->PowerUpCM(atoi(tempCM_ID.c_str()),wait_time);      
+      if(success) {
+	syslog(LOG_INFO, "CM%s is powered up\n", tempCM_ID.c_str());
+      } else {
+	syslog(LOG_ERR, "CM%s failed to powered up in time\n", tempCM_ID.c_str());
+      }
     }
+
+    // Programming
+    for(int i = 0; i < (int)FPGAs.size(); i++) {
+      int const success =  0;
+      int const fail    = -1;
+      int const nofile  = -2;
+      // assert 0 to done bit
+      //	SM->RegWriteRegister(FPGAs[i][FPGA_DONE].c_str(), FPGA_PROGRAM_FAILED);
+      switch(bringupCMFPGAs(SM, FPGAs[i])) {
+      case success:
+	syslog(LOG_ERR, "Bringing up %s FPGA succeeded. Setting %s to 1\n", FPGAs[i][FPGA_NAME].c_str(), FPGAs[i][FPGA_DONE].c_str());
+	// write 1 to done bit
+	//	SM->RegWriteRegister(FPGAs[i][FPGA_DONE].c_str(), FPGA_PROGRAMMED);
+	break;
+      case fail:
+	// assert 0 to done bit (paranoid)
+	syslog(LOG_ERR, "Bringing up %s FPGA failed. Setting %s to 0\n", FPGAs[i][FPGA_NAME].c_str(), FPGAs[i][FPGA_DONE].c_str());
+      	//	SM->RegWriteRegister(FPGAs[i][FPGA_DONE].c_str(), FPGA_PROGRAM_FAILED);
+	break;
+      case nofile:
+	// assert 0 to done bit (paranoid)
+	syslog(LOG_ERR, "svf file %s does not exist. Setting %s to 0\n", FPGAs[i][FPGA_SVF].c_str(), FPGAs[i][FPGA_DONE].c_str());
+      	//	SM->RegWriteRegister(FPGAs[i][FPGA_DONE].c_str(), FPGA_PROGRAM_FAILED);
+	break;
+      }
+    }
+
+//int kintex = 1;
+//    switch(programCMFPGA(SM, kintex, program_kintex)) {
+//    case 0:
+//      // fail
+//      return -1;
+//    case 1: 
+//      // success
+//      break;
+//    case 2:
+//      // A CM svf file does not exist
+//      syslog(LOG_ERR, "CM%d svf file does not exist\n", kintex);
+//      return -1;
+//    }
+//    
+//    int virtex = 2;
+//    switch(programCMFPGA(SM, kintex, program_virtex)) {
+//    case 0:
+//      // fail
+//      return -1;
+//    case 1: 
+//      // success
+//      break;
+//    case 2:
+//      // A CM svf file does not exist
+//      syslog(LOG_ERR, "CM%d svf file does not exist\n", virtex);
+//      return -1;
+//    }
 
     // Do we set this bit if the CM files do not exist?
     //Set the power-up done bit to 1 for the IPMC to read
-#ifdef SAY_STATUS_DONE_ANYWAY
-    SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
-    syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
-#endif
+// #ifdef SAY_STATUS_DONE_ANYWAY
+//     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);
+//     syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
+// #endif
 
     // ==================================
     // Main DAEMON loop

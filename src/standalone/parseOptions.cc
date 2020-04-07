@@ -12,10 +12,10 @@ boost::program_options::variables_map loadConfig(std::string const & configFileN
   // Check if config file exists
   std::ifstream ifs{configFileName};
   syslog(LOG_INFO, "Config file \"%s\" %s\n",configFileName.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
-
+  
   if(ifs) {
     // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
-    boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
+    boost::program_options::store(boost::program_options::parse_config_file(ifs, fileOptions), vm);
   }
 
   return vm;

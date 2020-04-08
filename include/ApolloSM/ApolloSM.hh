@@ -41,10 +41,10 @@ public:
   void unblockAXI();
   //  void throwException(std::string message);
   
-  float SingleEyeScan(std::string baseNode);
   void EnableEyeScan(std::string baseNode, uint32_t prescale);
   void SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t horzOffset);
-  std::vector<eyescanCoords> EyeScan(std::string baseNode, double horzIncrement, int vertIncrement);
+  float SingleEyeScan(std::string baseNode, uint32_t maxPrescale);
+  std::vector<eyescanCoords> EyeScan(std::string baseNode, double horzIncrement, int vertIncrement, uint32_t maxPrescale);
 
 private:  
   IPBusStatus * statusDisplay;

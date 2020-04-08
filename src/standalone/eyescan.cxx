@@ -16,6 +16,7 @@
 #define DEFAULT_RUN_DIR             "/opt/address_tables/"
 #define DEFAULT_PID_FILE            "/var/run/eyescan.pid"
 #define DEFAULT_POLLTIME_IN_MINUTES 30 
+#define DEFAULT_MAX_PRESCALE        3
 //#define DEFAULT_BASE_NODE           "C2C1_PHY."
 //#define DEFAULT_FILE_NAME           "c2c1_phy.txt"
 #define DEFAULT_PHASE_INCREMENT      0.02 // UI is from -0.5 to 0.5
@@ -66,6 +67,7 @@ int main(int argc, char** argv) {
   std::string runPath             = DEFAULT_RUN_DIR;
   std::string pidFileName         = DEFAULT_PID_FILE;
   int         polltime_in_minutes = DEFAULT_POLLTIME_IN_MINUTES;
+  uint32_t    maxPrescale         = DEFAULT_MAX_PRESCALE;
   std::vector<std::vector<std::string> >links;
   // An example of what linkss may look like
   //       | (0) link        | (1) phase increment | (2) voltage increment | (3) output data file |
@@ -86,6 +88,7 @@ int main(int argc, char** argv) {
   setOption(&fileOptions, &commandLineOptions, "run_path" , "run path" , runPath);
   setOption(&fileOptions, &commandLineOptions, "pid_file" , "pid file" , pidFileName);
   setOption(&fileOptions, &commandLineOptions, "polltime" , "polling interval" , polltime_in_minutes);
+  setOption(&fileOptions, &commandLineOptions, "max_prescale", "maximum prescale to scan with", maxPrescale);
 //  setOption(&fileOptions, &commandLineOptions, "baseNode" , "link to scan" , baseNode);
 //  setOption(&fileOptions, &commandLineOptions, "data_file" , "data file" , fileName);
 //  setOption(&fileOptions, &commandLineOptions, "horzIncrement" , "phase increment" , horzIncrement);
@@ -144,7 +147,8 @@ int main(int argc, char** argv) {
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
-  setParamValue(&polltime_in_minutes, "polltime" , configFileVM, commandLineVM, true);
+  setParamValue(&polltime_in_minutes, "polltime"     , configFileVM, commandLineVM, true);
+  setParamValue(&maxPrescale        , "max_prescale" , configFileVM, commandLineVM, true);
 //  setParamValue(&baseNode, "baseNode" , configFileVM, commandLineVM, true);
 //  setParamValue(&fileName, "data_file" , configFileVM, commandLineVM, true);
 //  setParamValue(&horzIncrement, "horzIncrement" , configFileVM, commandLineVM, true);
@@ -323,7 +327,7 @@ int main(int argc, char** argv) {
 	// enable eye scan
 	SM->EnableEyeScan(links[i][LINK], 0); // 0 for beginning prescale
 	
-	std::vector<eyescanCoords> esCoords = SM->EyeScan(links[i][LINK], links[i][PHASE], links[i][VOLTAGE]);
+	std::vector<eyescanCoords> esCoords = SM->EyeScan(links[i][LINK], atof(links[i][PHASE].c_str()), atoi(links[i][VOLTAGE].c_str()), maxPrescale);
 	
 	outputToFile(esCoords, links[i][OUTFILE]);
       

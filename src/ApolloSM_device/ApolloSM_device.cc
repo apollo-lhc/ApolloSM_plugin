@@ -156,13 +156,13 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
 	       "Perform a single eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  SingleEyeScan <base node>\n");
+	       "  SingleEyeScan <base node> <max prescale>\n");
     AddCommandAlias("singlees","SingleEyeScan");
 
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
 	       "Perform an eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  EyeScan <base node> <file> <horizontal increment double> <vertical increment integer> \n", 
+	       "  EyeScan <base node> <file> <horizontal increment double> <vertical increment integer> <max prescale>\n", 
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
 
@@ -462,11 +462,12 @@ CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg
 // Performs a single eye scan
 CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
-  if(1 != strArg.size()) {
+  if(2 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
 
-  std::string baseNode = strArg[0];
+  std::string baseNode = strArg[0]; 
+  uint32_t maxPrescale = strtoul(strArg[2].c_str(), NULL, 0);
   // Add a dot to baseNode if it does not already have one
   if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
     baseNode.append(".");
@@ -474,15 +475,15 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
 
   printf("The base node is %s\n", baseNode.c_str());
 
-  printf("The BER is: %f\n", SM->SingleEyeScan(baseNode));
+  printf("The BER is: %f\n", SM->SingleEyeScan(baseNode, maxPrescale));
 
   return CommandReturn::OK;
 }
 
 CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
 
-  // base node, text file, horizontal increment double, vertical increment integer
-  if(4 != strArg.size()) {
+  // base node, text file, horizontal increment double, vertical increment integer, maximum prescale
+  if(5 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
   
@@ -505,7 +506,8 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 
   printf("We have horz increment %f and vert increment %d\n", horzIncrement, vertIncrement);
 
-  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement);
+  uint32_t maxPrescale = strtoul(strArg[2].c_str(), NULL, 0);
+  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement, maxPrescale);
 
 //  int fd = open(fileName, O_CREAT | O_RDWR, 0644);
 //

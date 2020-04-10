@@ -141,6 +141,8 @@ install: all
 	 install -b -m 775 ./lib/* ${INSTALL_PATH}/lib
 	 install -m 775 -d ${INSTALL_PATH}/bin
 	 install -b -m 775 ./bin/* ${INSTALL_PATH}/bin
+	 install -m 775 -d ${INSTALL_PATH}/include
+	 cp -r include/* ${INSTALL_PATH}/include
 
 
 

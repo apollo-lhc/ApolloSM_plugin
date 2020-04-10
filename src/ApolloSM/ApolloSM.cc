@@ -52,6 +52,24 @@ std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = si
   return "GOOD";
 }
 
+std::string ApolloSM::GenerateGraphiteStatus(size_t level = size_t(1), std::string table="") {
+
+  //SETUP
+  std::stringstream output;
+
+  //Setting Status Display
+  statusDisplay->SetGraphite();
+
+  //Get report
+  statusDisplay->Report(level,output,table);
+
+  //END
+  statusDisplay->UnsetGraphite();
+  return output.str();
+}
+
+
+
 bool ApolloSM::PowerUpCM(int CM_ID, int wait /*seconds*/){
   const uint32_t RUNNING_STATE = 3;
   if((CM_ID < 1) || (CM_ID > 2)){

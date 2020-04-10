@@ -103,7 +103,12 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Display tables of Apollo Status\n"  \
 	       "Usage: \n"                          \
 	       "  status level <table name>\n");
-    
+
+    AddCommand("graphite",&ApolloSMDevice::DumpGraphite,
+	       "Display Graphite write for Apollo Status\n"  \
+	       "Usage: \n"                          \
+	       "  graphite level <table name>\n");
+
     AddCommand("cmpwrup",&ApolloSMDevice::CMPowerUP,
 	       "Power up a command module\n"\
 	       "Usage: \n" \
@@ -194,6 +199,28 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
   return CommandReturn::OK;
 }
 
+CommandReturn::status ApolloSMDevice::DumpGraphite(std::vector<std::string> strArg,std::vector<uint64_t> intArg){
+  std::string table("");
+  int statusLevel = 1;
+  switch (strArg.size()) {
+    case 0:
+      break;
+    default: //fallthrough
+    case 2:
+      table = strArg[1];
+      //fallthrough
+    case 1:
+      if(!isdigit(strArg[0][0])){
+	return CommandReturn::BAD_ARGS;
+      }else if ((intArg[0] < 1) || (intArg[0] > 9)) {
+	return CommandReturn::BAD_ARGS;
+      }      
+      statusLevel = intArg[0];
+      break;
+    }
+  std::cout << SM->GenerateGraphiteStatus(statusLevel,table);
+  return CommandReturn::OK;  
+}
 
 CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strArg*/,std::vector<uint64_t> intArg){
 

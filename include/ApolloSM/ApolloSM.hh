@@ -24,8 +24,8 @@ public:
   void GenerateStatusDisplay(size_t level,
 			     std::ostream & stream,
 			     std::string const & singleTable);
-
   std::string GenerateHTMLStatus(std::string filename, size_t level, std::string);
+  std::string GenerateGraphiteStatus(size_t level, std::string table);
   
   void UART_Terminal(std::string const & ttyDev);
 

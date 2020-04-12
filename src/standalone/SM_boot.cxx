@@ -660,7 +660,7 @@ int main(int argc, char** argv) {
  //  sigaction(SIGINT,  &sa_INT , &old_sa);
  //  sigaction(SIGTERM, &sa_TERM, NULL);
   // sigaction(SIGTERM, &sa_TERM, &oldTERM_sa);
-  SM_bootDaemon.loop = true;
+  SM_bootDaemon.SetLoop(true);
 
   // ====================================
   // for counting time
@@ -785,7 +785,7 @@ int main(int argc, char** argv) {
     syslog(LOG_INFO,"Starting Monitoring loop\n");    
 
     uint32_t CM_running = 0;
-    while(SM_bootDaemon.loop) {
+    while(SM_bootDaemon.GetLoop()) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 

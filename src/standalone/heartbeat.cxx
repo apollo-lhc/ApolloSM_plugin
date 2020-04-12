@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
 //   sigemptyset(&sa_TERM.sa_mask);
 //   sigaction(SIGINT,  &sa_INT , &old_sa);
 //   sigaction(SIGTERM, &sa_TERM, NULL);
-  heartbeatDaemon.loop = true;
+  heartbeatDaemon.SetLoop(true);
 
   // ====================================
   // for counting time
@@ -201,7 +201,7 @@ int main(int argc, char** argv) {
     // Main DAEMON loop
     syslog(LOG_INFO,"Starting heartbeat\n");
     
-    while(heartbeatDaemon.loop) {
+    while(heartbeatDaemon.GetLoop()) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 

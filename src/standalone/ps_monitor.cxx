@@ -185,7 +185,7 @@ int main(int argc, char ** argv) {
 //  sigemptyset(&sa_TERM.sa_mask);
 //  sigaction(SIGINT,  &sa_INT , &old_sa);
 //  sigaction(SIGTERM, &sa_TERM, NULL);
-  ps_monitorDaemon.loop = true;
+  ps_monitorDaemon.SetLoop(true);
 
   // ==================================================
   // If /var/run/utmp does not exist we are done
@@ -241,7 +241,7 @@ int main(int argc, char ** argv) {
     SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
     SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
  
-    while(ps_monitorDaemon.loop){
+    while(ps_monitorDaemon.GetLoop()) {
       readSet_ret = readSet;
       int pselRet = pselect(maxFDp1,&readSet_ret,NULL,NULL,&timeout,NULL);
       if(0 == pselRet){

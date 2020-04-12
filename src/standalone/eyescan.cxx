@@ -291,7 +291,7 @@ int main(int argc, char** argv) {
   // struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
   eyescanDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   eyescanDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
-  eyescanDaemon.loop = true;
+  eyescanDaemon.SetLoop(true);
 
   // ============================================================================
   // More set up if needed.
@@ -317,7 +317,7 @@ int main(int argc, char** argv) {
 
     syslog(LOG_INFO, "Starting main eye scan loop\n");
 
-    while(eyescanDaemon.loop) {
+    while(eyescanDaemon.GetLoop()) {
       
       // start timer
 

@@ -471,9 +471,9 @@ int main(int argc, char **argv) {
 //  sigaction(SIGINT,  &sa_INT , &old_sa);
 //  sigaction(SIGTERM, &sa_TERM, NULL);
   loop = &(xvc_serverDaemon.loop);
-  xvc_serverDaemon.loop = true;
+  xvc_serverDaemon.SetLoop(true);
 
-  while (xvc_serverDaemon.loop) {
+  while (xvc_serverDaemon.GetLoop()) {
     fd_set read = conn, except = conn;
     int fd;
 

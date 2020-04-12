@@ -78,3 +78,11 @@ void Daemon::changeSignal(struct sigaction * newAction, struct sigaction * oldAc
   sigemptyset(&(newAction->sa_mask));
   sigaction(signum, newAction, oldAction);
 }
+
+void Daemon::SetLoop(bool b) {
+  loop = b;
+}
+
+bool Daemon::GetLoop() {
+  return loop;
+}

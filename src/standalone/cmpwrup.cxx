@@ -12,7 +12,7 @@
 // ================================================================================
 //#define DEFAULT_CONFIG_FILE "/etc/cmpwrup"
 //#define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_CONNECTION_FILE "opt/address_tables/connections.xml"
+#define DEFAULT_CONNECTION_FILE "/opt/address_tables/connections.xml"
 #define DEFAULT_CM_ID           1
 #define DEFAULT_CM_POWER_GOOD   "CM.CM1.CTRL.PWR_GOOD"
 #define DEFAULT_CM_POWER_UP     true // note: command modules power up variable actually does nothing in this program currently

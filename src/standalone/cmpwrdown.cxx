@@ -18,8 +18,20 @@
 // ================================================================================
 int main(int argc, char** argv) { 
 
-  // Make an ApolloSM
-  ApolloSM * SM = NULL;
+  int const noArgs         = 1;
+  int const cmFound        = 2;
+  
+  if((noArgs != argc) && (cmFound != argc)) {
+    // wrong number args
+    printf("Program takes 0 or 1 arguments\n");
+    printf("ex: for 1 argument to power down CM2: ./cmpwrdown 2\n");
+    printf("Terminating program\n");
+    return -1;
+  }
+
+  // Make an ApolloSM and command module
+  CM * commandModule = NULL;  
+  ApolloSM * SM      = NULL;
   try{
     SM = new ApolloSM();
     if(NULL == SM){
@@ -37,19 +49,17 @@ int main(int argc, char** argv) {
     
     // ==============================
     // Make a command module
-    CM * commandModule = NULL;
+    //
     commandModule = new CM();
     if(NULL == commandModule){
       fprintf(stderr, "Failed to create new CM. Terminating program\n");
       exit(EXIT_FAILURE);
     }else{
-      fprintf(stdout,"Created new ApolloSM\n");      
+      fprintf(stdout,"Created new CM\n");      
     }
     
     // ==============================
     // parse command line
-    int const noArgs         = 1;
-    int const cmFound        = 2;
     
     switch(argc) {
     case noArgs: 
@@ -65,13 +75,13 @@ int main(int argc, char** argv) {
 	printf("One argument specified. Powering down CM %d\n", ID);
 	break;
       }    
-    default:
-      {   
-	printf("Program takes 0 or 1 arguments\n");
-	printf("ex for 1 argument to power down CM2: ./cmpwrdown 2\n");
-	printf("Terminating program\n");
-	return 0;
-      }    
+//    default:
+//      {   
+//	printf("Program takes 0 or 1 arguments\n");
+//	printf("ex for 1 argument to power down CM2: ./cmpwrdown 2\n");
+//	printf("Terminating program\n");
+//	return 0;
+//      }    
     }
     
     // ==============================
@@ -84,23 +94,22 @@ int main(int argc, char** argv) {
     } else {
       printf("CM %d did not power down in time\n", commandModule->ID);
     }
-  
-    // Clean up
-    printf("Deleting CM\n");
-    if(NULL != commandModule) {
-      delete commandModule;
-    }
   }catch(BUException::exBase const & e){
     fprintf(stdout,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
   }catch(std::exception const & e){
     fprintf(stdout,"Caught std::exception: %s\n",e.what());
   }
   
-  // More clean up
+  // Clean up 
+  printf("Deleting CM\n");
+  if(NULL != commandModule) {
+    delete commandModule;
+  }
+  
   printf("Deleting ApolloSM\n");
   if(NULL != SM) {
     delete SM;
   }
-
+  
   return 0;
 }

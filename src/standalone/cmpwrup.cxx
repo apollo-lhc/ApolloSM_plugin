@@ -19,9 +19,24 @@
 
 // ================================================================================
 int main(int argc, char** argv) { 
+  
+  int const noArgs         = 1;
+  int const cmFound        = 2;
+  int const cmAndPowerGood = 3;
+  
 
-  // Make an ApolloSM
-  ApolloSM * SM = NULL;
+  if((noArgs != argc) && (cmFound != argc) && (cmAndPowerGood != argc)) {
+    // wrong number args
+    printf("Program takes 0, 1, or 2 arguments\n");
+    printf("ex: for 1 argument to power up CM2: ./cmpwrup 2\n");
+    printf("ex: for 2 arguments to power up CM2: ./cmpwrup 2 CM.CM2.CTRL.PWR_GOOD\n");
+    printf("Terminating program\n");
+    return -1;
+  }
+  
+  // Make an ApolloSM and CM
+  ApolloSM * SM      = NULL;
+  CM * commandModule = NULL;
   try{
     SM = new ApolloSM();
     if(NULL == SM){
@@ -39,20 +54,17 @@ int main(int argc, char** argv) {
     
     // ==============================
     // Make a command module
-    CM * commandModule = NULL;
+    //CM * commandModule = NULL;
     commandModule = new CM();
     if(NULL == commandModule){
       fprintf(stderr, "Failed to create new CM. Terminating program\n");
       exit(EXIT_FAILURE);
     }else{
-      fprintf(stdout,"Created new ApolloSM\n");      
+      fprintf(stdout,"Created new CM\n");      
     }
     
     // ==============================
     // parse command line
-    int const noArgs         = 1;
-    int const cmFound        = 2;
-    int const cmAndPowerGood = 3;
     
     switch(argc) {
     case noArgs: 
@@ -83,14 +95,14 @@ int main(int argc, char** argv) {
 	printf("Two arguments specified. Powering up CM %d with %s\n", ID, powerGood.c_str());
 	break;
       }   
-    default:
-      {   
-	printf("Program takes 0, 1, or 2 arguments\n");
-	printf("ex for 1 argument to power up CM2: ./cmpwrup 2\n");
-	printf("ex for 2 arguments to power up CM2: ./cmpwrup 2 CM.CM2.CTRL.PWR_GOOD\n");
-	printf("Terminating program\n");
-	return 0;
-      }    
+//    default:
+//      {   
+//	printf("Program takes 0, 1, or 2 arguments\n");
+//	printf("ex for 1 argument to power up CM2: ./cmpwrup 2\n");
+//	printf("ex for 2 arguments to power up CM2: ./cmpwrup 2 CM.CM2.CTRL.PWR_GOOD\n");
+//	printf("Terminating program\n");
+//	return 0;
+//      }    
     }
     
     // ==============================
@@ -107,18 +119,18 @@ int main(int argc, char** argv) {
     // read power good and print
     printf("%s is %d\n", commandModule->powerGood.c_str(), (int)(SM->RegReadRegister(commandModule->powerGood)));
 
-    // Clean up
-    printf("Deleting CM\n");
-    if(NULL != commandModule) {
-      delete commandModule;
-    }
   }catch(BUException::exBase const & e){
     fprintf(stdout,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
   }catch(std::exception const & e){
     fprintf(stdout,"Caught std::exception: %s\n",e.what());
   }
   
-  // More clean up
+  // Clean up
+  printf("Deleting CM\n");
+  if(NULL != commandModule) {
+    delete commandModule;
+  }
+  
   printf("Deleting ApolloSM\n");
   if(NULL != SM) {
     delete SM;

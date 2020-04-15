@@ -10,7 +10,7 @@ CM::CM(std::string nameArg, boost::program_options::parsed_options PO) {
   // initialize variables
   this->name      = nameArg;
   this->ID        = std::stoi(nameArg.substr(2,1)); // Ex: if nameArg = "CM12" then ID = 12
-  this->powerGood = "";
+  this->powerGood = "CM." + nameArg + ".CTRL.PWR_GOOD";
   this->powerUp   = false;
   
   // Total number of options received from config file
@@ -29,7 +29,7 @@ CM::CM(std::string nameArg, boost::program_options::parsed_options PO) {
       {
 	// found value for power up
 	// is c_str() necessary?
-	std::istringstream(PO.options[i].value[0]) >> (this->powerUp);
+	std::istringstream(PO.options[i].value[0].c_str()) >> std::boolalpha >> (this->powerUp);
       }
     else if(0 == nextOption.compare(nameArg + ".FPGA"))  // ex: CM1.FPGA
       {

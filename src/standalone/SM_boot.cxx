@@ -232,6 +232,7 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
     std::string CM_CTRL = "CM." + myFPGA.cm + ".CTRL.";
     if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return fail;}
     if(!checkNode(SM, CM_CTRL + "IOS_ENABLED", 1)) {return fail;}
+    //if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return fail;}
     if(!checkNode(SM, CM_CTRL + "STATE"      , 3)) {return fail;}
     // Check that svf file exists
     FILE * f = fopen(myFPGA.svfFile.c_str(), "rb");
@@ -246,7 +247,7 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
     
     if(myFPGA.init.compare("")) {
       // non empty initialize bit, so we initialize
-      syslog(LOG_INFO, "Initializing %s fpga with %s\n", myFPGA.name.c_str(), myFPGA.c2c.c_str());
+      syslog(LOG_INFO, "Initializing %s fpga with %s\n", myFPGA.name.c_str(), myFPGA.init.c_str());
       // Get FPGA out of error state
       SM->RegWriteRegister(myFPGA.init, 1);
       usleep(1000000);
@@ -255,7 +256,8 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
       // Check that phy lane is up, link is good, and that there are no errors
       if(!checkNode(SM, myFPGA.c2c + ".MB_ERROR"    , 0)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".CONFIG_ERROR", 0)) {return fail;}
-      if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR",   0)) {return fail;}
+      //if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR",   0)) {return fail;}
+      if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR"  , 1) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".PHY_HARD_ERR", 0)) {return fail;}
       //if(!checkNode(SM, myFPGA.c2c + ".PHY_SOFT_ERR", 0)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".PHY_MMCM_LOL", 0)) {return fail;} 
@@ -552,7 +554,7 @@ int main(int argc, char** argv) {
 	    //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
 	    switch(bringupCMFPGAs(SM, allCMs[i].FPGAs[f])) {
 	    case success:
-	      syslog(LOG_ERR, "Bringing up %s: %s FPGA succeeded. Setting %s to 1\n", allCMs[i].name.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
+	      syslog(LOG_INFO, "Bringing up %s: %s FPGA succeeded. Setting %s to 1\n", allCMs[i].name.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
 	      // write 1 to done bit
 	      //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingSuccessful);
 	      break;

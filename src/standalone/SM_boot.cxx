@@ -808,7 +808,7 @@ int main(int argc, char** argv) {
       }
 
       // Print firmware build date for FPGA
-      printBuildDate(SM, allCMs[i].ID);
+      //     printBuildDate(SM, allCMs[i].ID);
     }
     
     //    // Programming

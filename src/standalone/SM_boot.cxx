@@ -555,23 +555,28 @@ int main(int argc, char** argv) {
   // print all cm and fpga info
   for(int c = 0; c < (int)allCMs.size(); c++) {
     syslog(LOG_INFO, "Found CM: %s with info:\n", allCMs[c].name.c_str());
-    syslog(LOG_INFO, "power good: %s\n", allCMs[c].powerGood.c_str());
+    syslog(LOG_INFO, "   power good: %s\n", allCMs[c].powerGood.c_str());
     std::stringstream ss;
     std::string str;
     ss << allCMs[c].powerUp;
     ss >> str;
-    syslog(LOG_INFO, "power up  : %s\n", str.c_str());
+    syslog(LOG_INFO, "   power up  : %s\n", str.c_str());
     //    std::cout << "power up  : " << allCMs[c].powerUp << std::endl;
     for(int f = 0; f < (int)allCMs[c].FPGAs.size(); f++) {
       syslog(LOG_INFO, "In %s found FPGA: %s with info:\n", allCMs[c].name.c_str(), allCMs[c].FPGAs[f].name.c_str());
-      syslog(LOG_INFO, "cm     : %s\n", allCMs[c].FPGAs[f].cm.c_str());
-      syslog(LOG_INFO, "svfFile: %s\n", allCMs[c].FPGAs[f].svfFile.c_str());
-      syslog(LOG_INFO, "xvc    : %s\n", allCMs[c].FPGAs[f].xvc.c_str());
-      syslog(LOG_INFO, "c2c    : %s\n", allCMs[c].FPGAs[f].c2c.c_str());
-      syslog(LOG_INFO, "done   : %s\n", allCMs[c].FPGAs[f].done.c_str());
-      syslog(LOG_INFO, "init   : %s\n", allCMs[c].FPGAs[f].init.c_str());
-      syslog(LOG_INFO, "axi    : %s\n", allCMs[c].FPGAs[f].axi.c_str());
-      syslog(LOG_INFO, "axilite: %s\n", allCMs[c].FPGAs[f].axilite.c_str()); 
+      syslog(LOG_INFO, "   cm     : %s\n", allCMs[c].FPGAs[f].cm.c_str());
+      std::stringstream ss1;
+      std::string str1;
+      ss1 << allCMs[c].FPGAs[f].program;
+      ss1 >> str1;
+      syslog(LOG_INFO, "   program: %s\n", str1.c_str());
+      syslog(LOG_INFO, "   svfFile: %s\n", allCMs[c].FPGAs[f].svfFile.c_str());
+      syslog(LOG_INFO, "   xvc    : %s\n", allCMs[c].FPGAs[f].xvc.c_str());
+      syslog(LOG_INFO, "   c2c    : %s\n", allCMs[c].FPGAs[f].c2c.c_str());
+      syslog(LOG_INFO, "   done   : %s\n", allCMs[c].FPGAs[f].done.c_str());
+      syslog(LOG_INFO, "   init   : %s\n", allCMs[c].FPGAs[f].init.c_str());
+      syslog(LOG_INFO, "   axi    : %s\n", allCMs[c].FPGAs[f].axi.c_str());
+      syslog(LOG_INFO, "   axilite: %s\n", allCMs[c].FPGAs[f].axilite.c_str()); 
     }
     syslog(LOG_INFO, "\n\n");
   }

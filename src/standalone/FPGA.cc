@@ -7,6 +7,7 @@ FPGA::FPGA(std::string nameArg, std::string cmArg, boost::program_options::parse
   // initialize variables
   this->name    = nameArg;
   this->cm      = cmArg;
+  this->program = false;
   this->svfFile = "";
   this->xvc     = "";
   this->c2c     = "";

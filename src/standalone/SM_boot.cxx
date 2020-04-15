@@ -232,7 +232,7 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
     std::string CM_CTRL = "CM." + myFPGA.cm + ".CTRL.";
     if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return fail;}
     if(!checkNode(SM, CM_CTRL + "IOS_ENABLED", 1)) {return fail;}
-    if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return fail;}
+    if(!checkNode(SM, CM_CTRL + "STATE"      , 3)) {return fail;}
     // Check that svf file exists
     FILE * f = fopen(myFPGA.svfFile.c_str(), "rb");
     if(NULL == f) {return nofile;}

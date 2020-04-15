@@ -27,7 +27,7 @@ FPGA::FPGA(std::string nameArg, std::string cmArg, boost::program_options::parse
     if(0 == nextOption.compare(cmArg + "." + nameArg + ".PROGRAM"))       // ex: CM1.KINTEX.PROGRAM
       {
 	// found value for program
-	std::istringstream(PO.options[i].value[0]) >> (this->program);
+	std::istringstream(PO.options[i].value[0]) >> std::boolalpha >> (this->program);
       }
     else if(0 == nextOption.compare(cmArg + "." + nameArg + ".SVFFILE"))  // ex: CM1.KINTEX.SVFFILE
       {

@@ -222,7 +222,7 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
   try {
     // ==============================    
     syslog(LOG_INFO, 
-	   "Programming %s FPGA associated with CM%s using XVC label %s and svf file %s and checking clock locks at %s\n", 
+	   "Programming: %s FPGA associated with: %s using XVC label: %s and svf file: %s and checking clock locks at: %s\n", 
 	   myFPGA.name.c_str(), 
 	   myFPGA.cm.c_str(), 
 	   myFPGA.xvc.c_str(), 
@@ -231,7 +231,7 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
     // Check CM is actually powered up and "good". 
     std::string CM_CTRL = "CM." + myFPGA.cm + ".CTRL.";
     if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return fail;}
-    if(!checkNode(SM, CM_CTRL + "ISO_ENABLED", 1)) {return fail;}
+    if(!checkNode(SM, CM_CTRL + "IOS_ENABLED", 1)) {return fail;}
     if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return fail;}
     // Check that svf file exists
     FILE * f = fopen(myFPGA.svfFile.c_str(), "rb");
@@ -257,7 +257,7 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
       if(!checkNode(SM, myFPGA.c2c + ".CONFIG_ERROR", 0)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR",   0)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".PHY_HARD_ERR", 0)) {return fail;}
-      if(!checkNode(SM, myFPGA.c2c + ".PHY_SOFT_ERR", 0)) {return fail;}
+      //if(!checkNode(SM, myFPGA.c2c + ".PHY_SOFT_ERR", 0)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".PHY_MMCM_LOL", 0)) {return fail;} 
       if(!checkNode(SM, myFPGA.c2c + ".PHY_LANE_UP" , 1)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".LINK_GOOD"   , 1)) {return fail;}

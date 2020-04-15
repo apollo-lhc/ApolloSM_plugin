@@ -257,7 +257,7 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
       if(!checkNode(SM, myFPGA.c2c + ".MB_ERROR"    , 0)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".CONFIG_ERROR", 0)) {return fail;}
       //if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR",   0)) {return fail;}
-      if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR"  , 1) {return fail;}
+      if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR"  , 1)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".PHY_HARD_ERR", 0)) {return fail;}
       //if(!checkNode(SM, myFPGA.c2c + ".PHY_SOFT_ERR", 0)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".PHY_MMCM_LOL", 0)) {return fail;} 

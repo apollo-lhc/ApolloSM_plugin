@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
   fileOptions.add_options()
     ("link", boost::program_options::value<std::vector<std::string> >(), "eye scan links: phase and voltage increments, output data file");
 
-  int totalNumConfigFileOptions = 0;
+  //int totalNumConfigFileOptions = 0;
   boost::program_options::parsed_options configFilePO(&fileOptions); // compiler won't let me merely declare it configFilePO so I initialized it with fileOptions; would be nice to fix this
   boost::program_options::variables_map configFileVM; // for parsing config file
   boost::program_options::variables_map commandLineVM; // for parsing command line
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
     if(ifs) {
       configFilePO = boost::program_options::parse_config_file(ifs, fileOptions);
       boost::program_options::store(configFilePO, configFileVM);
-      totalNumConfigFileOptions = configFilePO.options.size();
+      //  totalNumConfigFileOptions = configFilePO.options.size();
     }      //    configFileVM = loadConfig(configFile, fileOptions);
   } catch(const boost::program_options::error &ex) {
     fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating eyescan\n", ex.what());        
@@ -154,76 +154,76 @@ int main(int argc, char** argv) {
 //  setParamValue(&horzIncrement, "horzIncrement" , configFileVM, commandLineVM, true);
 //  setParamValue(&vertIncrement, "vertIncrement" , configFileVM, commandLineVM, true);
   
-  int numberLinks = 0;
-  // Look for links
-  for(int i = 0; i < totalNumConfigFileOptions; i++) {
-    // The first argument to add_options() (ex. "polltime" or "run_path")
-    std::string optionName = configFilePO.options[i].string_key;    
-   
-    std::string delimeter = " ";
-    
-    // Find command modules
-    if(optionName.compare("link") != 0) {
-      std::string linkStr = configFilePO.options[i].value[0].c_str();
-      std::vector<std::string> linkVec = split_string(linkStr, delimeter);
-      // Two possibilities 
-      size_t const haveLink       = 1;
-      size_t const maxOtherThings = 4;
-      if((linkVec.size() >= haveLink) && (linkVec.size() <= 4)) {
-	// allocate some more space
-	std::vector<std::string> dummyVS;
-	// We still allocate four string spaces because if we had, for example, only the link and the voltage
-	// we would order them as: "link" "default" "voltage" "default". We add defaults later
-	for(int dum = 0; dum < (int)maxOtherThings; dum++) {dummyVS.push_back("");}
-	links.push_back(dummyVS);
-	// ***** Don't erase this line. Related to other ***** lines.
- 	// Algorithm: If at least n elems, add the n elems. Then, if at least n1 elems, add the next n1-n elems. Up to some max.
- 	// Ex: If at least two elems, add both. Then, if at least five elems, add next three. For now, up to eight.
- 	// Kind of like a switch case. It'd be nice to figure out how to actually use a switch case since it looks (kind of) nicer instead of if.
-//	if(CMvec.size() >= dontpowerup) {
-//	  CMs[numberCMs].push_back(CMvec[CM_ID]);
-//	}
-//	if(CMvec.size() == powerup) {
-//	  CMs[numberCMs].push_back(CMvec[CM_PWR_GOOD]);
-//	  CMs[numberCMs].push_back(CMvec[CM_PWR_UP]);
-//	}
-	// Iterate over how many strings/arguments this link in the config file has
-	// and try to figure out what those arguments are
-	for(int numStrs = 0; numStrs < (int)linkVec.size(); numStrs++) {
-	  if(!(linkVec[numStrs].compare(linkVec[numStrs].size(),1,"."))) { // Assume a link has a "." at the end
-	    links[numberLinks][LINK] = linkVec[numStrs];
-	  } else if(!(linkVec[numStrs].compare(0,1,"p"))) { // phases start with p (ie. p0.02)
-	    links[numberLinks][PHASE] = linkVec[numStrs];
-	  } else if(!(linkVec[numStrs].compare(0,1,"v"))) { // voltages start with v (ie. v2)
-	    links[numberLinks][VOLTAGE] = linkVec[numStrs];
-	  } else if(!(linkVec[numStrs].compare(linkVec[numStrs].size(),1,"t"))) { // Assume txt file so ends with 't'
-	    links[numberLinks][OUTFILE] = linkVec[numStrs];
-	  } else {
-	    syslog(LOG_ERR, "you have an incorrect link argument in the config file. Failed at loading link=%s ...\n", linkVec[0].c_str()); // prints something weird if the culprit argument was the first one (the one the link is suppose to be)
-	    break;
-	  }
-	}
-	// Iterate over link elements and for the "" ones we use defaults
-	if(!(links[numberLinks][LINK].compare(""))) {
-	  syslog(LOG_ERR, "No link found for this line: link=%s ...\n", linkVec[0].c_str());
-	  continue;
-	}  
-	if(!(links[numberLinks][PHASE].compare(""))) {
-	  links[numberLinks][PHASE] = DEFAULT_PHASE_INCREMENT;
-	}
-	if(!(links[numberLinks][VOLTAGE].compare(""))) {
-	  links[numberLinks][VOLTAGE] = DEFAULT_VOLTAGE_INCREMENT;
-	}
-	if(!(links[numberLinks][OUTFILE].compare(""))) {
-	  links[numberLinks][OUTFILE] = links[numberLinks][LINK] + "txt";
-	}
-	
-	// At this point, everything is good, so increment number of links by 1
-	numberLinks++;
-      } else {
-	syslog(LOG_ERR, "link in config file accepts %lu to %lu arguments. You have: %d\n", haveLink, maxOtherThings, (int)linkVec.size());	
-      }
-    }      
+///////  int numberLinks = 0;
+///////  // Look for links
+///////  for(int i = 0; i < totalNumConfigFileOptions; i++) {
+///////    // The first argument to add_options() (ex. "polltime" or "run_path")
+///////    std::string optionName = configFilePO.options[i].string_key;    
+///////   
+///////    std::string delimeter = " ";
+///////    
+///////    // Find command modules
+///////    if(optionName.compare("link") != 0) {
+///////      std::string linkStr = configFilePO.options[i].value[0].c_str();
+///////      std::vector<std::string> linkVec = split_string(linkStr, delimeter);
+///////      // Two possibilities 
+///////      size_t const haveLink       = 1;
+///////      size_t const maxOtherThings = 4;
+///////      if((linkVec.size() >= haveLink) && (linkVec.size() <= 4)) {
+///////	// allocate some more space
+///////	std::vector<std::string> dummyVS;
+///////	// We still allocate four string spaces because if we had, for example, only the link and the voltage
+///////	// we would order them as: "link" "default" "voltage" "default". We add defaults later
+///////	for(int dum = 0; dum < (int)maxOtherThings; dum++) {dummyVS.push_back("");}
+///////	links.push_back(dummyVS);
+///////	// ***** Don't erase this line. Related to other ***** lines.
+/////// 	// Algorithm: If at least n elems, add the n elems. Then, if at least n1 elems, add the next n1-n elems. Up to some max.
+/////// 	// Ex: If at least two elems, add both. Then, if at least five elems, add next three. For now, up to eight.
+/////// 	// Kind of like a switch case. It'd be nice to figure out how to actually use a switch case since it looks (kind of) nicer instead of if.
+/////////	if(CMvec.size() >= dontpowerup) {
+/////////	  CMs[numberCMs].push_back(CMvec[CM_ID]);
+/////////	}
+/////////	if(CMvec.size() == powerup) {
+/////////	  CMs[numberCMs].push_back(CMvec[CM_PWR_GOOD]);
+/////////	  CMs[numberCMs].push_back(CMvec[CM_PWR_UP]);
+/////////	}
+///////	// Iterate over how many strings/arguments this link in the config file has
+///////	// and try to figure out what those arguments are
+///////	for(int numStrs = 0; numStrs < (int)linkVec.size(); numStrs++) {
+///////	  if(!(linkVec[numStrs].compare(linkVec[numStrs].size(),1,"."))) { // Assume a link has a "." at the end
+///////	    links[numberLinks][LINK] = linkVec[numStrs];
+///////	  } else if(!(linkVec[numStrs].compare(0,1,"p"))) { // phases start with p (ie. p0.02)
+///////	    links[numberLinks][PHASE] = linkVec[numStrs];
+///////	  } else if(!(linkVec[numStrs].compare(0,1,"v"))) { // voltages start with v (ie. v2)
+///////	    links[numberLinks][VOLTAGE] = linkVec[numStrs];
+///////	  } else if(!(linkVec[numStrs].compare(linkVec[numStrs].size(),1,"t"))) { // Assume txt file so ends with 't'
+///////	    links[numberLinks][OUTFILE] = linkVec[numStrs];
+///////	  } else {
+///////	    syslog(LOG_ERR, "you have an incorrect link argument in the config file. Failed at loading link=%s ...\n", linkVec[0].c_str()); // prints something weird if the culprit argument was the first one (the one the link is suppose to be)
+///////	    break;
+///////	  }
+///////	}
+///////	// Iterate over link elements and for the "" ones we use defaults
+///////	if(!(links[numberLinks][LINK].compare(""))) {
+///////	  syslog(LOG_ERR, "No link found for this line: link=%s ...\n", linkVec[0].c_str());
+///////	  continue;
+///////	}  
+///////	if(!(links[numberLinks][PHASE].compare(""))) {
+///////	  links[numberLinks][PHASE] = DEFAULT_PHASE_INCREMENT;
+///////	}
+///////	if(!(links[numberLinks][VOLTAGE].compare(""))) {
+///////	  links[numberLinks][VOLTAGE] = DEFAULT_VOLTAGE_INCREMENT;
+///////	}
+///////	if(!(links[numberLinks][OUTFILE].compare(""))) {
+///////	  links[numberLinks][OUTFILE] = links[numberLinks][LINK] + "txt";
+///////	}
+///////	
+///////	// At this point, everything is good, so increment number of links by 1
+///////	numberLinks++;
+///////      } else {
+///////	syslog(LOG_ERR, "link in config file accepts %lu to %lu arguments. You have: %d\n", haveLink, maxOtherThings, (int)linkVec.size());	
+///////      }
+///////    }      
     
 //    // Find FPGAs
 //    if(optionName.compare("FPGA") != 0) {
@@ -280,9 +280,9 @@ int main(int argc, char** argv) {
 //	syslog(LOG_ERR, "FPGA in config file only accepts 2, 5, 6, or 8 arguments. You have %lu\n", FPGAvec.size());
 //      }
 //  }
-  }
-  syslog(LOG_INFO, "%d valid links found\n", numberLinks);
-  syslog(LOG_INFO, "More information about the links coming soon ...\n");
+///////  }
+///////  syslog(LOG_INFO, "%d valid links found\n", numberLinks);
+///////  syslog(LOG_INFO, "More information about the links coming soon ...\n");
   // Should print more information about the links found
 
   // ============================================================================
@@ -321,40 +321,40 @@ int main(int argc, char** argv) {
       
       // start timer
 
-      for(int i = 0; i < (int)links.size(); i++) {
-	
-	// 1. Eye scan and write to file.
-	// enable eye scan
-	SM->EnableEyeScan(links[i][LINK], 0); // 0 for beginning prescale
-	
-	std::vector<eyescanCoords> esCoords = SM->EyeScan(links[i][LINK], atof(links[i][PHASE].c_str()), atoi(links[i][VOLTAGE].c_str()), maxPrescale);
-	
-	outputToFile(esCoords, links[i][OUTFILE]);
-      
-	// 2. Graph it with Python.
-	std::string runPython = "python eyescan.py ";
-	runPython.append(links[i][OUTFILE]);
-	system(runPython.c_str());
-	// python ./root/felex/eyescan.py .txt
-	
-	// 3. Upload it.
-	std::string png = links[i][OUTFILE];
-	png.pop_back();
-	png.pop_back();
-	png.pop_back();
-	png.append("png");
-	
-	std::string copy = "cp ";
-	copy.append(png);
-	copy.append("/var/www/lighttpd");
-	system(copy.c_str());
-      }
-      // cp basenode.png /var/www/lighttpd
-      
-      // 4. Sleep
-      for(int i = 0; i < polltime_in_minutes; i++) {
-	usleep(1000000);
-      }
+//////////      for(int i = 0; i < (int)links.size(); i++) {
+//////////	
+//////////	// 1. Eye scan and write to file.
+//////////	// enable eye scan
+//////////	SM->EnableEyeScan(links[i][LINK], 0); // 0 for beginning prescale
+//////////	
+//////////	std::vector<eyescanCoords> esCoords = SM->EyeScan(links[i][LINK], atof(links[i][PHASE].c_str()), atoi(links[i][VOLTAGE].c_str()), maxPrescale);
+//////////	
+//////////	outputToFile(esCoords, links[i][OUTFILE]);
+//////////      
+//////////	// 2. Graph it with Python.
+//////////	std::string runPython = "python eyescan.py ";
+//////////	runPython.append(links[i][OUTFILE]);
+//////////	system(runPython.c_str());
+//////////	// python ./root/felex/eyescan.py .txt
+//////////	
+//////////	// 3. Upload it.
+//////////	std::string png = links[i][OUTFILE];
+//////////	png.pop_back();
+//////////	png.pop_back();
+//////////	png.pop_back();
+//////////	png.append("png");
+//////////	
+//////////	std::string copy = "cp ";
+//////////	copy.append(png);
+//////////	copy.append("/var/www/lighttpd");
+//////////	system(copy.c_str());
+//////////      }
+//////////      // cp basenode.png /var/www/lighttpd
+//////////      
+//////////      // 4. Sleep
+//////////      for(int i = 0; i < polltime_in_minutes; i++) {
+//////////	usleep(1000000);
+//////////      }
 
     }
   }catch(BUException::exBase const & e){

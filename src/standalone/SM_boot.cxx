@@ -250,10 +250,9 @@ int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
       syslog(LOG_INFO, "Initializing %s fpga with %s\n", myFPGA.name.c_str(), myFPGA.init.c_str());
       // Get FPGA out of error state
       SM->RegWriteRegister(myFPGA.init, 1);
-      //usleep(1000000);
-      usleep(5000000);
+      usleep(1000000);
       SM->RegWriteRegister(myFPGA.init, 0);
-      
+      usleep(5000000);
       // Check that phy lane is up, link is good, and that there are no errors
       if(!checkNode(SM, myFPGA.c2c + ".MB_ERROR"    , 0)) {return fail;}
       if(!checkNode(SM, myFPGA.c2c + ".CONFIG_ERROR", 0)) {return fail;}

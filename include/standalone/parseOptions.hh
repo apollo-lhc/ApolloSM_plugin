@@ -94,6 +94,37 @@ void setParamValue(T * param, std::string paramName, boost::program_options::var
 
 }
 
+template <typename T>
+// Set the value of a parameter by looking at the command line, config file, and default value
+void setParamValue(T * param, 
+		   std::string paramName, 
+		   boost::program_options::variables_map configFileVM, 
+		   boost::program_options::variables_map commandLineVM, 
+		   bool logToSyslog, 
+		   bool caughtCommandLineException, 
+		   bool caughtConfigFileException) {
+  // The order of precedence is: command line specified, config file specified, default
+  
+  if((false == caughtCommandLineException) && commandLineVM.count(paramName)) {
+    // parameter value specified at command line
+    paramLog(paramName, commandLineVM[paramName].as<T>(), "(COMMAND LINE)", logToSyslog);
+    *param = commandLineVM[paramName].as<T>();
+    return;
+  }
+      
+  if((false == caughtConfigFileException) && configFileVM.count(paramName)) {
+    // parameter value specified in config file
+    paramLog(paramName, configFileVM[paramName].as<T>(), "(CONFIG FILE)", logToSyslog);
+    *param = configFileVM[paramName].as<T>();
+    return;
+  }
+
+  // Parameter not specified anywhere, keep default
+  paramLog(paramName, *param, "(DEFAULT)", logToSyslog);
+  return;
+
+}
+
   /*
 
 // ====================================================================================================

@@ -50,7 +50,8 @@
 
 // ====================================================================================================
 // signal handling
-bool static volatile * loop; // xvc_server, unlike the other daemons, uses loop in two diferent places, so we need this to point to xvc_serverDaemon loop
+Daemon xvc_serverDaemon;
+//bool static volatile * loop; // xvc_server, unlike the other daemons, uses loop in two diferent places, so we need this to point to xvc_serverDaemon loop
 // void static signal_handler(int const signum) {
 //   if(SIGINT == signum || SIGTERM == signum) {
 //     loop = false;
@@ -208,7 +209,7 @@ int handle_data(int fd) {
       return 1;
     }
 
-  } while (*loop);
+  } while (xvc_serverDaemon.GetLoop());
   /* Note: Need to fix JTAG state updates, until then no exit is allowed */
   return 0;
 }
@@ -293,7 +294,7 @@ int main(int argc, char **argv) {
   // ============================================================================
   // Deamon book-keeping
   // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
-  Daemon xvc_serverDaemon;
+  //  Daemon xvc_serverDaemon;
   xvc_serverDaemon.daemonizeThisProgram(pidFileName, runPath);
 
 //  pid_t pid, sid;
@@ -470,7 +471,7 @@ int main(int argc, char **argv) {
 //  sigemptyset(&sa_TERM.sa_mask);
 //  sigaction(SIGINT,  &sa_INT , &old_sa);
 //  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = &(xvc_serverDaemon.loop);
+  //loop = &(xvc_serverDaemon.loop);
   xvc_serverDaemon.SetLoop(true);
 
   while (xvc_serverDaemon.GetLoop()) {

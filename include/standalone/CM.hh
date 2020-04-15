@@ -1,20 +1,24 @@
 #ifndef __CM_HH__
 #define __CM_HH__
 
-#include <standalone/FPGA.hh>
+#include "FPGA.hh"
 #include <string>
 #include <vector>
+#include <boost/program_options.hpp>
 
 class CM {
 public:
-  CM(); 
+  CM(std::string nameArg, boost::program_options::parsed_options PO); 
   ~CM();
 
-  std::vector<FPGA> FPGAs;
+  //  void PowerUp(boost::program_options::variables_map vm);
   
-  int ID;
+  std::vector<FPGA> FPGAs;
+
+  std::string name;
+  int         ID;
   std::string powerGood;
-  bool powerUp;
+  bool        powerUp;
 };
 
 #endif

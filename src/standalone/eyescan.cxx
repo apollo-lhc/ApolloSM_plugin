@@ -221,7 +221,7 @@ int main(int argc, char** argv) {
 	// At this point, everything is good, so increment number of links by 1
 	numberLinks++;
       } else {
-	syslog(LOG_ERR, "link in config file accepts %lu to %lu arguments. You have: %lu\n", haveLink, maxOtherThings, linkVec.size());	
+	syslog(LOG_ERR, "link in config file accepts %lu to %lu arguments. You have: %d\n", haveLink, maxOtherThings, (int)linkVec.size());	
       }
     }      
     

@@ -9,6 +9,8 @@ public:
   FPGA(std::string nameArg, std::string cmArg, boost::program_options::parsed_options PO); 
   ~FPGA();
 
+  void bringUp(ApolloSM const * const SM);
+
   std::string name;
   std::string cm;
   bool program;

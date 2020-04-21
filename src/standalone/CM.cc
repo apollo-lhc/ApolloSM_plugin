@@ -5,7 +5,7 @@
 #include <boost/program_options.hpp>
 #include <sstream>
 #include <ApolloSM/ApolloSM.hh>
-#include <syslog>
+#include <syslog.h>
 #include <sstream>
 
 // Checks register/node values
@@ -59,7 +59,45 @@ CM::CM(std::string nameArg, boost::program_options::parsed_options PO) {
 CM::~CM() {
 }
 
-CM::SetUp(ApolloSM const * const SM) {
+void CM::printInfo() {
+  syslog(LOG_INFO, "in cm printinfo\n");
+
+
+
+  syslog(LOG_INFO, "Found CM: %s with info:\n", (this->name).c_str());
+  syslog(LOG_INFO, "   power good: %s\n", (this->powerGood).c_str());
+  std::stringstream ss;
+  std::string str;
+  ss << (this->powerUp);
+  ss >> str;
+  syslog(LOG_INFO, "   power up  : %s\n", str.c_str());
+  //    std::cout << "power up  : " << allCMs[c].powerUp << std::endl;
+  for(size_t f = 0; f < (this->FPGAs).size(); f++) {
+    syslog(LOG_INFO, "In %s found FPGA: %s with info:\n", (this->name).c_str(), (this->FPGAs)[f].name.c_str());
+    (this->FPGAs)[f].printInfo();
+    //    syslog(LOG_INFO, "In %s found FPGA: %s with info:\n", allCMs[c].name.c_str(), allCMs[c].FPGAs[f].name.c_str());
+//       syslog(LOG_INFO, "   cm     : %s\n", allCMs[c].FPGAs[f].cm.c_str());
+//       std::stringstream ss1;
+//       std::string str1;
+//       ss1 << allCMs[c].FPGAs[f].program;
+//       ss1 >> str1;
+//       syslog(LOG_INFO, "   program: %s\n", str1.c_str());
+//       syslog(LOG_INFO, "   svfFile: %s\n", allCMs[c].FPGAs[f].svfFile.c_str());
+//       syslog(LOG_INFO, "   xvc    : %s\n", allCMs[c].FPGAs[f].xvc.c_str());
+//       syslog(LOG_INFO, "   c2c    : %s\n", allCMs[c].FPGAs[f].c2c.c_str());
+//       syslog(LOG_INFO, "   done   : %s\n", allCMs[c].FPGAs[f].done.c_str());
+//       syslog(LOG_INFO, "   init   : %s\n", allCMs[c].FPGAs[f].init.c_str());
+//       syslog(LOG_INFO, "   axi    : %s\n", allCMs[c].FPGAs[f].axi.c_str());
+//       syslog(LOG_INFO, "   axilite: %s\n", allCMs[c].FPGAs[f].axilite.c_str()); 
+  }
+  syslog(LOG_INFO, "\n\n");
+}
+
+void CM::SetUp(ApolloSM const * const SM) {
+  syslog(LOG_INFO, "in cm set up\n");
+
+
+
   int const wait_time = 5; // 5 is 1 second
   if(this->powerUp) {
     syslog(LOG_INFO, "Powering up %s...\n", (this->name).c_str());

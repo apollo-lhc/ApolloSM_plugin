@@ -2,6 +2,8 @@
 #include <string>
 #include <boost/program_options.hpp>
 #include <sstream>
+#include <syslog.h>
+#include <ApolloSM/ApolloSM.hh>
 
 FPGA::FPGA(std::string nameArg, std::string cmArg, boost::program_options::parsed_options PO) {
   // initialize variables
@@ -70,8 +72,45 @@ FPGA::FPGA(std::string nameArg, std::string cmArg, boost::program_options::parse
 FPGA::~FPGA() {
 }
 
+void FPGA::printInfo() {
+  syslog(LOG_INFO, "in fpga print info\n");
+
+
+
+  syslog(LOG_INFO, "   cm     : %s\n", (this->cm).c_str());
+  std::stringstream ss1;
+  std::string str1;
+  ss1 << (this->program);
+  ss1 >> str1;
+  syslog(LOG_INFO, "   program: %s\n", str1.c_str());
+  syslog(LOG_INFO, "   svfFile: %s\n", (this->svfFile).c_str());
+  syslog(LOG_INFO, "   xvc    : %s\n", (this->xvc).c_str());
+  syslog(LOG_INFO, "   c2c    : %s\n", (this->c2c).c_str());
+  syslog(LOG_INFO, "   done   : %s\n", (this->done).c_str());
+  syslog(LOG_INFO, "   init   : %s\n", (this->init).c_str());
+  syslog(LOG_INFO, "   axi    : %s\n", (this->axi).c_str());
+  syslog(LOG_INFO, "   axilite: %s\n", (this->axilite).c_str()); 
+}
+
+// Checks register/node values
+bool checkNode(ApolloSM const * const SM, std::string const node, uint32_t const correctVal) {
+  bool const GOOD = true;
+  bool const BAD  = false;
+
+  uint32_t readVal;
+  if(correctVal != (readVal = SM->RegReadRegister(node))) {
+    syslog(LOG_ERR, "%s is, incorrectly, %d\n", node.c_str(), readVal);
+    return BAD;
+  } 
+  return GOOD;
+}
+
 // Bring-up CM FPGAs
+// It would be nice to incorporate this into bringUp. We would have to figure out how to break out of the try block without return
 int bringupCMFPGAs(ApolloSM const * const SM, FPGA const myFPGA) {
+  syslog(LOG_INFO, "in bringupfpga\n");
+
+
   int const success =  0;
   int const fail    = -1;
   int const nofile  = -2;
@@ -144,6 +183,9 @@ int bringupCMFPGAs(ApolloSM const * const SM, FPGA const myFPGA) {
 }
 
 void FPGA::bringUp(ApolloSM const * const SM) {
+  syslog(LOG_INFO, "in fpga::bringup\n");
+
+
   if(this->program) {
     syslog(LOG_INFO, "%s has program = true. Attempting to program...\n", (this->name).c_str());
     int const success =  0;
@@ -156,18 +198,18 @@ void FPGA::bringUp(ApolloSM const * const SM) {
     //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
     switch(bringupCMFPGAs(SM, this)) {
     case success:
-      syslog(LOG_INFO, "Bringing up %s: %s FPGA succeeded. Setting %s to 1\n", allCMs[i].name.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
+      syslog(LOG_INFO, "Bringing up %s FPGA of %s succeeded. Setting %s to 1\n",(this->name).c_str(), (this->cm).c_str(), (this->done).c_str());
       // write 1 to done bit
       //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingSuccessful);
       break;
     case fail:
       // assert 0 to done bit (paranoid)
-      syslog(LOG_ERR, "Bringing up %s: %s FPGA failed. Setting %s to 0\n", allCMs[i].name.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
+      syslog(LOG_ERR, "Bringing up %s FPGA of %s failed. Setting %s to 0\n", (this->name).c_str(), (this->name).c_str(), (this->done).c_str());
       //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
       break;
     case nofile:
       // assert 0 to done bit (paranoid)
-      syslog(LOG_ERR, "svf file %s does not exist for %s FPGA. Setting %s to 0\n", allCMs[i].FPGAs[f].svfFile.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
+      syslog(LOG_ERR, "svf file %s does not exist for %s FPGA. Setting %s to 0\n", (this->svfFile).c_str(), (this->name).c_str(), (this->done).c_str());
       //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
       break;
     }

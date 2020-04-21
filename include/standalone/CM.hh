@@ -10,6 +10,9 @@ class CM {
 public:
   CM(std::string nameArg, boost::program_options::parsed_options PO); 
   ~CM();
+  
+  void printInfo();
+  void SetUp(ApolloSM const * const SM); 
 
   //  void PowerUp(boost::program_options::variables_map vm);
   

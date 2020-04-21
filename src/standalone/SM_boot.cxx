@@ -542,7 +542,7 @@ int main(int argc, char** argv) {
       // program FPGAs
       if(allCMs[i].powerUp) {
 	for(int f = 0; f < (int)allCMs[i].FPGAs.size(); f++) {
-	  if(allCMs[f].FPGAs[f].program) {
+	  if(allCMs[i].FPGAs[f].program) {
 	    syslog(LOG_INFO, "%s has program = true. Attempting to program...\n", allCMs[i].FPGAs[f].name.c_str());
 	    int const success =  0;
 	    int const fail    = -1;

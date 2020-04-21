@@ -70,6 +70,144 @@ FPGA::FPGA(std::string nameArg, std::string cmArg, boost::program_options::parse
 FPGA::~FPGA() {
 }
 
+// Bring-up CM FPGAs
+int bringupCMFPGAs(ApolloSM const * const SM, FPGA const myFPGA) {
+  int const success =  0;
+  int const fail    = -1;
+  int const nofile  = -2;
+
+  try {
+    // ==============================    
+    syslog(LOG_INFO, 
+	   "Programming: %s FPGA associated with: %s using XVC label: %s and svf file: %s and checking clock locks at: %s\n", 
+	   myFPGA.name.c_str(), 
+	   myFPGA.cm.c_str(), 
+	   myFPGA.xvc.c_str(), 
+	   myFPGA.svfFile.c_str(), 
+	   myFPGA.c2c.c_str());
+    // Check CM is actually powered up and "good". 
+    std::string CM_CTRL = "CM." + myFPGA.cm + ".CTRL.";
+    if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return fail;}
+    if(!checkNode(SM, CM_CTRL + "IOS_ENABLED", 1)) {return fail;}
+    //if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return fail;}
+    if(!checkNode(SM, CM_CTRL + "STATE"      , 3)) {return fail;}
+    // Check that svf file exists
+    FILE * f = fopen(myFPGA.svfFile.c_str(), "rb");
+    if(NULL == f) {return nofile;}
+    fclose(f);
+    // program
+    SM->svfplayer(myFPGA.svfFile, myFPGA.xvc);
+    // Check CM.CM*.C2C clocks are locked
+    if(!checkNode(SM, myFPGA.c2c + ".CPLL_LOCK"      , 1)) {return fail;}
+    if(!checkNode(SM, myFPGA.c2c + ".PHY_GT_PLL_LOCK", 1)) {return fail;}
+    syslog(LOG_INFO, "Successfully programmed %s FPGA\n", myFPGA.name.c_str());
+    
+    if(myFPGA.init.compare("")) {
+      // non empty initialize bit, so we initialize
+      syslog(LOG_INFO, "Initializing %s fpga with %s\n", myFPGA.name.c_str(), myFPGA.init.c_str());
+      // Get FPGA out of error state
+      SM->RegWriteRegister(myFPGA.init, 1);
+      usleep(1000000);
+      SM->RegWriteRegister(myFPGA.init, 0);
+      usleep(5000000);
+      // Check that phy lane is up, link is good, and that there are no errors
+      if(!checkNode(SM, myFPGA.c2c + ".MB_ERROR"    , 0)) {return fail;}
+      if(!checkNode(SM, myFPGA.c2c + ".CONFIG_ERROR", 0)) {return fail;}
+      //if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR",   0)) {return fail;}
+      if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR"  , 1)) {return fail;}
+      if(!checkNode(SM, myFPGA.c2c + ".PHY_HARD_ERR", 0)) {return fail;}
+      //if(!checkNode(SM, myFPGA.c2c + ".PHY_SOFT_ERR", 0)) {return fail;}
+      if(!checkNode(SM, myFPGA.c2c + ".PHY_MMCM_LOL", 0)) {return fail;} 
+      if(!checkNode(SM, myFPGA.c2c + ".PHY_LANE_UP" , 1)) {return fail;}
+      if(!checkNode(SM, myFPGA.c2c + ".LINK_GOOD"   , 1)) {return fail;}
+      syslog(LOG_INFO, "Initialized %s fpga with %s. Lanes up, links good, and no errors.\n", myFPGA.name.c_str(), myFPGA.c2c.c_str());
+    }
+     
+    // unblock axi
+    if(myFPGA.axi.compare("")) {
+      SM->RegWriteAction(myFPGA.axi.c_str());      
+      syslog(LOG_INFO, "%s: %s unblocked\n", myFPGA.name.c_str(), myFPGA.axi.c_str());    
+    }
+    if(myFPGA.axilite.compare("")) {
+      SM->RegWriteAction(myFPGA.axilite.c_str());
+      syslog(LOG_INFO, "%s: %s unblocked\n", myFPGA.name.c_str(), myFPGA.axilite.c_str());
+    }
+  } catch(BUException::exBase const & e) {
+    syslog(LOG_ERR, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
+    return fail;
+  } catch (std::exception const & e) {
+    syslog(LOG_ERR, "Caught std::exception: %s\n", e.what());
+    return fail;
+  }
+  
+  return success;
+}
+
+void FPGA::bringUp(ApolloSM const * const SM) {
+  if(this->program) {
+    syslog(LOG_INFO, "%s has program = true. Attempting to program...\n", (this->name).c_str());
+    int const success =  0;
+    int const fail    = -1;
+    int const nofile  = -2;
+    
+    //	    int const programmingFailed     = 0;
+    //	    int const programmingSuccessful = 1;
+    // assert 0 to done bit
+    //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
+    switch(bringupCMFPGAs(SM, this)) {
+    case success:
+      syslog(LOG_INFO, "Bringing up %s: %s FPGA succeeded. Setting %s to 1\n", allCMs[i].name.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
+      // write 1 to done bit
+      //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingSuccessful);
+      break;
+    case fail:
+      // assert 0 to done bit (paranoid)
+      syslog(LOG_ERR, "Bringing up %s: %s FPGA failed. Setting %s to 0\n", allCMs[i].name.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
+      //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
+      break;
+    case nofile:
+      // assert 0 to done bit (paranoid)
+      syslog(LOG_ERR, "svf file %s does not exist for %s FPGA. Setting %s to 0\n", allCMs[i].FPGAs[f].svfFile.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
+      //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
+      break;
+    }
+  } else {
+    syslog(LOG_INFO, "%s FPGA will not be programmed because it has program = false\n", (this->name).c_str());
+  }
+  
+//  syslog(LOG_INFO, "%s has program = true. Attempting to program..\n", (this->FPGAs[f]).name.c_str());
+//	int const success =  0;
+//	int const fail    = -1;
+//	int const nofile  = -2;
+//	
+//	// int const programmingFailed     = 0;
+//	// int const programmingSuccessful = 1;
+//	// assert 0 to done bit
+//	// SM->RegWriteRegister(FPGAs[f].done, programmingFailed);
+//	switch(bringupCMFPGAs(SM, allCMs[i].FPGAs[f])) {
+//	case success:
+//	  syslog(LOG_INFO, "Bringing up %s: %s FPGA succeeded. Setting %s to 1\n", (this->name).c_str(), (this->FPGAs[f]).name.c_str(), (this->FPGAs[f]).done.c_str());
+//	  // write 1 to done bit
+//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingSuccessful);
+//	  break;
+//	case fail:
+//	  // assert 0 to done bit (paranoid)
+//	  syslog(LOG_ERR, "Bringing up %s: %s FPGA failed. Setting %s to 0\n", (this->name).c_str(), (this->FPGAs[f]).name.c_str(), (this->FPGAs[f]).done.c_str());
+//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
+//	  break;
+//	case nofile:
+//	  // assert 0 to done bit (paranoid)
+//	  syslog(LOG_ERR, "svf file %s does not exist for %s FPGA. Setting %s to 0\n", (this->FPGAs[f]).svfFile.c_str(), (this->FPGAs[f]).name.c_str(), (this->.FPGAs[f]).done.c_str());
+//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
+//	  break;
+//	    }
+//      } else {
+//	syslog(LOG_INFO, "%s will not be programmed because it has program = false\n",(this->FPGAs[f]).name.c_str());
+//      }
+//    }
+
+}
+
 //std::string name    ; 
 //std::string cm      ;
 //std::string svfFile ;

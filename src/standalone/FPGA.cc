@@ -4,6 +4,7 @@
 #include <sstream>
 #include <syslog.h>
 #include <ApolloSM/ApolloSM.hh>
+//#include <standalone/daemon.hh> // checkNode
 
 FPGA::FPGA(std::string nameArg, std::string cmArg, boost::program_options::parsed_options PO) {
   // initialize variables
@@ -93,21 +94,24 @@ void FPGA::printInfo() {
 }
 
 // Checks register/node values
-bool checkNode(ApolloSM const * const SM, std::string const node, uint32_t const correctVal) {
+//bool checkNode(ApolloSM const * const SM, std::string const node, uint32_t const correctVal) const {
+bool FPGA::checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal) {
   bool const GOOD = true;
   bool const BAD  = false;
-
+  
   uint32_t readVal;
   if(correctVal != (readVal = SM->RegReadRegister(node))) {
-    syslog(LOG_ERR, "%s is, incorrectly, %d\n", node.c_str(), readVal);
-    return BAD;
+     syslog(LOG_ERR, "%s is, incorrectly, %d\n", node.c_str(), readVal);
+     return BAD;
   } 
   return GOOD;
 }
 
 // Bring-up CM FPGAs
 // It would be nice to incorporate this into bringUp. We would have to figure out how to break out of the try block without return
-int bringupCMFPGAs(ApolloSM const * const SM, FPGA const myFPGA) {
+//int bringupCMFPGAs(ApolloSM const * const SM, FPGA const myFPGA) const {
+//int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
+int FPGA::bringupCMFPGAs(ApolloSM * SM) {
   syslog(LOG_INFO, "in bringupfpga\n");
 
 
@@ -119,57 +123,57 @@ int bringupCMFPGAs(ApolloSM const * const SM, FPGA const myFPGA) {
     // ==============================    
     syslog(LOG_INFO, 
 	   "Programming: %s FPGA associated with: %s using XVC label: %s and svf file: %s and checking clock locks at: %s\n", 
-	   myFPGA.name.c_str(), 
-	   myFPGA.cm.c_str(), 
-	   myFPGA.xvc.c_str(), 
-	   myFPGA.svfFile.c_str(), 
-	   myFPGA.c2c.c_str());
+	   (this->name).c_str(), 
+	   (this->cm).c_str(), 
+	   (this->xvc).c_str(), 
+	   (this->svfFile).c_str(), 
+	   (this->c2c).c_str());
     // Check CM is actually powered up and "good". 
-    std::string CM_CTRL = "CM." + myFPGA.cm + ".CTRL.";
-    if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return fail;}
-    if(!checkNode(SM, CM_CTRL + "IOS_ENABLED", 1)) {return fail;}
-    //if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return fail;}
-    if(!checkNode(SM, CM_CTRL + "STATE"      , 3)) {return fail;}
+    std::string CM_CTRL = "CM." + this->cm + ".CTRL.";
+    if(!(this->checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1))) {return fail;}
+    if(!(this->checkNode(SM, CM_CTRL + "IOS_ENABLED", 1))) {return fail;}
+    //if(!(this->checkNode(SM, CM_CTRL + "STATE"      , 4))) {return fail;}
+    if(!(this->checkNode(SM, CM_CTRL + "STATE"      , 3))) {return fail;}
     // Check that svf file exists
-    FILE * f = fopen(myFPGA.svfFile.c_str(), "rb");
+    FILE * f = fopen((this->svfFile).c_str(), "rb");
     if(NULL == f) {return nofile;}
     fclose(f);
     // program
-    SM->svfplayer(myFPGA.svfFile, myFPGA.xvc);
+    SM->svfplayer(this->svfFile, this->xvc);
     // Check CM.CM*.C2C clocks are locked
-    if(!checkNode(SM, myFPGA.c2c + ".CPLL_LOCK"      , 1)) {return fail;}
-    if(!checkNode(SM, myFPGA.c2c + ".PHY_GT_PLL_LOCK", 1)) {return fail;}
-    syslog(LOG_INFO, "Successfully programmed %s FPGA\n", myFPGA.name.c_str());
+    if(!(this->checkNode(SM, (this->c2c) + ".CPLL_LOCK"      , 1))) {return fail;}
+    if(!(this->checkNode(SM, (this->c2c) + ".PHY_GT_PLL_LOCK", 1))) {return fail;}
+    syslog(LOG_INFO, "Successfully programmed %s FPGA\n", (this->name).c_str());
     
-    if(myFPGA.init.compare("")) {
+    if((this->init).compare("")) {
       // non empty initialize bit, so we initialize
-      syslog(LOG_INFO, "Initializing %s fpga with %s\n", myFPGA.name.c_str(), myFPGA.init.c_str());
+	syslog(LOG_INFO, "Initializing %s fpga with %s\n", (this->name).c_str(), (this->init).c_str());
       // Get FPGA out of error state
-      SM->RegWriteRegister(myFPGA.init, 1);
+	SM->RegWriteRegister((this->init), 1);
       usleep(1000000);
-      SM->RegWriteRegister(myFPGA.init, 0);
+      SM->RegWriteRegister((this->init), 0);
       usleep(5000000);
       // Check that phy lane is up, link is good, and that there are no errors
-      if(!checkNode(SM, myFPGA.c2c + ".MB_ERROR"    , 0)) {return fail;}
-      if(!checkNode(SM, myFPGA.c2c + ".CONFIG_ERROR", 0)) {return fail;}
-      //if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR",   0)) {return fail;}
-      if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR"  , 1)) {return fail;}
-      if(!checkNode(SM, myFPGA.c2c + ".PHY_HARD_ERR", 0)) {return fail;}
-      //if(!checkNode(SM, myFPGA.c2c + ".PHY_SOFT_ERR", 0)) {return fail;}
-      if(!checkNode(SM, myFPGA.c2c + ".PHY_MMCM_LOL", 0)) {return fail;} 
-      if(!checkNode(SM, myFPGA.c2c + ".PHY_LANE_UP" , 1)) {return fail;}
-      if(!checkNode(SM, myFPGA.c2c + ".LINK_GOOD"   , 1)) {return fail;}
-      syslog(LOG_INFO, "Initialized %s fpga with %s. Lanes up, links good, and no errors.\n", myFPGA.name.c_str(), myFPGA.c2c.c_str());
+      if(!(this->checkNode(SM, (this->c2c) + ".MB_ERROR"    , 0))) {return fail;}
+      if(!(this->checkNode(SM, (this->c2c) + ".CONFIG_ERROR", 0))) {return fail;}
+      //if(!(this->checkNode(SM, (this->c2c) + ".LINK_ERROR",   0))) {return fail;}
+      if(!(this->checkNode(SM, (this->c2c) + ".LINK_ERROR"  , 1))) {return fail;}
+      if(!(this->checkNode(SM, (this->c2c) + ".PHY_HARD_ERR", 0))) {return fail;}
+      //if(!(this->checkNode(SM, (this->c2c) + ".PHY_SOFT_ERR", 0))) {return fail;}
+      if(!(this->checkNode(SM, (this->c2c) + ".PHY_MMCM_LOL", 0))) {return fail;} 
+      if(!(this->checkNode(SM, (this->c2c) + ".PHY_LANE_UP" , 1))) {return fail;}
+      if(!(this->checkNode(SM, (this->c2c) + ".LINK_GOOD"   , 1))) {return fail;}
+      syslog(LOG_INFO, "Initialized %s fpga with %s. Lanes up, links good, and no errors.\n", (this->name).c_str(), (this->c2c).c_str());
     }
      
     // unblock axi
-    if(myFPGA.axi.compare("")) {
-      SM->RegWriteAction(myFPGA.axi.c_str());      
-      syslog(LOG_INFO, "%s: %s unblocked\n", myFPGA.name.c_str(), myFPGA.axi.c_str());    
+    if((this->axi).compare("")) {
+      SM->RegWriteAction((this->axi).c_str());      
+      syslog(LOG_INFO, "%s: %s unblocked\n", (this->name).c_str(), (this->axi).c_str());    
     }
-    if(myFPGA.axilite.compare("")) {
-      SM->RegWriteAction(myFPGA.axilite.c_str());
-      syslog(LOG_INFO, "%s: %s unblocked\n", myFPGA.name.c_str(), myFPGA.axilite.c_str());
+    if((this->axilite).compare("")) {
+      SM->RegWriteAction((this->axilite).c_str());
+      syslog(LOG_INFO, "%s: %s unblocked\n", (this->name).c_str(), (this->axilite).c_str());
     }
   } catch(BUException::exBase const & e) {
     syslog(LOG_ERR, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
@@ -182,7 +186,8 @@ int bringupCMFPGAs(ApolloSM const * const SM, FPGA const myFPGA) {
   return success;
 }
 
-void FPGA::bringUp(ApolloSM const * const SM) {
+//void FPGA::bringUp(ApolloSM const * const SM) const {
+void FPGA::bringUp(ApolloSM * SM) {
   syslog(LOG_INFO, "in fpga::bringup\n");
 
 
@@ -196,7 +201,7 @@ void FPGA::bringUp(ApolloSM const * const SM) {
     //	    int const programmingSuccessful = 1;
     // assert 0 to done bit
     //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
-    switch(bringupCMFPGAs(SM, this)) {
+    switch(bringupCMFPGAs(SM)) {
     case success:
       syslog(LOG_INFO, "Bringing up %s FPGA of %s succeeded. Setting %s to 1\n",(this->name).c_str(), (this->cm).c_str(), (this->done).c_str());
       // write 1 to done bit

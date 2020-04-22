@@ -7,19 +7,7 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <syslog.h>
 #include <sstream>
-
-// Checks register/node values
-bool checkNode(ApolloSM const * const SM, std::string const node, uint32_t const correctVal) {
-  bool const GOOD = true;
-  bool const BAD  = false;
-
-  uint32_t readVal;
-  if(correctVal != (readVal = SM->RegReadRegister(node))) {
-    syslog(LOG_ERR, "%s is, incorrectly, %d\n", node.c_str(), readVal);
-    return BAD;
-  } 
-  return GOOD;
-}
+//#include <standalone/daemon.hh> // checkNode
 
 CM::CM(std::string nameArg, boost::program_options::parsed_options PO) {
 
@@ -59,6 +47,20 @@ CM::CM(std::string nameArg, boost::program_options::parsed_options PO) {
 CM::~CM() {
 }
 
+// Checks register/node values
+//bool checkNode(ApolloSM const * const SM, std::string const node, uint32_t const correctVal) {
+bool CM::checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal) {
+  bool const GOOD = true;
+  bool const BAD  = false;
+
+  uint32_t readVal;
+  if(correctVal != (readVal = SM->RegReadRegister(node))) {
+    syslog(LOG_ERR, "%s is, incorrectly, %d\n", node.c_str(), readVal);
+    return BAD;
+  } 
+  return GOOD;
+}
+
 void CM::printInfo() {
   syslog(LOG_INFO, "in cm printinfo\n");
 
@@ -93,7 +95,8 @@ void CM::printInfo() {
   syslog(LOG_INFO, "\n\n");
 }
 
-void CM::SetUp(ApolloSM const * const SM) {
+//void CM::SetUp(ApolloSM const * const SM) {
+void CM::SetUp(ApolloSM * SM) {
   syslog(LOG_INFO, "in cm set up\n");
 
 
@@ -109,7 +112,7 @@ void CM::SetUp(ApolloSM const * const SM) {
       syslog(LOG_ERR, "%s failed to power up in time\n", (this->name).c_str());
     }
     // check that powerGood is 1
-    if(checkNode(SM, this->powerGood, 1)) {
+    if(this->checkNode(SM, this->powerGood, 1)) {
       std::string str;
       std::stringstream ss;
       ss << this->powerGood;

@@ -3,13 +3,16 @@
 
 #include <string>
 #include <boost/program_options.hpp>
+#include <ApolloSM/ApolloSM.hh>
 
 class FPGA {
 public:
   FPGA(std::string nameArg, std::string cmArg, boost::program_options::parsed_options PO); 
   ~FPGA();
 
-  void bringUp(ApolloSM const * const SM);
+  void printInfo();
+  //  void bringUp(ApolloSM const * const SM) const;
+  void bringUp(ApolloSM * SM);
 
   std::string name;
   std::string cm;
@@ -21,6 +24,9 @@ public:
   std::string init;
   std::string axi;
   std::string axilite;
+private:
+  bool checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal);
+  int bringupCMFPGAs(ApolloSM * SM);
 };
 
 #endif

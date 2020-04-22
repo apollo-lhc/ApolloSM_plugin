@@ -421,7 +421,7 @@ int main(int argc, char** argv) {
 
   // print all cm and fpga info
   for(size_t c = 0; c < allCMs.size(); c++) {
-    allCMs[i].printInfo();
+    allCMs[c].printInfo();
 //    syslog(LOG_INFO, "Found CM: %s with info:\n", allCMs[c].name.c_str());
 //    syslog(LOG_INFO, "   power good: %s\n", allCMs[c].powerGood.c_str());
 //    std::stringstream ss;
@@ -517,7 +517,7 @@ int main(int argc, char** argv) {
     syslog(LOG_INFO, "Attempting to power up CMs and program FPGAs...\n");
     // Power up CMs and program FPGAs
     for(int i = 0; i < (int)allCMs.size(); i++) {
-      allCMs[i].SetUp();
+      allCMs[i].SetUp(SM);
 //int wait_time = 5; // 5 is 1 second
 ////      std::string tempCM_ID = CMs[i][CM_ID];
 ////      tempCM_ID.erase(0,2); // drop the 'CM' (ex. for CM1, tempCM_ID is 1)

@@ -5,6 +5,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <string.h>
+// #include <ApolloSM/ApolloSM.hh>
 
 // this allows sig_handler to access the class variable "loop" without being a class function
 bool static volatile * globalLoop;
@@ -79,10 +80,24 @@ void Daemon::changeSignal(struct sigaction * newAction, struct sigaction * oldAc
   sigaction(signum, newAction, oldAction);
 }
 
-void Daemon::SetLoop(bool b) {
+void Daemon::SetLoop(bool b) { // should be const b
   loop = b;
 }
 
 bool Daemon::GetLoop() {
   return loop;
 }
+
+// // Checks register/node values. Should be useful for all daemons. Currently only SM boot uses it
+// //bool checkNode(ApolloSM const * const SM, std::string const node, uint32_t const correctVal) const {
+// bool checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal) {
+//   bool const GOOD = true;
+//   bool const BAD  = false;
+// 
+//   uint32_t readVal;
+//   if(correctVal != (readVal = SM->RegReadRegister(node))) {
+//     syslog(LOG_ERR, "%s is, incorrectly, %d\n", node.c_str(), readVal);
+//     return BAD;
+//   } 
+//   return GOOD;
+// }

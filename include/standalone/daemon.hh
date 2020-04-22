@@ -3,6 +3,7 @@
 
 #include <string>
 #include <signal.h>
+//#include <ApolloSM/ApolloSM.hh>
 
 // This class performs all functions that a daemon is suppose to perform (ie. fork, change sigactions, etc.). Later on, any functions that are deemed necessary for all daemons to perform, should be put in here. Each daemon will have ane Daemon object.
 
@@ -17,6 +18,8 @@ public:
   void changeSignal(struct sigaction * newAction, struct sigaction * oldAction, int const signum);
   void SetLoop(bool b);
   bool GetLoop();
+
+  //bool checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal);
 
 private:
   //  void signal_handler(int const signum);

@@ -14,12 +14,14 @@ ApolloSM::~ApolloSM(){
 void ApolloSM::GenerateStatusDisplay(size_t level,
 				     std::ostream & stream=std::cout,
 				     std::string const & singleTable = std::string("")){
+  statusDisplay->Clear();
   statusDisplay->Report(level,stream,singleTable);
+  statusDisplay->Clear();
 }
 
 
 std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = size_t(1), std::string type = std::string("HTML")) {
-
+  statusDisplay->Clear();
   //SETUP
   std::ofstream HTML;
   HTML.open(filename);
@@ -49,11 +51,12 @@ std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = si
   //END
   HTML.close();
   statusDisplay->UnsetHTML();
+  statusDisplay->Clear();
   return "GOOD";
 }
 
 std::string ApolloSM::GenerateGraphiteStatus(size_t level = size_t(1), std::string table="") {
-
+  statusDisplay->Clear();
   //SETUP
   std::stringstream output;
 
@@ -65,6 +68,7 @@ std::string ApolloSM::GenerateGraphiteStatus(size_t level = size_t(1), std::stri
 
   //END
   statusDisplay->UnsetGraphite();
+  statusDisplay->Clear();
   return output.str();
 }
 

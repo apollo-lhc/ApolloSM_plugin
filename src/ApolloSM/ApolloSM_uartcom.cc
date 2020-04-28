@@ -45,6 +45,13 @@ static void SetupTermIOS(int fd){
   tcgetattr(fd,&term_opts); //get existing options
   cfsetispeed(&term_opts,B115200); //set baudrate
   cfsetospeed(&term_opts,B115200); //set baudrate
+  // Pyserial (not comprehensive) lines 385-394
+  // https://github.com/pyserial/pyserial/blob/master/serial/serialposix.py#L386
+  // April 28 2020
+  // cflag: |= (CLOCAL, CREAD)
+  // iflag: &= ~(INLCR, IGNCR, ICRNL, IGNBRK)
+  // lflag: &= ~(ICANON, ECHO, ECHOE, ECHOK, ECHONL, ISIG, IEXTEN)
+  // oflag: &= ~(OPOST, ONLCR, OCRNL)
   term_opts.c_cflag |= CLOCAL;  //Do not change owner of port
   term_opts.c_cflag |= CREAD;   // enable receiver
 
@@ -52,7 +59,7 @@ static void SetupTermIOS(int fd){
   term_opts.c_cflag &= ~CSIZE;
   term_opts.c_cflag |= CS8;
 
-  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL);
+  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL); // ignbrk
 
   //set parity
   term_opts.c_cflag &= ~PARENB;
@@ -63,8 +70,9 @@ static void SetupTermIOS(int fd){
   term_opts.c_iflag &= ~(IXON | IXOFF | IXANY);
 
   //set raw mode
-  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-  term_opts.c_oflag &= ~OPOST;
+  //  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG | IEXTEN);
+  term_opts.c_oflag &= ~OPOST; // onlcr ocrnl
 
 
   tcsetattr(fd,TCSANOW,&term_opts); 

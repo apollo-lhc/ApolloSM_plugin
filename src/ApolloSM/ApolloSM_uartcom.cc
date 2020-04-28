@@ -72,8 +72,8 @@ static void SetupTermIOS(int fd){
 
   //set raw mode
   //  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG | IEXTEN);
-  printf("using exten\n");
+  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ISIG | IEXTEN);
+  printf("using pyserial\n");
   //  term_opts.c_oflag &= ~OPOST; // onlcr ocrnl
   term_opts.c_oflag &= ~(OPOST | ONLCR | OCRNL);
 

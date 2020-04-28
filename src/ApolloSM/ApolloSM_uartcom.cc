@@ -327,11 +327,11 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
 	}
       }
       
-      if(sendline[i] != readChar){
-	printf("Error: mismatched character %c %c\n",sendline[i],readChar);
-	printf("Error: mismatched character %c %d\n",sendline[i],readChar);
-	return "Mismatched character\n";
-      }
+//      if(sendline[i] != readChar){
+//	printf("Error: mismatched character %c %c\n",sendline[i],readChar);
+//	printf("Error: mismatched character %c %d\n",sendline[i],readChar);
+//	return "Mismatched character\n";
+//      }
 
     }
     

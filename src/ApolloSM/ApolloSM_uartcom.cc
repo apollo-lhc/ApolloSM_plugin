@@ -110,7 +110,7 @@ void ApolloSM::UART_Terminal(std::string const & ttyDev) {
 
 
   //maxfdp1 is the max fd plus 1
-  int maxfdp1 = std::max(fd,std::max(STDIN_FILENO,STDIN_FILENO));
+  int maxfdp1 = std::max(fd,std::max(STDIN_FILENO,STDOUT_FILENO));
   maxfdp1++;
   fd_set readSet;
   fd_set writeSet; 

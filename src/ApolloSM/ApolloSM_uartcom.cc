@@ -59,7 +59,8 @@ static void SetupTermIOS(int fd){
   term_opts.c_cflag &= ~CSIZE;
   term_opts.c_cflag |= CS8;
 
-  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL); // ignbrk
+  //  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL); // ignbrk
+  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL | IGNBRK);
 
   //set parity
   term_opts.c_cflag &= ~PARENB;
@@ -73,7 +74,8 @@ static void SetupTermIOS(int fd){
   //  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
   term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG | IEXTEN);
   printf("using exten\n");
-  term_opts.c_oflag &= ~OPOST; // onlcr ocrnl
+  //  term_opts.c_oflag &= ~OPOST; // onlcr ocrnl
+  term_opts.c_oflag &= ~(OPOST | ONLCR | OCRNL);
 
 
   tcsetattr(fd,TCSANOW,&term_opts); 

@@ -326,6 +326,7 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   }
   printf("\n\n");
 
+  printf("%s\n\n", recvline.c_str());
 
   return CommandReturn::OK;
 } 

@@ -317,7 +317,14 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   //get rid of last space
   sendline.pop_back();
 
-  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
+  //  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
+  printf("Received:\n\n");
+  std::string recvline = SM->UART_CMD(ttyDev, sendline, promptChar);  
+  for(size_t i = 0; i < recvline.size(); i++) {
+    printf("%d ",(int)recvline[i]);
+  }
+  printf("\n\n");
+
 
   return CommandReturn::OK;
 } 

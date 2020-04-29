@@ -317,17 +317,35 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   //get rid of last space
   sendline.pop_back();
 
+  // so the output from a uart_cmd consists of, foremost, a bunch of control sequences, then a new line, then the actual
+  // output of what we want, version or help menu, etc. What we will do is throw away everything before the first new line
+  int const firstNewLine = 10;
+  //  bool firstNewLineReached = false;
+  size_t firstNewLineIndex;
+
   //  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
-  printf("printing ints\n");
-  printf("Received:\n\n");
+  //  printf("printing ints\n");
   std::string recvline = SM->UART_CMD(ttyDev, sendline, promptChar);  
+  //printf("Received:\n\n");
+  
+  // find the first new line
   for(size_t i = 0; i < recvline.size(); i++) {
     //    printf("%d ",(int)recvline[i]);
-    std::cout << "0x" << std::hex << (int)recvline[i] << " ";
+    //    std::cout << "0x" << std::hex << (int)recvline[i] << " ";
+    if(firstNewLine == (int)recvline[i]) {
+      //      firstNewLineReached = true;
+      printf("newline found\n");
+      firstNewLineIndex = i;
+      break;
+    }
   }
-  printf("\n\n");
 
-  printf("%s\n\n", recvline.c_str());
+  recvline.erase(recvline.begin(), recvline.begin()+firstNewLineIndex);
+  printf("Received:\n\n%s\n\n", recvline.c_str());
+
+  //  printf("\n\n");
+
+  //  printf("%s\n\n", recvline.c_str());
 
   return CommandReturn::OK;
 } 

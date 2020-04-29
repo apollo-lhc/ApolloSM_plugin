@@ -369,7 +369,7 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
     }
     last = readChar;
     if(readChar != '\r'){
-      recvline.push_back(readChar);
+      recvline.push_back((int)readChar);
     }
   }
   close(fd);

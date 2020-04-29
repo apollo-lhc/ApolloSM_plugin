@@ -323,7 +323,7 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   std::string recvline = SM->UART_CMD(ttyDev, sendline, promptChar);  
   for(size_t i = 0; i < recvline.size(); i++) {
     //    printf("%d ",(int)recvline[i]);
-    std::cout << std::hex << (int)recvline[i];
+    std::cout << "0x" << std::hex << (int)recvline[i] << " ";
   }
   printf("\n\n");
 

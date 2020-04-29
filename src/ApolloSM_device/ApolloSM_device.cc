@@ -322,7 +322,8 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   printf("Received:\n\n");
   std::string recvline = SM->UART_CMD(ttyDev, sendline, promptChar);  
   for(size_t i = 0; i < recvline.size(); i++) {
-    printf("%d ",(int)recvline[i]);
+    //    printf("%d ",(int)recvline[i]);
+    std::cout << std::hex << (int)recvline[i];
   }
   printf("\n\n");
 

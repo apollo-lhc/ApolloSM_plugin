@@ -73,7 +73,7 @@ static void SetupTermIOS(int fd){
   //set raw mode
   //  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
   term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ISIG | IEXTEN);
-  printf("using pyserial\n");
+  //printf("using pyserial\n");
   //  term_opts.c_oflag &= ~OPOST; // onlcr ocrnl
   term_opts.c_oflag &= ~(OPOST | ONLCR | OCRNL);
 
@@ -326,7 +326,8 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
 	  throw e;
 	}
       }
-      
+      // This is for error checking but Peter updated the code to send a bunch of control sequences.
+      // Since we don't know how to deal with them yet we cannot error check.
 //      if(sendline[i] != readChar){
 //	printf("Error: mismatched character %c %c\n",sendline[i],readChar);
 //	printf("Error: mismatched character %c %d\n",sendline[i],readChar);

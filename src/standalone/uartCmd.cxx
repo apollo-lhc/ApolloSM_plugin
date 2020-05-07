@@ -19,8 +19,8 @@ int main(int argc, char** argv) {
 
   int const numberGoodArgs = 3;  
 
-  if(argc != numberGoodArgs) {
-    printf("Wrong number of arguments. Please include a device and a command\n");
+  if(argc < numberGoodArgs) {
+    printf("Wrong number of arguments. Please include at least a device and a command\n");
     return -1;
   }
   
@@ -87,7 +87,6 @@ int main(int argc, char** argv) {
     // find the first new line
     for(size_t i = 0; i < recvline.size(); i++) {
       if(firstNewLine == (int)recvline[i]) {
-	printf("newline found\n");
 	firstNewLineIndex = i;
 	break;
       }

@@ -8,14 +8,11 @@
 //#include <sys/stat.h> //for umask
 //#include <sys/types.h> //for umask
 //#include <BUException/ExceptionBase.hh>
+#include <boost/algorithm/string/predicate.hpp> // for iequals
 
 // ================================================================================
-//#define DEFAULT_CONFIG_FILE "/etc/cmpwrup"
 //#define DEFAULT_RUN_DIR     "/opt/address_tables/"
 #define DEFAULT_CONNECTION_FILE "/opt/address_tables/connections.xml"
-#define DEFAULT_CM_ID           1
-#define DEFAULT_CM_POWER_GOOD   "CM.CM1.CTRL.PWR_GOOD"
-#define DEFAULT_CM_POWER_UP     true // note: command modules power up variable actually does nothing in this program currently
 
 // ================================================================================
 int main(int argc, char** argv) { 
@@ -69,72 +66,37 @@ int main(int argc, char** argv) {
       return -1;
     }
 
-  //make one string to send
-  std::string sendline;
-  for(int i = 1; i < (int)strArg.size(); i++) {
-    sendline.append(strArg[i]);
-    sendline.push_back(' ');
-  }
-  //get rid of last space
-  sendline.pop_back();
-
-  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
-
-
-
-    switch(argc) {
-    case noArgs: 
-      {
-	commandModule->ID        = DEFAULT_CM_ID;
-	commandModule->powerGood = DEFAULT_CM_POWER_GOOD;
-	commandModule->powerUp   = DEFAULT_CM_POWER_UP;
-	printf("No arguments specified. Default: Powering up CM %d and checking %s\n", commandModule->ID, commandModule->powerGood.c_str());
+    //make one string to send
+    std::string sendline;
+    for(int i = 1; i < (int)strArg.size(); i++) {
+      sendline.append(strArg[i]);
+      sendline.push_back(' ');
+    }
+    //get rid of last space
+    sendline.pop_back();
+    
+    // so the output from a uart_cmd consists of, foremost, a bunch of control sequences, then a new line, and then
+    // the output of what we want, version or help menu, etc. What we will do is throw away everything before the 
+    // first new line
+    int const firstNewLine = 10;
+    size_t firstNewLineIndex;
+    
+    // send the command
+    std::string recvline = SM->UART_CMD(ttyDev, sendline, promptChar);  
+  
+    // find the first new line
+    for(size_t i = 0; i < recvline.size(); i++) {
+      if(firstNewLine == (int)recvline[i]) {
+	printf("newline found\n");
+	firstNewLineIndex = i;
 	break;
       }
-    case cmFound:
-      {
-	int ID                = std::stoi(argv[1]);
-	std::string powerGood = "CM.CM" + std::to_string(ID) + ".CTRL.PWR_GOOD";
-	commandModule->ID        = ID;
-	commandModule->powerGood = powerGood;
-	commandModule->powerUp   = true;
-	printf("One argument specified. Powering up CM %d and checking %s\n", ID, powerGood.c_str());
-	break;
-      }    
-    case cmAndPowerGood:
-      {      
-	int ID                = std::stoi(argv[1]);
-	std::string powerGood = argv[2];
-	commandModule->ID        = ID;
-	commandModule->powerGood = powerGood;
-	commandModule->powerUp   = true;
-	printf("Two arguments specified. Powering up CM %d with %s\n", ID, powerGood.c_str());
-	break;
-      }   
-//    default:
-//      {   
-//	printf("Program takes 0, 1, or 2 arguments\n");
-//	printf("ex for 1 argument to power up CM2: ./cmpwrup 2\n");
-//	printf("ex for 2 arguments to power up CM2: ./cmpwrup 2 CM.CM2.CTRL.PWR_GOOD\n");
-//	printf("Terminating program\n");
-//	return 0;
-//      }    
     }
     
-    // ==============================
-    // power up CM
-    int wait_time = 5; // 1 second
-    printf("Using wait_time = 1 second\n");    
-    bool success = SM->PowerUpCM(commandModule->ID, wait_time);
-    if(success) {
-      printf("CM %d is powered up\n", commandModule->ID);
-    } else {
-      printf("CM %d did not power up in time\n", commandModule->ID);
-    }
-  
-    // read power good and print
-    printf("%s is %d\n", commandModule->powerGood.c_str(), (int)(SM->RegReadRegister(commandModule->powerGood)));
-
+    // Erase the newline and everything before it. Then print
+    recvline.erase(recvline.begin(), recvline.begin()+firstNewLineIndex);
+    printf("Received:\n\n%s\n\n", recvline.c_str());
+    
   }catch(BUException::exBase const & e){
     fprintf(stdout,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
   }catch(std::exception const & e){
@@ -142,11 +104,6 @@ int main(int argc, char** argv) {
   }
   
   // Clean up
-  printf("Deleting CM\n");
-  if(NULL != commandModule) {
-    delete commandModule;
-  }
-  
   printf("Deleting ApolloSM\n");
   if(NULL != SM) {
     delete SM;

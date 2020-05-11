@@ -156,137 +156,6 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
 }
 
 // ====================================================================================================
-// Checks register/node values
-//bool checkNode(ApolloSM * SM, std::string node, uint32_t correctVal) {
-//  bool GOOD = true;
-//  bool BAD  = false;
-//
-//  uint32_t readVal;
-//  if(correctVal != (readVal = SM->RegReadRegister(node))) {
-//    syslog(LOG_ERR, "%s is, incorrectly, %d\n", node.c_str(), readVal);     
-//    return BAD;
-//  }
-//  return GOOD;
-//}
-//
-//// ====================================================================================================
-//// Read firmware build date and hash
-//void printBuildDate(ApolloSM * SM, int CM) {
-//
-//  // The masks according to BUTool "nodes"
-//  uint32_t yearMask  = 0xffff0000;
-//  uint32_t monthMask = 0x0000ff00;
-//  uint32_t dayMask   = 0x000000ff;
-//
-//  if(1 == CM) {
-//    // Kintex
-//    std::string CM_K_BUILD = "CM_K_INFO.BUILD_DATE";
-//    uint32_t CM_K_BUILD_DATE = SM->RegReadRegister(CM_K_BUILD);
-//      
-//    uint16_t yearK;
-//    uint8_t  monthK;
-//    uint8_t  dayK;
-//    // Convert Kintex build dates from strings to ints
-//    yearK  = (CM_K_BUILD_DATE & yearMask) >> 16;
-//    monthK = (CM_K_BUILD_DATE & monthMask) >> 8;
-//    dayK   = (CM_K_BUILD_DATE & dayMask);
-//      
-//    syslog(LOG_INFO, "Kintex firmware build date\nYYYY MM DD\n");
-//    syslog(LOG_INFO, "%x %x %x", yearK, monthK, dayK);
-//
-//  } else if(2 == CM) {
-//    // Virtex
-//    std::string CM_V_BUILD = "CM_V_INFO.BUILD_DATE";
-//    uint32_t CM_V_BUILD_DATE = SM->RegReadRegister(CM_V_BUILD);
-//      
-//    uint16_t yearV;
-//    uint8_t  monthV;
-//    uint8_t  dayV;    
-//    // Convert Virtex build dates from strings to ints
-//    yearV  = (CM_V_BUILD_DATE & yearMask) >> 16;
-//    monthV = (CM_V_BUILD_DATE & monthMask) >> 8;
-//    dayV   = (CM_V_BUILD_DATE & dayMask);
-//      
-//    syslog(LOG_INFO, "Virtex firmware build date\nYYYY/MM/DD\n");
-//    syslog(LOG_INFO, "%x %x %x", yearV, monthV, dayV);
-//  }
-//}
-
-// ====================================================================================================
-// Bring-up CM FPGAs
-// int bringupCMFPGAs(ApolloSM * SM, FPGA const myFPGA) {
-//   int const success =  0;
-//   int const fail    = -1;
-//   int const nofile  = -2;
-// 
-//   try {
-//     // ==============================    
-//     syslog(LOG_INFO, 
-// 	   "Programming: %s FPGA associated with: %s using XVC label: %s and svf file: %s and checking clock locks at: %s\n", 
-// 	   myFPGA.name.c_str(), 
-// 	   myFPGA.cm.c_str(), 
-// 	   myFPGA.xvc.c_str(), 
-// 	   myFPGA.svfFile.c_str(), 
-// 	   myFPGA.c2c.c_str());
-//     // Check CM is actually powered up and "good". 
-//     std::string CM_CTRL = "CM." + myFPGA.cm + ".CTRL.";
-//     if(!checkNode(SM, CM_CTRL + "PWR_GOOD"   , 1)) {return fail;}
-//     if(!checkNode(SM, CM_CTRL + "IOS_ENABLED", 1)) {return fail;}
-//     //if(!checkNode(SM, CM_CTRL + "STATE"      , 4)) {return fail;}
-//     if(!checkNode(SM, CM_CTRL + "STATE"      , 3)) {return fail;}
-//     // Check that svf file exists
-//     FILE * f = fopen(myFPGA.svfFile.c_str(), "rb");
-//     if(NULL == f) {return nofile;}
-//     fclose(f);
-//     // program
-//     SM->svfplayer(myFPGA.svfFile, myFPGA.xvc);
-//     // Check CM.CM*.C2C clocks are locked
-//     if(!checkNode(SM, myFPGA.c2c + ".CPLL_LOCK"      , 1)) {return fail;}
-//     if(!checkNode(SM, myFPGA.c2c + ".PHY_GT_PLL_LOCK", 1)) {return fail;}
-//     syslog(LOG_INFO, "Successfully programmed %s FPGA\n", myFPGA.name.c_str());
-//     
-//     if(myFPGA.init.compare("")) {
-//       // non empty initialize bit, so we initialize
-//       syslog(LOG_INFO, "Initializing %s fpga with %s\n", myFPGA.name.c_str(), myFPGA.init.c_str());
-//       // Get FPGA out of error state
-//       SM->RegWriteRegister(myFPGA.init, 1);
-//       usleep(1000000);
-//       SM->RegWriteRegister(myFPGA.init, 0);
-//       usleep(5000000);
-//       // Check that phy lane is up, link is good, and that there are no errors
-//       if(!checkNode(SM, myFPGA.c2c + ".MB_ERROR"    , 0)) {return fail;}
-//       if(!checkNode(SM, myFPGA.c2c + ".CONFIG_ERROR", 0)) {return fail;}
-//       //if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR",   0)) {return fail;}
-//       if(!checkNode(SM, myFPGA.c2c + ".LINK_ERROR"  , 1)) {return fail;}
-//       if(!checkNode(SM, myFPGA.c2c + ".PHY_HARD_ERR", 0)) {return fail;}
-//       //if(!checkNode(SM, myFPGA.c2c + ".PHY_SOFT_ERR", 0)) {return fail;}
-//       if(!checkNode(SM, myFPGA.c2c + ".PHY_MMCM_LOL", 0)) {return fail;} 
-//       if(!checkNode(SM, myFPGA.c2c + ".PHY_LANE_UP" , 1)) {return fail;}
-//       if(!checkNode(SM, myFPGA.c2c + ".LINK_GOOD"   , 1)) {return fail;}
-//       syslog(LOG_INFO, "Initialized %s fpga with %s. Lanes up, links good, and no errors.\n", myFPGA.name.c_str(), myFPGA.c2c.c_str());
-//     }
-//      
-//     // unblock axi
-//     if(myFPGA.axi.compare("")) {
-//       SM->RegWriteAction(myFPGA.axi.c_str());      
-//       syslog(LOG_INFO, "%s: %s unblocked\n", myFPGA.name.c_str(), myFPGA.axi.c_str());    
-//     }
-//     if(myFPGA.axilite.compare("")) {
-//       SM->RegWriteAction(myFPGA.axilite.c_str());
-//       syslog(LOG_INFO, "%s: %s unblocked\n", myFPGA.name.c_str(), myFPGA.axilite.c_str());
-//     }
-//   } catch(BUException::exBase const & e) {
-//     syslog(LOG_ERR, "Caught BUException: %s\n   Info: %s\n", e.what(), e.Description());
-//     return fail;
-//   } catch (std::exception const & e) {
-//     syslog(LOG_ERR, "Caught std::exception: %s\n", e.what());
-//     return fail;
-//   }
-//   
-//   return success;
-// }
-
-// ====================================================================================================
 int main(int argc, char** argv) { 
 
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
@@ -333,7 +202,7 @@ int main(int argc, char** argv) {
       there probably is no boost::program_options solution to this. So for now we will use the vector "solution"
       but later on we will most likely have to completely get rid of variables map and store and parse the fileOptions
       and commandOptions ourselves (not to be confused with the command line and config file, we can still use the 
-      parse_config_file and parse_command_line functions for those).
+      parse_config_file and parse_command_line functions for those). May 7, 2020: it looks to me like having a second command module and FPGAs in it in the config file actually does work! I am now totally confused. This is a good thing, but we should figure out what is allowing us to do it.
     */
     ("CM.NAME"            , boost::program_options::value<std::vector<std::string> >(), "command module names"         )
     ("CM1.FPGA"           , boost::program_options::value<std::vector<std::string> >(), "CM1's FPGAs names"            );
@@ -422,31 +291,6 @@ int main(int argc, char** argv) {
   // print all cm and fpga info
   for(size_t c = 0; c < allCMs.size(); c++) {
     allCMs[c].printInfo();
-//    syslog(LOG_INFO, "Found CM: %s with info:\n", allCMs[c].name.c_str());
-//    syslog(LOG_INFO, "   power good: %s\n", allCMs[c].powerGood.c_str());
-//    std::stringstream ss;
-//    std::string str;
-//    ss << allCMs[c].powerUp;
-//    ss >> str;
-//    syslog(LOG_INFO, "   power up  : %s\n", str.c_str());
-//    //    std::cout << "power up  : " << allCMs[c].powerUp << std::endl;
-//    for(int f = 0; f < (int)allCMs[c].FPGAs.size(); f++) {
-//      syslog(LOG_INFO, "In %s found FPGA: %s with info:\n", allCMs[c].name.c_str(), allCMs[c].FPGAs[f].name.c_str());
-//      syslog(LOG_INFO, "   cm     : %s\n", allCMs[c].FPGAs[f].cm.c_str());
-//      std::stringstream ss1;
-//      std::string str1;
-//      ss1 << allCMs[c].FPGAs[f].program;
-//      ss1 >> str1;
-//      syslog(LOG_INFO, "   program: %s\n", str1.c_str());
-//      syslog(LOG_INFO, "   svfFile: %s\n", allCMs[c].FPGAs[f].svfFile.c_str());
-//      syslog(LOG_INFO, "   xvc    : %s\n", allCMs[c].FPGAs[f].xvc.c_str());
-//      syslog(LOG_INFO, "   c2c    : %s\n", allCMs[c].FPGAs[f].c2c.c_str());
-//      syslog(LOG_INFO, "   done   : %s\n", allCMs[c].FPGAs[f].done.c_str());
-//      syslog(LOG_INFO, "   init   : %s\n", allCMs[c].FPGAs[f].init.c_str());
-//      syslog(LOG_INFO, "   axi    : %s\n", allCMs[c].FPGAs[f].axi.c_str());
-//      syslog(LOG_INFO, "   axilite: %s\n", allCMs[c].FPGAs[f].axilite.c_str()); 
-//    }
-//    syslog(LOG_INFO, "\n\n");
   }
   
   // ============================================================================
@@ -518,70 +362,6 @@ int main(int argc, char** argv) {
     // Power up CMs and program FPGAs
     for(int i = 0; i < (int)allCMs.size(); i++) {
       allCMs[i].SetUp(SM);
-//int wait_time = 5; // 5 is 1 second
-////      std::string tempCM_ID = CMs[i][CM_ID];
-////      tempCM_ID.erase(0,2); // drop the 'CM' (ex. for CM1, tempCM_ID is 1)
-//if(allCMs[i].powerUp) {
-//	syslog(LOG_INFO, "Powering up %s...\n", allCMs[i].name.c_str());
-//	bool success = SM->PowerUpCM(allCMs[i].ID, wait_time);      
-//	if(success) {
-//	  syslog(LOG_INFO, "%s is powered up\n", allCMs[i].name.c_str());
-//	} else {
-//	  syslog(LOG_ERR, "%s failed to powered up in time\n", allCMs[i].name.c_str());
-//	}
-//	// check that PWR_GOOD is 1
-//	if(checkNode(SM, allCMs[i].powerGood, 1)) {
-//	  std::string str;
-//	  std::stringstream ss;
-//	  ss << allCMs[i].powerGood;
-//	  ss >> str;
-//	  syslog(LOG_INFO, "%s is 1\n", str.c_str());
-//	}
-//} else {
-//	syslog(LOG_INFO, "No power up required for: %s\n", allCMs[i].name.c_str());
-//}
-//
-//// program FPGAs
-//if(allCMs[i].powerUp) {
-//	for(int f = 0; f < (int)allCMs[i].FPGAs.size(); f++) {
-//	  if(allCMs[i].FPGAs[f].program) {
-//	    syslog(LOG_INFO, "%s has program = true. Attempting to program...\n", allCMs[i].FPGAs[f].name.c_str());
-//	    int const success =  0;
-//	    int const fail    = -1;
-//	    int const nofile  = -2;
-//	    
-//	    int const programmingFailed     = 0;
-//	    int const programmingSuccessful = 1;
-//	    // assert 0 to done bit
-//	    //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
-//	    switch(bringupCMFPGAs(SM, allCMs[i].FPGAs[f])) {
-//	    case success:
-//	      syslog(LOG_INFO, "Bringing up %s: %s FPGA succeeded. Setting %s to 1\n", allCMs[i].name.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
-//	      // write 1 to done bit
-//	      //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingSuccessful);
-//	      break;
-//	    case fail:
-//	      // assert 0 to done bit (paranoid)
-//	      syslog(LOG_ERR, "Bringing up %s: %s FPGA failed. Setting %s to 0\n", allCMs[i].name.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
-//	      //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
-//	      break;
-//	    case nofile:
-//	      // assert 0 to done bit (paranoid)
-//	      syslog(LOG_ERR, "svf file %s does not exist for %s FPGA. Setting %s to 0\n", allCMs[i].FPGAs[f].svfFile.c_str(), allCMs[i].FPGAs[f].name.c_str(), allCMs[i].FPGAs[f].done.c_str());
-//	      //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
-//	      break;
-//	    }
-//	  } else {
-//	    syslog(LOG_INFO, "%s will not be programmed because it has program = false\n", allCMs[i].FPGAs[f].name.c_str());
-//	  }
-//	}
-//} else {
-//	syslog(LOG_INFO, "%s has powerUp = false. None of its FPGAs will be powered up\n", allCMs[i].name.c_str());
-//
-//    }
-
-      // Print firmware build date for FPGA
-      //     printBuildDate(SM, allCMs[i].ID);
     }
 
     // ==================================

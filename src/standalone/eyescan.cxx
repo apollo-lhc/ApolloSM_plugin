@@ -244,6 +244,7 @@ int main(int argc, char** argv) {
       // cp basenode.png /var/www/lighttpd
       
       // 4. Sleep
+      syslog(LOG_INFO, "now sleeping\n");
       for(int i = 0; i < polltime_in_minutes; i++) {
 	usleep(60*1000*1000); // 1 minute
       }

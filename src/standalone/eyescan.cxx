@@ -14,7 +14,7 @@
 // ====================================================================================================
 // Define all your defaults here
 #define DEFAULT_CONFIG_FILE         "/etc/eyescan"
-#define DEFAULT_RUN_DIR             "/opt/address_tables/"
+#define DEFAULT_RUN_DIR             "/var/www/lighttpd/"
 #define DEFAULT_PID_FILE            "/var/run/eyescan.pid"
 #define DEFAULT_POLLTIME_IN_MINUTES 30 
 #define DEFAULT_MAX_PRESCALE        3

@@ -3,8 +3,9 @@
 #include <ApolloSM/ApolloSM_Exceptions.hh> // EYESCAN_ERROR
 #include <vector>
 
-#include <math.h> // pow
+//#include <math.h> // pow
 #include <map>
+#include <syslog.h>
 
 // ================================================================================
 // Definitions
@@ -118,6 +119,12 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
 //  if(0 == getFPGA_ID()) {
 //    throwException("invalid fpga id");
 //  }
+
+  syslog(LOG_INFO, "appending\n");
+  // check for a '.' at the end of baseNode and add it if it isn't there 
+  if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
+    baseNode.append(".");
+  }
 
   uint32_t mask = GetRegMask(baseNode + "RX_DATA_WIDTH");
   int count;
@@ -280,11 +287,6 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 // Performs a single eye scan and returns the BER
 float ApolloSM::SingleEyeScan(std::string baseNode, uint32_t maxPrescale) {
 
-  // check for a '.' at the end of baseNode and add it if it isn't there 
-  if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
-    baseNode.append(".");
-  }
-
   float BER;
  
   bool loop;
@@ -386,6 +388,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
   uint8_t maxVoltage = 127;
   int minVoltage = -127;
 
+  syslog(LOG_INFO, "appending\n");
   // check for a '.' at the end of baseNode and add it if it isn't there 
   if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
     baseNode.append(".");

@@ -356,19 +356,19 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPres
       prescale+=PRESCALE_STEP;
       if(prescale > maxPrescale) {
 	prescale = maxPrescale;
-	printf("max prescale %d reached\n", maxPrescale);
+	//	printf("max prescale %d reached\n", maxPrescale);
       }
       assertNode(baseNode + "PRESCALE", prescale);
       // useless but just to be paranoid
       loop = true;
     } else {
-      printf("Stopping single scan because: ");
-      if(!(BER < PRECISION)) {
-	printf("NOT BER < PRECISION\n");
-      }
-      if(!(prescale != maxPrescale)) {
-	printf("NOT prescale != maxPrescale\n");
-      }
+//      printf("Stopping single scan because: ");
+//      if(!(BER < PRECISION)) {
+//	printf("NOT BER < PRECISION\n");
+//      }
+//      if(!(prescale != maxPrescale)) {
+//	printf("NOT prescale != maxPrescale\n");
+//      }
       loop = false;
     }
   }
@@ -428,7 +428,8 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
     uint32_t NEGATIVE = 1;
 
     printf("%d\n", voltage);
-
+    syslog(LOG_INFO, "%d\n", voltage);
+ 
     if(voltage < 0) {
       SetEyeScanVoltage(baseNode, (uint8_t)(-1*voltage), NEGATIVE); 
     } else {

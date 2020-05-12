@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
     std::ifstream ifs{configFile};
     fprintf(stderr, "Config file \"%s\" %s\n",configFile.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
     if(ifs) {
-      configFilePO = boost::program_options::parse_config_file(ifs, fileOptions);
+      configFilePO = boost::program_options::parse_config_file(ifs, fileOptions, true);
       boost::program_options::store(configFilePO, configFileVM);
       totalNumConfigFileOptions = configFilePO.options.size();
     }      //    configFileVM = loadConfig(configFile, fileOptions);

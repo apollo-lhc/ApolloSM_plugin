@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
 	commandModule->ID        = DEFAULT_CM_ID;
 	commandModule->powerGood = DEFAULT_CM_POWER_GOOD;
 	commandModule->powerUp   = DEFAULT_CM_POWER_UP;
-	printf("No arguments specified. Default: Powering up CM %d and checking %s\n", commandModule->ID, commandModule->powerGood.c_str());
+	//printf("No arguments specified. Default: Powering up CM %d and checking %s\n", commandModule->ID, commandModule->powerGood.c_str());
 	break;
       }
     case cmFound:
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 	commandModule->ID        = ID;
 	commandModule->powerGood = powerGood;
 	commandModule->powerUp   = true;
-	printf("One argument specified. Powering up CM %d and checking %s\n", ID, powerGood.c_str());
+	//printf("One argument specified. Powering up CM %d and checking %s\n", ID, powerGood.c_str());
 	break;
       }    
     case cmAndPowerGood:
@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
 	commandModule->ID        = ID;
 	commandModule->powerGood = powerGood;
 	commandModule->powerUp   = true;
-	printf("Two arguments specified. Powering up CM %d with %s\n", ID, powerGood.c_str());
+	//printf("Two arguments specified. Powering up CM %d with %s\n", ID, powerGood.c_str());
 	break;
       }   
 //    default:

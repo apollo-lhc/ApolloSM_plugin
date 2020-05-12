@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     // load connection file
     std::vector<std::string> arg;
     std::string connectionFile = DEFAULT_CONNECTION_FILE;
-    printf("Using %s\n", connectionFile.c_str());
+    //printf("Using %s\n", connectionFile.c_str());
     arg.push_back(connectionFile);
     SM->Connect(arg);
     

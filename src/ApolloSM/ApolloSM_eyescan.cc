@@ -279,22 +279,28 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 #define RUN 0x1
 #define STOP_RUN 0x0
 
+// use the precision map in EyeScanLink.cc
 #define PRECISION 0.00000001 // 10^-9
 
 #define PRESCALE_STEP 3
 //#define MAX_PRESCALE 3
 
 // Performs a single eye scan and returns the BER
-float ApolloSM::SingleEyeScan(std::string baseNode, uint32_t maxPrescale) {
+float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPrescale) {
 
   float BER;
- 
-  bool loop;
-
-  loop = true;
-
+  float errorCount;
+  float sampleCount;
+  uint32_t prescale = 0;
+  uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
+  int const regDataWidthInt = (int)regDataWidth;
+  int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+  
   // Re-zero prescale
   assertNode(baseNode + "PRESCALE", 0x0);
+
+  bool loop;
+  loop = true;
 
   while(loop) {
     // confirm we are in WAIT, if not, stop scan
@@ -322,19 +328,19 @@ float ApolloSM::SingleEyeScan(std::string baseNode, uint32_t maxPrescale) {
     }	  
     
     // read error and sample count
-    float errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
-    float sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
+    errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
+    sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
     
     // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
     
     // Figure out the prescale and data width to calculate BER
-    uint32_t prescale = RegReadRegister(baseNode + "PRESCALE");
-    uint32_t regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
-    int regDataWidthInt = (int)regDataWidth;
+    // prescale = RegReadRegister(baseNode + "PRESCALE");
+    //    regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
+    //    regDataWidthInt = (int)regDataWidth;
     //std::map<int, int>::iterator it = busWidthMap.find(regDataWidthInt);
     // should check if int is at the end
     //  int actualDataWidth = it->second;
-    int actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+    //    actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
     
     // de-assert RUN (aka go back to WAIT)
     //  assertNode(baseNode + "RUN", STOP_RUN);
@@ -346,7 +352,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode, uint32_t maxPrescale) {
     
     // If BER is lower than precision we need to check with a higher prescale to ensure that
     // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
-    if((BER < PRECISION) && prescale != maxPrescale) {
+    if((BER < PRECISION) && (prescale != maxPrescale)) {
       prescale+=PRESCALE_STEP;
       if(prescale > maxPrescale) {
 	prescale = maxPrescale;
@@ -356,6 +362,13 @@ float ApolloSM::SingleEyeScan(std::string baseNode, uint32_t maxPrescale) {
       // useless but just to be paranoid
       loop = true;
     } else {
+      printf("Stopping single scan because: ");
+      if(!(BER < PRECISION)) {
+	printf("NOT BER < PRECISION\n");
+      }
+      if(!(prescale != maxPrescale)) {
+	printf("NOT prescale != maxPrescale\n");
+      }
       loop = false;
     }
   }

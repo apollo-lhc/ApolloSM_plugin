@@ -71,6 +71,7 @@ EyeScanLink::EyeScanLink(std::string linkName, boost::program_options::parsed_op
     else if(0 == nextOption.compare(linkName + ".MAXPRESCALE")) // ex: C2C1_PHY.PRESCALE
       {
 	// found max prescale 
+	// use strtoul
 	this->maxPrescale = atoi(PO.options[i].value[0].c_str());
 	// Don't go pass the max allowed prescale
 	if(this->maxPrescale > MAXALLOWEDPRESCALE) {

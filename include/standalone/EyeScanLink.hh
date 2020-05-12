@@ -16,14 +16,15 @@ public:
   //  void setOffsets();
   void scan(ApolloSM * SM);
   void plot();
-  
+    
+private:
   std::string name;
   double      phase;
   int         voltage;
   std::string outfile;
+  std::string png;
   uint32_t    maxPrescale;
-  
-private:
+
   std::vector<eyescanCoords> esCoords;
 };
 

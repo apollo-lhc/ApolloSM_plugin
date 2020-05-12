@@ -1,5 +1,6 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
+#include <standalone/EyeScanLink.hh>
 #include <BUException/ExceptionBase.hh>
 #include <string>
 #include <vector>
@@ -63,12 +64,11 @@ std::vector<std::string> split_string(std::string str, std::string delimiter){
 int main(int argc, char** argv) { 
 
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
-  std::string    configFile          = DEFAULT_CONFIG_FILE;
-  std::string    runPath             = DEFAULT_RUN_DIR;
-  std::string    pidFileName         = DEFAULT_PID_FILE;
-  int            polltime_in_minutes = DEFAULT_POLLTIME_IN_MINUTES;
-  uint32_t       maxPrescale         = DEFAULT_MAX_PRESCALE;
-  uint32_t const maxPrescaleAllowed  = 32;
+  std::string configFile          = DEFAULT_CONFIG_FILE;
+  std::string runPath             = DEFAULT_RUN_DIR;
+  std::string pidFileName         = DEFAULT_PID_FILE;
+  int         polltime_in_minutes = DEFAULT_POLLTIME_IN_MINUTES;
+  uint32_t    maxPrescale         = DEFAULT_MAX_PRESCALE;
   //  std::vector<std::vector<std::string> >links;
   // An example of what linkss may look like
   //       | (0) link        | (1) phase increment | (2) voltage increment | (3) output data file |
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
   //fileOptions.add_options()
   //  ("link", boost::program_options::value<std::vector<std::string> >(), "eye scan links: phase and voltage increments, output data file");
 
-  //int totalNumConfigFileOptions = 0;
+  int totalNumConfigFileOptions = 0;
   boost::program_options::parsed_options configFilePO(&fileOptions); // compiler won't let me merely declare it configFilePO so I initialized it with fileOptions; would be nice to fix this
   boost::program_options::variables_map configFileVM; // for parsing config file
   boost::program_options::variables_map commandLineVM; // for parsing command line
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
     if(ifs) {
       configFilePO = boost::program_options::parse_config_file(ifs, fileOptions);
       boost::program_options::store(configFilePO, configFileVM);
-      //  totalNumConfigFileOptions = configFilePO.options.size();
+      totalNumConfigFileOptions = configFilePO.options.size();
     }      //    configFileVM = loadConfig(configFile, fileOptions);
   } catch(const boost::program_options::error &ex) {
     fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating eyescan\n", ex.what());        
@@ -163,8 +163,8 @@ int main(int argc, char** argv) {
     if(currentOption.compare("LINK.NAME") == 0) {
       // Found a link. Get its name, make a link object, add it to the vector.
       std::string linkName = configFilePO.options[i].value[0].c_str();
-      EyeScanLink esl(linkName, configfilePO);
-      allLinks.pushback(esl);
+      EyeScanLink esl(linkName, configFilePO);
+      allLinks.push_back(esl);
     }
   }
 
@@ -230,24 +230,23 @@ int main(int argc, char** argv) {
 	allLinks[i].plot();
 
 	// 3. Upload plot.
-	std::string png = links[i][OUTFILE];
-	png.pop_back();
-	png.pop_back();
-	png.pop_back();
-	png.append("png");
-	
-	std::string copy = "cp ";
-	copy.append(png);
-	copy.append("/var/www/lighttpd");
-	system(copy.c_str());
+//	std::string png = links[i][OUTFILE];
+//	png.pop_back();
+//	png.pop_back();
+//	png.pop_back();
+//	png.append("png");
+//	
+//	std::string copy = "cp ";
+//	copy.append(png);
+//	copy.append("/var/www/lighttpd");
+//	system(copy.c_str());
       }
       // cp basenode.png /var/www/lighttpd
       
       // 4. Sleep
       for(int i = 0; i < polltime_in_minutes; i++) {
-      usleep(1000000);
+	usleep(1000000);
       }
-
     }
   }catch(BUException::exBase const & e){
     syslog(LOG_INFO,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());

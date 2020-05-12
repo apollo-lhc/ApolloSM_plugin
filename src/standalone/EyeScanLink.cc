@@ -112,7 +112,7 @@ void EyeScanLink::scan(ApolloSM * SM) {
   (this->esCoords).clear();
   // perform scan  
   this->esCoords = SM->EyeScan(this->name, this->phase, this->voltage, this->maxPrescale);
-
+  
 }
 
 // This is more like a typedef than a namespace
@@ -134,7 +134,7 @@ void EyeScanLink::plot() {
     // does this even work?
     if(precisionMap.find((this->maxPrescale)-i) != precisionMap.end()) {
       precision = precisionMap.find((this->maxPrescale)-i)->second;
-      syslog(LOG_INFO, "precision found\n");
+      syslog(LOG_INFO, "precision prescale found: %d\n", (this->maxPrescale)-i);
       break;
     }
     //       log something
@@ -158,11 +158,11 @@ void EyeScanLink::plot() {
   
   // write data/BERs to file
   for(size_t i = 0; i < esCoords.size(); i++) {
-    fprintf(dataFile, "%.9f ", esCoords[i].phase);
-    fprintf(dataFile, "%d "  , esCoords[i].voltage);
-    fprintf(dataFile, "%f "  , esCoords[i].BER);
-    fprintf(dataFile, "%x "  , esCoords[i].voltageReg & 0xFF);
-    fprintf(dataFile, "%x\n" , esCoords[i].phaseReg & 0xFFF);
+    fprintf(dataFile, "%.9f " , esCoords[i].phase);
+    fprintf(dataFile, "%d "   , esCoords[i].voltage);
+    fprintf(dataFile, "%.15f ", esCoords[i].BER);
+    fprintf(dataFile, "%x "   , esCoords[i].voltageReg & 0xFF);
+    fprintf(dataFile, "%x\n"  , esCoords[i].phaseReg & 0xFFF);
   }
   
   fclose(dataFile);

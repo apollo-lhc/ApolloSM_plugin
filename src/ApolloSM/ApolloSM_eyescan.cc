@@ -296,6 +296,22 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPres
   int const regDataWidthInt = (int)regDataWidth;
   int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
   
+  // Check if we're DFE or LPM
+  uint32_t const dfe = 0;
+  uint32_t const lpm = 1;
+
+  uint32_t const rxlpmen = RegReadRegister("CM.CM1.C2C.RX.LPM_EN");
+  //RegReadRegister(0x1900003B);
+  //  uint32_t const rxlpmenmasked = RegReadRegister(0x1900003B) & 0x00000100; 
+
+  if(lpm == rxlpmen) {
+    printf("Looks like we have LPM. The register is %u\n", rxlpmen);
+  } else if(dfe == rxlpmen) {
+    printf("Looks like we have DFE. The register is %u\n", rxlpmen);
+  } else {
+    printf("Something is wrong. We don't have lpm or dfe\n");
+  }
+
   // Re-zero prescale
   assertNode(baseNode + "PRESCALE", 0x0);
 
@@ -373,7 +389,101 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPres
     }
   }
 
-  return BER;
+
+  // ==================================================
+  // If we have dfm, we need to do calculate the BER a second time and add it to the first
+  double const firstBER = BER;
+  // You have to set this to zero because if you don't have DFE, you would skip to 'return' and BER would be double counted
+  BER = 0;
+
+  // Re-zero prescale
+  prescale = 0;
+  assertNode(baseNode + "PRESCALE", 0x0);
+
+  if(dfe == rxlpmen) {
+    printf("Alright dfe = rxlpmen: %u = %u. Calculating again\n", dfe, rxlpmen);
+    // whatever the UT sign was, change it 
+    if(1 == (RegReadRegister(baseNode + "UT_SIGN"))) {
+      RegWriteRegister(baseNode + "UT_SIGN", 0);
+    } else {
+      RegWriteRegister(baseNode + "UT_SIGN", 1);
+    }
+    
+    loop = true;
+    
+    while(loop) {
+      // confirm we are in WAIT, if not, stop scan
+      //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
+      RegWriteRegister(baseNode + "RUN", STOP_RUN);
+      
+      // assert RUN
+      //  assertNode(baseNode + "RUN", RUN);
+      RegWriteRegister(baseNode + "RUN", RUN);  
+      
+      // poll END
+      int count = 0;
+      // one second max
+      while(1000000 > count) {
+	if(END == RegReadRegister(baseNode + "CTRL_STATUS")) {
+	  // Scan has ended
+	  break;
+	}
+	// sleep 1 millisecond
+	usleep(1000);
+	count++;
+	if(1000000 == count) {
+	  throwException("BER sequence did not reach end in one second\n");
+	}
+      }	  
+      
+      // read error and sample count
+      errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
+      sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
+      
+      // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
+      
+      // Figure out the prescale and data width to calculate BER
+      // prescale = RegReadRegister(baseNode + "PRESCALE");
+      //    regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
+      //    regDataWidthInt = (int)regDataWidth;
+      //std::map<int, int>::iterator it = busWidthMap.find(regDataWidthInt);
+      // should check if int is at the end
+      //  int actualDataWidth = it->second;
+      //    actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+      
+      // de-assert RUN (aka go back to WAIT)
+      //  assertNode(baseNode + "RUN", STOP_RUN);
+      RegWriteRegister(baseNode + "RUN", STOP_RUN);
+      
+      // calculate BER
+      //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
+      BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+      
+      // If BER is lower than precision we need to check with a higher prescale to ensure that
+      // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
+      if((BER < PRECISION) && (prescale != maxPrescale)) {
+	prescale+=PRESCALE_STEP;
+	if(prescale > maxPrescale) {
+	  prescale = maxPrescale;
+	  //	printf("max prescale %d reached\n", maxPrescale);
+	}
+	assertNode(baseNode + "PRESCALE", prescale);
+	// useless but just to be paranoid
+	loop = true;
+      } else {
+	//      printf("Stopping single scan because: ");
+	//      if(!(BER < PRECISION)) {
+	//	printf("NOT BER < PRECISION\n");
+	//      }
+	//      if(!(prescale != maxPrescale)) {
+	//	printf("NOT prescale != maxPrescale\n");
+	//      }
+	loop = false;
+      }
+    }
+  }
+  
+  return BER + firstBER;
 }
 
 // ==================================================

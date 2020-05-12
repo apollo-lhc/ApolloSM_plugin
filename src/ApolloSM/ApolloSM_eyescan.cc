@@ -350,6 +350,7 @@ float ApolloSM::SingleEyeScan(std::string baseNode, uint32_t maxPrescale) {
       prescale+=PRESCALE_STEP;
       if(prescale > maxPrescale) {
 	prescale = maxPrescale;
+	printf("max prescale %d reached\n", maxPrescale);
       }
       assertNode(baseNode + "PRESCALE", prescale);
       // useless but just to be paranoid

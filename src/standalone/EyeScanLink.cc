@@ -168,11 +168,11 @@ void EyeScanLink::plot() {
 
   // run the python script like a terminal command
   //  std::string pythonCommand = 
-  syslog(LOG_INFO, "running command %s\n", (std::string(RUNPYTHON) + std::string(" ") + this->outfile).c_str());
+  syslog(LOG_INFO, "running command: %s\n", (std::string(RUNPYTHON) + std::string(" ") + this->outfile).c_str());
   system((std::string(RUNPYTHON) + std::string(" ") + this->outfile).c_str());
   // move the png to /var/www/lighttpd for uploading
   // does C++ block until python has finished outputting the png?
-  syslog(LOG_INFO, "running command %s\n", (std::string("cp ") + this->png + std::string(" /var/www/lighttpd")).c_str());;
+  syslog(LOG_INFO, "running command: %s\n", (std::string("cp ") + this->png + std::string(" /var/www/lighttpd")).c_str());;
   system((std::string("cp ") + this->png + std::string(" /var/www/lighttpd")).c_str());
 
 //  // Since we don't have python's np.unique, this is the best we can do for now

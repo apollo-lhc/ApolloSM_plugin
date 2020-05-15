@@ -22,12 +22,7 @@
 //#define DEFAULT_FILE_NAME           "c2c1_phy.txt"
 #define DEFAULT_PHASE_INCREMENT     0.02 // UI is from -0.5 to 0.5
 #define DEFAULT_VOLTAGE_INCREMENT   2    // Voltage is from -127 to 127
-// ====================================================================================================
-// There are indices for main's "links" variable. For readability
-//#define LINK    0
-//#define PHASE   1
-//#define VOLTAGE 2
-//#define OUTFILE 3  
+
 // ====================================================================================================
 // Parse a long string into a vector of strings
 std::vector<std::string> split_string(std::string str, std::string delimiter){
@@ -46,21 +41,6 @@ std::vector<std::string> split_string(std::string str, std::string delimiter){
 }
 
 // ====================================================================================================
-// Define any functions you need here
-// void outputToFile(std::vector<eyescanCoords> esCoords, std::string fileName) {
-//   FILE * dataFile = fopen(fileName.c_str(), "w");
-//   
-//   for(int i = 0; i < (int)esCoords.size(); i++) {
-//     fprintf(dataFile, "%.9f ", esCoords[i].phase);
-//     fprintf(dataFile, "%d "  , esCoords[i].voltage);
-//     fprintf(dataFile, "%f "  , esCoords[i].BER);
-//     fprintf(dataFile, "%x "  , esCoords[i].voltageReg & 0xFF);
-//     fprintf(dataFile, "%x\n" , esCoords[i].phaseReg & 0xFFF);
-//   }
-//   
-//   fclose(dataFile);
-// }
-// ====================================================================================================
 int main(int argc, char** argv) { 
 
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
@@ -68,16 +48,6 @@ int main(int argc, char** argv) {
   std::string runPath             = DEFAULT_RUN_DIR;
   std::string pidFileName         = DEFAULT_PID_FILE;
   int         polltime_in_minutes = DEFAULT_POLLTIME_IN_MINUTES;
-  //  uint32_t    maxPrescale         = DEFAULT_MAX_PRESCALE;
-  //  std::vector<std::vector<std::string> >links;
-  // An example of what linkss may look like
-  //       | (0) link        | (1) phase increment | (2) voltage increment | (3) output data file |
-  // links |     C2C1_PHY.   |     0.02            |     2                 |    C2C1_PHY.txt      |
-  //       |     C2C2_PHY.   |     0.1             |     3                 |    C2C1_PHY.txt      |
-  //  std::string baseNode            = DEFAULT_BASE_NODE;
-//  std::string fileName            = DEFAULT_FILE_NAME;
-//  double      horzIncrement       = DEFAULT_HORZ_INCREMENT;
-//  int         vertIncrement       = DEFAULT_VERT_INCREMENT;       
 
   // parse command line and config file to set parameters
   boost::program_options::options_description fileOptions{"File"}; // for parsing config file
@@ -89,13 +59,6 @@ int main(int argc, char** argv) {
   setOption(&fileOptions, &commandLineOptions, "run_path" , "run path" , runPath);
   setOption(&fileOptions, &commandLineOptions, "pid_file" , "pid file" , pidFileName);
   setOption(&fileOptions, &commandLineOptions, "polltime" , "polling interval" , polltime_in_minutes);
-  //  setOption(&fileOptions, &commandLineOptions, "max_prescale", "maximum prescale to scan with", maxPrescale);
-//  setOption(&fileOptions, &commandLineOptions, "baseNode" , "link to scan" , baseNode);
-//  setOption(&fileOptions, &commandLineOptions, "data_file" , "data file" , fileName);
-//  setOption(&fileOptions, &commandLineOptions, "horzIncrement" , "phase increment" , horzIncrement);
-//  setOption(&fileOptions, &commandLineOptions, "vertIncrement" , "voltage increment" , vertIncrement);
-  //fileOptions.add_options()
-  //  ("link", boost::program_options::value<std::vector<std::string> >(), "eye scan links: phase and voltage increments, output data file");
 
   int totalNumConfigFileOptions = 0;
   boost::program_options::parsed_options configFilePO(&fileOptions); // compiler won't let me merely declare it configFilePO so I initialized it with fileOptions; would be nice to fix this
@@ -148,12 +111,7 @@ int main(int argc, char** argv) {
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
-  setParamValue(&polltime_in_minutes, "polltime"     , configFileVM, commandLineVM, true);
-  //  setParamValue(&maxPrescale        , "max_prescale" , configFileVM, commandLineVM, true);
-//  setParamValue(&baseNode, "baseNode" , configFileVM, commandLineVM, true);
-//  setParamValue(&fileName, "data_file" , configFileVM, commandLineVM, true);
-//  setParamValue(&horzIncrement, "horzIncrement" , configFileVM, commandLineVM, true);
-//  setParamValue(&vertIncrement, "vertIncrement" , configFileVM, commandLineVM, true);
+  setParamValue(&polltime_in_minutes, "polltime", configFileVM, commandLineVM, true);
   
   // find all links
   std::vector<EyeScanLink> allLinks;
@@ -180,9 +138,6 @@ int main(int argc, char** argv) {
   eyescanDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   eyescanDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
   eyescanDaemon.SetLoop(true);
-
-  // ============================================================================
-  // More set up if needed.
 
   // ============================================================================
   ApolloSM * SM = NULL;
@@ -213,11 +168,6 @@ int main(int argc, char** argv) {
 	
 	// 1. Eye scan and write to file.
 	// // enable eye scan
-	// SM->EnableEyeScan(links[i][LINK], 0); // 0 for beginning prescale
-	// 
-	// std::vector<eyescanCoords> esCoords = SM->EyeScan(links[i][LINK], atof(links[i][PHASE].c_str()), atoi(links[i][VOLTAGE].c_str()), maxPrescale);
-	// 
-	// outputToFile(esCoords, links[i][OUTFILE]);
 	allLinks[i].enableEyeScan(SM);
 	allLinks[i].scan(SM);
 

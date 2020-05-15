@@ -482,7 +482,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPres
       }
     }
   }
-  
+
   return BER + firstBER;
 }
 

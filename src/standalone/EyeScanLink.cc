@@ -1,19 +1,19 @@
 #include <standalone/EyeScanLink.hh>
-//#include <standalone/FPGA.hh>
 #include <stdlib.h> // atof, atoi
 #include <string>
 #include <vector>
 #include <boost/program_options.hpp>
-//#include <sstream>
 #include <ApolloSM/ApolloSM.hh>
 #include <syslog.h>
-//#include <standalone/daemon.hh> // checkNode
 #include <map>
 #include <math.h>
 #include <ApolloSM/eyescan.hh>
 
+// ==================================================
 #define RUNPYTHON "python /var/www/lighttpd/eyescan.py"
+#define MAXALLOWEDPRESCALE 31
 
+// ==================================================
 // This chart was found in the ultrascale plus (USP) data sheet
 // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty pg 231
 // The 7 series datasheet doesn't have one. We should find it
@@ -33,9 +33,6 @@ std::map<uint32_t, double> static const precisionMap =
   };
 
 // ==================================================
-
-#define MAXALLOWEDPRESCALE 31
-
 EyeScanLink::EyeScanLink(std::string linkName, boost::program_options::parsed_options PO) {
 
   // initialize variables to defaults
@@ -175,6 +172,9 @@ void EyeScanLink::plot() {
   // does C++ block until python has finished outputting the png?
   syslog(LOG_INFO, "running command: %s\n", (std::string("cp ") + this->png + std::string(" /var/www/lighttpd")).c_str());;
   system((std::string("cp ") + this->png + std::string(" /var/www/lighttpd")).c_str());
+
+  //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  // Some c++ matplotlib and numpy code to get started
 
 //  // Since we don't have python's np.unique, this is the best we can do for now
 //  // We are making a vector of the voltages and phases where each phase

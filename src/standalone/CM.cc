@@ -6,7 +6,6 @@
 #include <sstream>
 #include <ApolloSM/ApolloSM.hh>
 #include <syslog.h>
-#include <sstream>
 //#include <standalone/daemon.hh> // checkNode
 
 CM::CM(std::string nameArg, boost::program_options::parsed_options PO) {
@@ -62,10 +61,7 @@ bool CM::checkNode(ApolloSM * SM, std::string const node, uint32_t const correct
 }
 
 void CM::printInfo() {
-  syslog(LOG_INFO, "in cm printinfo\n");
-
-
-
+  syslog(LOG_INFO, "in cm printinfo\n"); // remove
   syslog(LOG_INFO, "Found CM: %s with info:\n", (this->name).c_str());
   syslog(LOG_INFO, "   power good: %s\n", (this->powerGood).c_str());
   std::stringstream ss;
@@ -77,20 +73,6 @@ void CM::printInfo() {
   for(size_t f = 0; f < (this->FPGAs).size(); f++) {
     syslog(LOG_INFO, "In %s found FPGA: %s with info:\n", (this->name).c_str(), (this->FPGAs)[f].name.c_str());
     (this->FPGAs)[f].printInfo();
-    //    syslog(LOG_INFO, "In %s found FPGA: %s with info:\n", allCMs[c].name.c_str(), allCMs[c].FPGAs[f].name.c_str());
-//       syslog(LOG_INFO, "   cm     : %s\n", allCMs[c].FPGAs[f].cm.c_str());
-//       std::stringstream ss1;
-//       std::string str1;
-//       ss1 << allCMs[c].FPGAs[f].program;
-//       ss1 >> str1;
-//       syslog(LOG_INFO, "   program: %s\n", str1.c_str());
-//       syslog(LOG_INFO, "   svfFile: %s\n", allCMs[c].FPGAs[f].svfFile.c_str());
-//       syslog(LOG_INFO, "   xvc    : %s\n", allCMs[c].FPGAs[f].xvc.c_str());
-//       syslog(LOG_INFO, "   c2c    : %s\n", allCMs[c].FPGAs[f].c2c.c_str());
-//       syslog(LOG_INFO, "   done   : %s\n", allCMs[c].FPGAs[f].done.c_str());
-//       syslog(LOG_INFO, "   init   : %s\n", allCMs[c].FPGAs[f].init.c_str());
-//       syslog(LOG_INFO, "   axi    : %s\n", allCMs[c].FPGAs[f].axi.c_str());
-//       syslog(LOG_INFO, "   axilite: %s\n", allCMs[c].FPGAs[f].axilite.c_str()); 
   }
   syslog(LOG_INFO, "\n\n");
 }
@@ -126,37 +108,7 @@ void CM::SetUp(ApolloSM * SM) {
   // program FPGAs
   if(this->powerUp) {
     for(size_t f = 0; f < (this->FPGAs).size(); f++) { 
-      //if((this->FPGAs[f]).program) {
       (this->FPGAs[f]).bringUp(SM);
-//	syslog(LOG_INFO, "%s has program = true. Attempting to program..\n", (this->FPGAs[f]).name.c_str());
-//	int const success =  0;
-//	int const fail    = -1;
-//	int const nofile  = -2;
-//	
-//	// int const programmingFailed     = 0;
-//	// int const programmingSuccessful = 1;
-//	// assert 0 to done bit
-//	// SM->RegWriteRegister(FPGAs[f].done, programmingFailed);
-//	switch(bringupCMFPGAs(SM, allCMs[i].FPGAs[f])) {
-//	case success:
-//	  syslog(LOG_INFO, "Bringing up %s: %s FPGA succeeded. Setting %s to 1\n", (this->name).c_str(), (this->FPGAs[f]).name.c_str(), (this->FPGAs[f]).done.c_str());
-//	  // write 1 to done bit
-//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingSuccessful);
-//	  break;
-//	case fail:
-//	  // assert 0 to done bit (paranoid)
-//	  syslog(LOG_ERR, "Bringing up %s: %s FPGA failed. Setting %s to 0\n", (this->name).c_str(), (this->FPGAs[f]).name.c_str(), (this->FPGAs[f]).done.c_str());
-//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
-//	  break;
-//	case nofile:
-//	  // assert 0 to done bit (paranoid)
-//	  syslog(LOG_ERR, "svf file %s does not exist for %s FPGA. Setting %s to 0\n", (this->FPGAs[f]).svfFile.c_str(), (this->FPGAs[f]).name.c_str(), (this->.FPGAs[f]).done.c_str());
-//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
-//	  break;
-//	    }
-//      } else {
-//	syslog(LOG_INFO, "%s will not be programmed because it has program = false\n",(this->FPGAs[f]).name.c_str());
-//      }
     }
   } else {
     syslog(LOG_INFO, "%s has powerUp = false. None of its FPGAs will be powered up\n", (this->name).c_str());
@@ -165,12 +117,5 @@ void CM::SetUp(ApolloSM * SM) {
   // Print firmware build date for FPGA
   //     printBuildDate(SM, allCMs[i].ID);
 }
-
-// std::vector<FPGA> FPGAs;
-//   
-// std::string name;
-// int ID;
-// std::string powerGood;
-// bool powerUp;
 
 

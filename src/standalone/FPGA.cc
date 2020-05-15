@@ -156,10 +156,10 @@ int FPGA::bringupCMFPGAs(ApolloSM * SM) {
       // Check that phy lane is up, link is good, and that there are no errors
       if(!(this->checkNode(SM, (this->c2c) + ".MB_ERROR"    , 0))) {return fail;}
       if(!(this->checkNode(SM, (this->c2c) + ".CONFIG_ERROR", 0))) {return fail;}
-      //if(!(this->checkNode(SM, (this->c2c) + ".LINK_ERROR",   0))) {return fail;}
-      if(!(this->checkNode(SM, (this->c2c) + ".LINK_ERROR"  , 1))) {return fail;}
+      if(!(this->checkNode(SM, (this->c2c) + ".LINK_ERROR",   0))) {return fail;}
+      //if(!(this->checkNode(SM, (this->c2c) + ".LINK_ERROR"  , 1))) {return fail;}
       if(!(this->checkNode(SM, (this->c2c) + ".PHY_HARD_ERR", 0))) {return fail;}
-      //if(!(this->checkNode(SM, (this->c2c) + ".PHY_SOFT_ERR", 0))) {return fail;}
+      if(!(this->checkNode(SM, (this->c2c) + ".PHY_SOFT_ERR", 0))) {return fail;}
       if(!(this->checkNode(SM, (this->c2c) + ".PHY_MMCM_LOL", 0))) {return fail;} 
       if(!(this->checkNode(SM, (this->c2c) + ".PHY_LANE_UP" , 1))) {return fail;}
       if(!(this->checkNode(SM, (this->c2c) + ".LINK_GOOD"   , 1))) {return fail;}
@@ -186,19 +186,14 @@ int FPGA::bringupCMFPGAs(ApolloSM * SM) {
   return success;
 }
 
-//void FPGA::bringUp(ApolloSM const * const SM) const {
 void FPGA::bringUp(ApolloSM * SM) {
-  syslog(LOG_INFO, "in fpga::bringup\n");
-
-
+  syslog(LOG_INFO, "in fpga::bringup\n"); // remove
   if(this->program) {
     syslog(LOG_INFO, "%s has program = true. Attempting to program...\n", (this->name).c_str());
     int const success =  0;
     int const fail    = -1;
     int const nofile  = -2;
     
-    //	    int const programmingFailed     = 0;
-    //	    int const programmingSuccessful = 1;
     // assert 0 to done bit
     //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
     switch(bringupCMFPGAs(SM)) {
@@ -221,46 +216,4 @@ void FPGA::bringUp(ApolloSM * SM) {
   } else {
     syslog(LOG_INFO, "%s FPGA will not be programmed because it has program = false\n", (this->name).c_str());
   }
-  
-//  syslog(LOG_INFO, "%s has program = true. Attempting to program..\n", (this->FPGAs[f]).name.c_str());
-//	int const success =  0;
-//	int const fail    = -1;
-//	int const nofile  = -2;
-//	
-//	// int const programmingFailed     = 0;
-//	// int const programmingSuccessful = 1;
-//	// assert 0 to done bit
-//	// SM->RegWriteRegister(FPGAs[f].done, programmingFailed);
-//	switch(bringupCMFPGAs(SM, allCMs[i].FPGAs[f])) {
-//	case success:
-//	  syslog(LOG_INFO, "Bringing up %s: %s FPGA succeeded. Setting %s to 1\n", (this->name).c_str(), (this->FPGAs[f]).name.c_str(), (this->FPGAs[f]).done.c_str());
-//	  // write 1 to done bit
-//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingSuccessful);
-//	  break;
-//	case fail:
-//	  // assert 0 to done bit (paranoid)
-//	  syslog(LOG_ERR, "Bringing up %s: %s FPGA failed. Setting %s to 0\n", (this->name).c_str(), (this->FPGAs[f]).name.c_str(), (this->FPGAs[f]).done.c_str());
-//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
-//	  break;
-//	case nofile:
-//	  // assert 0 to done bit (paranoid)
-//	  syslog(LOG_ERR, "svf file %s does not exist for %s FPGA. Setting %s to 0\n", (this->FPGAs[f]).svfFile.c_str(), (this->FPGAs[f]).name.c_str(), (this->.FPGAs[f]).done.c_str());
-//	  //	SM->RegWriteRegister(allCMs[i].FPGAs[f].done, programmingFailed);
-//	  break;
-//	    }
-//      } else {
-//	syslog(LOG_INFO, "%s will not be programmed because it has program = false\n",(this->FPGAs[f]).name.c_str());
-//      }
-//    }
-
 }
-
-//std::string name    ; 
-//std::string cm      ;
-//std::string svfFile ;
-//std::string xvc     ;
-//std::string c2c     ;
-//std::string done    ;
-//std::string init    ;
-//std::string axi     ;
-//std::string axilite ;

@@ -2,7 +2,7 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <standalone/CM.hh>
-#include <standalone/FPGA.hh>
+//#include <standalone/FPGA.hh>
 #include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
@@ -23,6 +23,7 @@
 #include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 #include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
 
+// ====================================================================================================
 #define SEC_IN_US 1000000
 #define NS_IN_US  1000
 

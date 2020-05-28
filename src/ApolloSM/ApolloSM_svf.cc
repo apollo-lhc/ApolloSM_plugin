@@ -23,8 +23,7 @@ int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabe
   RegWriteRegister(XVCLabel+".GO",1);
   while(RegReadRegister(XVCLabel+".GO")){}
 
-  std::string const child_label = "PLXVC"+XVCLabel;
-  uint32_t offset = GetDeviceOffset("PLXVC", child_label);
+  uint32_t offset = GetRegAddress("PLXVC"+XVCLabel) - GetRegAddress("PLXVC");
   int rc = SVF.play(svfFile, XVCLabel, offset);
 
   //Make sure we are in reset

@@ -61,7 +61,7 @@ typedef struct  {
   uint32_t tms_offset;
   uint32_t tdi_offset;
   uint32_t tdo_offset;
-  uint32_t ctrl_offset;
+  uint32_t ctrl_offset; //bit 1 is a go signal, bit 2 is a busy signal
 } sXVC;
 
 sXVC volatile * pXVC = NULL;

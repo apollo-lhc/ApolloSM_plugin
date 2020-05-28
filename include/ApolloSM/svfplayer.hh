@@ -7,7 +7,7 @@
 class SVFPlayer {
 public:
   SVFPlayer();  
-  int play(std::string const & svfFile , std::string const & XVCLabel);
+  int play(std::string const & svfFile , std::string const & XVCLabel, uint32_t offset);
 private:
   typedef struct  {
     uint32_t length_offset;

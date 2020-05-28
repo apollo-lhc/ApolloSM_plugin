@@ -140,7 +140,7 @@ int SVFPlayer::pulse_tck(int tms, int tdi, int tdo, int rmask, int sync) {
   return rc;
 }
 
-int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLabel) {
+int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLabel, uint32_t offset) {
   
   //Giving credit to original creator
   //fprintf(stderr, "\nxsvftool-gpio, part of Lib(X)SVF (http://www.clifford.at/libxsvf/).\n");
@@ -172,9 +172,17 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
     throw std::runtime_error("Failed to open UIO device");    
   }
   
+  //Get offset
+  off_t device_offset = 0x0;
+  if ((int) offset > 1073741823) {
+    device_offset = (off_t) (offset * 4);
+  } else {
+    throw std::runtime_error("Device offset too large");
+  }
+
   jtag_reg = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
 				   PROT_READ|PROT_WRITE, MAP_SHARED,
-				   fdUIO, 0x0);
+				   fdUIO, device_offset); 
   if(MAP_FAILED == jtag_reg){
     throw std::runtime_error("mem map failed");
   }

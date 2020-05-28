@@ -23,7 +23,9 @@ int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabe
   RegWriteRegister(XVCLabel+".GO",1);
   while(RegReadRegister(XVCLabel+".GO")){}
 
-  int rc = SVF.play(svfFile, XVCLabel);
+  std::string const child_label = "PLXVC"+XVCLabel;
+  uint32_t offset = GetDeviceOffset("PLXVC", child_label);
+  int rc = SVF.play(svfFile, XVCLabel, offset);
 
   //Make sure we are in reset
   //send 32 TMS '1's

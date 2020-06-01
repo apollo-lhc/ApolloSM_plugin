@@ -332,10 +332,18 @@ int main(int argc, char **argv) {
     syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
     return 1;            
   }
+
+  //HardCoded offset for XVC devices nested under same uio file, based on port number,
+  // not a good long term solution
+  uint32_t plXVC_Width = 0x10; //plXVC is 4 32bit words, or 16 bytes, noted 0x10
+  off_t uio_offset = 0x0;
+  if (port > 1) {
+    uio_offset = (port - 1) * plXVC_Width;
+  }
   
   pXVC = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
 			       PROT_READ|PROT_WRITE, MAP_SHARED,
-			       fdUIO, 0x0);
+			       fdUIO, uio_offset);
   if(MAP_FAILED == pXVC){
     syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
     return 1;            

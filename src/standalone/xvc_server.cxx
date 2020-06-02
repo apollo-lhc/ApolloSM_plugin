@@ -347,7 +347,7 @@ int main(int argc, char **argv) {
    
   pXVC = (sXVC volatile*) mmap(NULL, sizeof(sXVC) + uio_offset*sizeof(uint32_t),
 			       PROT_READ|PROT_WRITE, MAP_SHARED,
-			       fdUIO, uio_offset);// + uio_offset*sizeof(uint32_t));
+			       fdUIO, 0x0);// + uio_offset*sizeof(uint32_t));
 
   pXVC += (uio_offset * 4) / sizeof(sXVC);
 

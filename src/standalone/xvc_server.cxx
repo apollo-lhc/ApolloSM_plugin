@@ -317,9 +317,10 @@ int main(int argc, char **argv) {
 
 
   //Find UIO number
-  uioN = label2uio(uioLabel.c_str());
+  std::string parentLabel = uioLabel.substr(0,uioLabel.find('.'));
+  uioN = label2uio(parentLabel.c_str());//uioLabel.c_str().);
   if(uioN < 0){
-    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",uioLabel.c_str());
+    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",parentLabel.c_str());//uioLabel.c_str());
     return 1;      
   }
   size_t const uioFileNameLength = 1024;

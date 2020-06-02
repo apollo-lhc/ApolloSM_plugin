@@ -15,6 +15,7 @@ private:
     uint32_t tdi_offset;
     uint32_t tdo_offset;
     uint32_t ctrl_offset;
+    uint32_t lock;
   } sXVC;
 
   /* Defined in svfplayer.cc */

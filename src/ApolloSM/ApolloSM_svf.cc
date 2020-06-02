@@ -4,7 +4,8 @@
 int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabel) {
 
   SVFPlayer SVF;
-  std::string lock = "PL_MEM.XVC_LOCK."+XVCLabel;
+  //std::string lock = "PL_MEM.XVC_LOCK."+XVCLabel;
+  std::string lock = XVCLabel+".LOCK";
   RegWriteRegister(lock,1);
   sleep(1);
   //Make sure any previous JTAG commands finished

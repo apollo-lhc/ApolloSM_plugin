@@ -337,10 +337,16 @@ int main(int argc, char **argv) {
   }
 
   //Getting offset
-  ApolloSM * SM = NULL;
+  ApolloSM * SM = new ApolloSM();
   if(NULL == SM){
     syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+  } else{
+    syslog(LOG_INFO,"Created new ApolloSM\n");
   }
+  std::vector<std::string> arg;
+  arg.push_back("connections.xml");
+  SM->Connect(arg);
+
   uint32_t uio_offset = SM->GetRegAddress(xvcName) - SM->GetRegAddress(xvcName.substr(0,xvcName.find('.')));
   if(NULL != SM){
     delete SM;

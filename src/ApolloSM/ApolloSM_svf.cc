@@ -9,7 +9,7 @@ int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabe
   RegWriteRegister(lock,1);
   sleep(1);
   //Make sure any previous JTAG commands finished
-  while(RegReadRegister(XVCLabel+".GO")){}
+  while(RegReadRegister(XVCLabel+".BUSY")){}
   //Make sure we are in reset
   //send 32 TMS '1's
   RegWriteRegister(XVCLabel+".TDI_VECTOR",0x0);

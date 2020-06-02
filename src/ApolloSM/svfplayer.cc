@@ -172,17 +172,13 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
     throw std::runtime_error("Failed to open UIO device");    
   }
   
-  //Get offset
-  off_t device_offset = 0x0;
-  if ((int) offset > 1073741823) {
-    device_offset = (off_t) (offset * 4);
-  } else {
-    throw std::runtime_error("Device offset too large");
-  }
+  jtag_reg = (sXVC volatile*) mmap(NULL, sizeof(sXVC) + offset*sizeof(uint32_t),
+				    PROT_READ|PROT_WRITE, MAP_SHARED,
+				    fdUIO, 0x0);// + (offset*sizeof(uint32_t)));
 
-  jtag_reg = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
-				   PROT_READ|PROT_WRITE, MAP_SHARED,
-				   fdUIO, device_offset); 
+
+  jtag_reg += (offset * 4) / sizeof(sXVC);
+
   if(MAP_FAILED == jtag_reg){
     throw std::runtime_error("mem map failed");
   }

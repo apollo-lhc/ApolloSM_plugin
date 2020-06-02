@@ -38,6 +38,7 @@
 #include <tclap/CmdLine.h>
 
 #include <ApolloSM/uioLabelFinder.hh>
+#include <ApolloSM/ApolloSM.hh>
 
 //extern int errno;
 
@@ -333,17 +334,23 @@ int main(int argc, char **argv) {
     return 1;            
   }
 
-  //HardCoded offset for XVC devices nested under same uio file, based on port number,
-  // not a good long term solution
-  uint32_t plXVC_Width = 0x10; //plXVC is 4 32bit words, or 16 bytes, noted 0x10
-  off_t uio_offset = 0x0;
-  if (port > 1) {
-    uio_offset = (port - 1) * plXVC_Width;
+  //Getting offset
+  ApolloSM * SM = NULL;
+  if(NULL == SM){
+    syslog(LOG_ERR,"Failed to create new ApolloSM\n");
   }
-  
-  pXVC = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
+  uint32_t uio_offset = SM->GetRegAddress("PLXVC."+xvcName) - SM->GetRegAddress("PLXVC");
+  if(NULL != SM){
+    delete SM;
+  }
+   
+  pXVC = (sXVC volatile*) mmap(NULL, sizeof(sXVC) + uio_offset*sizeof(uint32_t),
 			       PROT_READ|PROT_WRITE, MAP_SHARED,
-			       fdUIO, uio_offset);
+			       fdUIO, uio_offset);// + uio_offset*sizeof(uint32_t));
+
+  pXVC += (uio_offset * 4) / sizeof(sXVC);
+
+
   if(MAP_FAILED == pXVC){
     syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
     return 1;            

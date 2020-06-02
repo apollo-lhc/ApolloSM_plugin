@@ -340,7 +340,7 @@ int main(int argc, char **argv) {
   if(NULL == SM){
     syslog(LOG_ERR,"Failed to create new ApolloSM\n");
   }
-  uint32_t uio_offset = SM->GetRegAddress("PLXVC."+xvcName) - SM->GetRegAddress("PLXVC");
+  uint32_t uio_offset = SM->GetRegAddress(xvcName) - SM->GetRegAddress(xvcName.substr(0,xvcName.find('.')));
   if(NULL != SM){
     delete SM;
   }

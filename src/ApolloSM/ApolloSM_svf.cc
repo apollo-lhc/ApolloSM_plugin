@@ -16,13 +16,13 @@ int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabe
   RegWriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
   RegWriteRegister(XVCLabel+".LENGTH",32);
   RegWriteRegister(XVCLabel+".GO",1);
-  while(RegReadRegister(XVCLabel+".GO")){}
+  while(RegReadRegister(XVCLabel+".BUSY")){}
   //send 32 TMS '1's
   RegWriteRegister(XVCLabel+".TDI_VECTOR",0x0);
   RegWriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
   RegWriteRegister(XVCLabel+".LENGTH",32);
   RegWriteRegister(XVCLabel+".GO",1);
-  while(RegReadRegister(XVCLabel+".GO")){}
+  while(RegReadRegister(XVCLabel+".BUSY")){}
 
   //uint32_t in 32bit words
   uint32_t offset = GetRegAddress(XVCLabel) - GetRegAddress(XVCLabel.substr(0,XVCLabel.find('.')));
@@ -34,13 +34,13 @@ int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabe
   RegWriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
   RegWriteRegister(XVCLabel+".LENGTH",32);
   RegWriteRegister(XVCLabel+".GO",1);
-  while(RegReadRegister(XVCLabel+".GO")){}
+  while(RegReadRegister(XVCLabel+".BUSY")){}
   //send 32 TMS '1's
   RegWriteRegister(XVCLabel+".TDI_VECTOR",0x0);
   RegWriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
   RegWriteRegister(XVCLabel+".LENGTH",32);
   RegWriteRegister(XVCLabel+".GO",1);
-  while(RegReadRegister(XVCLabel+".GO")){}
+  while(RegReadRegister(XVCLabel+".BUSY")){}
 
   RegWriteRegister(lock,0);
   return rc;

@@ -369,7 +369,7 @@ int main(int argc, char **argv) {
 
   //Setup XVCLock UIO
   //checking plxvc vs xvc local
-  if(!xvcName.compare("XVC_LOCAL")){
+  if((xvcName.compare("XVC_LOCAL"))!=0){
     XVCLock = &pXVC->lock_offset;
   } else {
 

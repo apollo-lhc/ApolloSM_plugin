@@ -371,6 +371,11 @@ int main(int argc, char **argv) {
   //checking plxvc vs xvc local
   if((xvcName.compare("XVC_LOCAL"))!=0){
     XVCLock = &pXVC->lock_offset;
+    if (XVCLock == NULL) {
+      syslog(LOG_ERR,"Failed to assign XVCLock\n");
+    } else {
+      syslog(LOG_ERR,"XVCLock found");
+    }
   } else {
 
     int fdXVCLock = -1;

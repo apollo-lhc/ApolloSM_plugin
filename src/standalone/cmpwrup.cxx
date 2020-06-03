@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     printf("Program takes 0, 1, or 2 arguments\n");
     printf("ex: for 1 argument to power up CM2: ./cmpwrup 2\n");
     printf("ex: for 2 arguments to power up CM2: ./cmpwrup 2 CM.CM2.CTRL.PWR_GOOD\n");
-    printf("Terminating program\n");
+    //printf("Terminating program\n");
     return -1;
   }
   
@@ -42,9 +42,9 @@ int main(int argc, char** argv) {
     if(NULL == SM){
       fprintf(stderr, "Failed to create new ApolloSM. Terminating program\n");
       exit(EXIT_FAILURE);
-    }else{
-      fprintf(stdout,"Created new ApolloSM\n");      
-    }
+    }//else{
+    //  fprintf(stdout,"Created new ApolloSM\n");      
+    //}
     // load connection file
     std::vector<std::string> arg;
     std::string connectionFile = DEFAULT_CONNECTION_FILE;
@@ -59,9 +59,9 @@ int main(int argc, char** argv) {
     if(NULL == commandModule){
       fprintf(stderr, "Failed to create new CM. Terminating program\n");
       exit(EXIT_FAILURE);
-    }else{
-      fprintf(stdout,"Created new CM\n");      
-    }
+    }//else{
+    //  fprintf(stdout,"Created new CM\n");      
+    //}
     
     // ==============================
     // parse command line
@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
 	commandModule->ID        = DEFAULT_CM_ID;
 	commandModule->powerGood = DEFAULT_CM_POWER_GOOD;
 	commandModule->powerUp   = DEFAULT_CM_POWER_UP;
-	printf("No arguments specified. Default: Powering up CM %d and checking %s\n", commandModule->ID, commandModule->powerGood.c_str());
+	//printf("No arguments specified. Default: Powering up CM %d and checking %s\n", commandModule->ID, commandModule->powerGood.c_str());
 	break;
       }
     case cmFound:
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 	commandModule->ID        = ID;
 	commandModule->powerGood = powerGood;
 	commandModule->powerUp   = true;
-	printf("One argument specified. Powering up CM %d and checking %s\n", ID, powerGood.c_str());
+	//printf("One argument specified. Powering up CM %d and checking %s\n", ID, powerGood.c_str());
 	break;
       }    
     case cmAndPowerGood:
@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
 	commandModule->ID        = ID;
 	commandModule->powerGood = powerGood;
 	commandModule->powerUp   = true;
-	printf("Two arguments specified. Powering up CM %d with %s\n", ID, powerGood.c_str());
+	//printf("Two arguments specified. Powering up CM %d with %s\n", ID, powerGood.c_str());
 	break;
       }   
 //    default:
@@ -108,13 +108,14 @@ int main(int argc, char** argv) {
     // ==============================
     // power up CM
     int wait_time = 5; // 1 second
-    printf("Using wait_time = 1 second\n");    
+    //printf("Using wait_time = 1 second\n");    
     bool success = SM->PowerUpCM(commandModule->ID, wait_time);
     if(success) {
       printf("CM %d is powered up\n", commandModule->ID);
     } else {
-      printf("CM %d did not power up in time\n", commandModule->ID);
+      printf("CM %d did not power up in %d second(s)\n", commandModule->ID, (wait_time / 5));
     }
+
   
     // read power good and print
     printf("%s is %d\n", commandModule->powerGood.c_str(), (int)(SM->RegReadRegister(commandModule->powerGood)));
@@ -126,12 +127,12 @@ int main(int argc, char** argv) {
   }
   
   // Clean up
-  printf("Deleting CM\n");
+  //printf("Deleting CM\n");
   if(NULL != commandModule) {
     delete commandModule;
   }
   
-  printf("Deleting ApolloSM\n");
+  //printf("Deleting ApolloSM\n");
   if(NULL != SM) {
     delete SM;
   }

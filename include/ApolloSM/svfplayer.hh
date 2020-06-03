@@ -7,7 +7,7 @@
 class SVFPlayer {
 public:
   SVFPlayer();  
-  int play(std::string const & svfFile , std::string const & XVCLabel);
+  int play(std::string const & svfFile , std::string const & XVCLabel, uint32_t offset);
 private:
   typedef struct  {
     uint32_t length_offset;
@@ -15,6 +15,7 @@ private:
     uint32_t tdi_offset;
     uint32_t tdo_offset;
     uint32_t ctrl_offset;
+    uint32_t lock;
   } sXVC;
 
   /* Defined in svfplayer.cc */

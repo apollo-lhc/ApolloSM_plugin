@@ -38,6 +38,7 @@
 #include <tclap/CmdLine.h>
 
 #include <ApolloSM/uioLabelFinder.hh>
+#include <ApolloSM/ApolloSM.hh>
 
 //extern int errno;
 
@@ -61,7 +62,8 @@ typedef struct  {
   uint32_t tms_offset;
   uint32_t tdi_offset;
   uint32_t tdo_offset;
-  uint32_t ctrl_offset;
+  uint32_t ctrl_offset; //bit 1 is a go signal, bit 2 is a busy signal
+  uint32_t lock_offset;
 } sXVC;
 
 sXVC volatile * pXVC = NULL;
@@ -315,9 +317,10 @@ int main(int argc, char **argv) {
 
 
   //Find UIO number
-  uioN = label2uio(uioLabel.c_str());
+  std::string parentLabel = uioLabel.substr(0,uioLabel.find('.'));
+  uioN = label2uio(parentLabel.c_str());//uioLabel.c_str().);
   if(uioN < 0){
-    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",uioLabel.c_str());
+    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",parentLabel.c_str());//uioLabel.c_str());
     return 1;      
   }
   size_t const uioFileNameLength = 1024;
@@ -332,10 +335,30 @@ int main(int argc, char **argv) {
     syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
     return 1;            
   }
-  
-  pXVC = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
+
+  //Getting offset
+  ApolloSM * SM = new ApolloSM();
+  if(NULL == SM){
+    syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+  } else{
+    syslog(LOG_INFO,"Created new ApolloSM\n");
+  }
+  std::vector<std::string> arg;
+  arg.push_back("connections.xml");
+  SM->Connect(arg);
+
+  uint32_t uio_offset = SM->GetRegAddress(xvcName) - SM->GetRegAddress(xvcName.substr(0,xvcName.find('.')));
+  if(NULL != SM){
+    delete SM;
+  }
+   
+  pXVC = (sXVC volatile*) mmap(NULL, sizeof(sXVC) + uio_offset*sizeof(uint32_t),
 			       PROT_READ|PROT_WRITE, MAP_SHARED,
-			       fdUIO, 0x0);
+			       fdUIO, 0x0);// + uio_offset*sizeof(uint32_t));
+
+  pXVC += (uio_offset * 4) / sizeof(sXVC);
+
+
   if(MAP_FAILED == pXVC){
     syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
     return 1;            
@@ -345,45 +368,57 @@ int main(int argc, char **argv) {
 
 
   //Setup XVCLock UIO
-  int fdXVCLock = -1;
-  int uioNXVCLock = label2uio("PL_MEM");
-  if(uioNXVCLock < 0){
-    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n","PL_MEM");
-    return 1;      
-  }
-  uioFileName = new char[uioFileNameLength+1];
-  memset(uioFileName,0x0,uioFileNameLength+1);
-  snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioNXVCLock);
+  //checking plxvc vs xvc local
+  if((xvcName.compare("XVC_LOCAL"))!=0){
+    XVCLock = &pXVC->lock_offset;
+    if (XVCLock == NULL) {
+      syslog(LOG_ERR,"Failed to assign XVCLock\n");
+    } else {
+      syslog(LOG_ERR,"XVCLock found");
+    }
+  } else {
+
+    int fdXVCLock = -1;
+    int uioNXVCLock = label2uio("PL_MEM");
+    if(uioNXVCLock < 0){
+      syslog(LOG_ERR,"Failed to find UIO device with label %s.\n","PL_MEM");
+      return 1;      
+    }
+    uioFileName = new char[uioFileNameLength+1];
+    memset(uioFileName,0x0,uioFileNameLength+1);
+    snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioNXVCLock);
     
-  syslog(LOG_ERR,"Found %s @ %s.\n","PL_MEM",uioFileName);
-  //Open UIO device
-  fdXVCLock = open(uioFileName,O_RDWR);
-  if(fdXVCLock < 0){
-    syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
-    return 1;            
-  }
-  uint32_t offset = 0;
-  if(!xvcName.compare("XVC1")){
-    offset=0x7e5;
-  }else if(!xvcName.compare("XVC2")){
-    offset=0x7e6;
-  }else if(!xvcName.compare("XVC_LOCAL")){
-    offset=0x7e7;
-  }
-  if(offset){  
-    XVCLock = ((uint32_t volatile*) mmap(NULL,sizeof(uint32_t)*0x800,
-					 PROT_READ|PROT_WRITE, MAP_SHARED,
-					 fdXVCLock,0x0))  + offset;
-    if(MAP_FAILED == XVCLock){
-      syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
+    syslog(LOG_ERR,"Found %s @ %s.\n","PL_MEM",uioFileName);
+    //Open UIO device
+    fdXVCLock = open(uioFileName,O_RDWR);
+    if(fdXVCLock < 0){
+      syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
       return 1;            
     }
-    syslog(LOG_ERR,"Found XVC lock register @ 0x%04X\n",offset);    
-  }else{
-    syslog(LOG_ERR,"No lock register found.\n");        
-    XVCLock = &offset;
+    uint32_t offset = 0;
+    if(!xvcName.compare("XVC1")){
+      offset=0x7e5;
+    }else if(!xvcName.compare("XVC2")){
+      offset=0x7e6;
+    }else if(!xvcName.compare("XVC_LOCAL")){
+      offset=0x7e7;
+    }
+    if(offset){  
+      XVCLock = ((uint32_t volatile*) mmap(NULL,sizeof(uint32_t)*0x800,
+					   PROT_READ|PROT_WRITE, MAP_SHARED,
+					   fdXVCLock,0x0))  + offset;
+      if(MAP_FAILED == XVCLock){
+	syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
+	return 1;            
+      }
+      syslog(LOG_ERR,"Found XVC lock register @ 0x%04X\n",offset);    
+    }else{
+      syslog(LOG_ERR,"No lock register found.\n");        
+      XVCLock = &offset;
+    }
+    delete [] uioFileName;  
   }
-  delete [] uioFileName;  
+
 
   opterr = 0;
   s = socket(AF_INET, SOCK_STREAM, 0);

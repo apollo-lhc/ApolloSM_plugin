@@ -31,13 +31,13 @@ int main(int argc, char** argv) {
     if(NULL == SM){
       fprintf(stderr, "Failed to create new ApolloSM. Terminating program\n");
       exit(EXIT_FAILURE);
-    }else{
-      fprintf(stdout,"Created new ApolloSM\n");      
-    }
+    }//else{
+    //  fprintf(stdout,"Created new ApolloSM\n");      
+    //}
     // load connection file
     std::vector<std::string> arg;
     std::string connectionFile = DEFAULT_CONNECTION_FILE;
-    printf("Using %s\n", connectionFile.c_str());
+    //printf("Using %s\n", connectionFile.c_str());
     arg.push_back(connectionFile);
     SM->Connect(arg);
     
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
   }
   
   // Clean up
-  printf("Deleting ApolloSM\n");
+  //printf("Deleting ApolloSM\n");
   if(NULL != SM) {
     delete SM;
   }

@@ -149,6 +149,10 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Unblocks all four C2CX AXI and AXILITE bits\n"\
 	       "Usage: \n"\
 	       "  unblockAXI\n");
+    AddCommand("restartCMuC",&ApolloSMDevice::restartCMuC,
+	       "Restart micro controller on CM\n"	\
+	       "Usage: \n"\
+	       "  restartCMuC <CM number>\n");
 
 }
 
@@ -395,3 +399,12 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strA
   return CommandReturn::OK;						   
 }
 						 
+CommandReturn::status ApolloSMDevice::restartCMuC(std::vector<std::string> strArg,
+						  std::vector<uint64_t> /*intArg*/){
+  if (strArg.size() != 1) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  SM->restartCMuC(strArg[0]);
+  return CommandReturn::OK;
+}

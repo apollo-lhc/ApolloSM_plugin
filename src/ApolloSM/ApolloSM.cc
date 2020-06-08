@@ -168,7 +168,7 @@ void ApolloSM::unblockAXI() {
 
 void ApolloSM::restartCMuC(std::string CM_ID) {
   std::string command_string = "CM.CM" + CM_ID + ".CTRL.ENABLE_UC";
-  RegWriteRegister(command_string,0);
-  usleep(10000); //Wait 10ms
   RegWriteRegister(command_string,1);
+  usleep(10000); //Wait 10ms
+  RegWriteRegister(command_string,0);
 }

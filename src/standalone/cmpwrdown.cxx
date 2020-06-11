@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
   if((noArgs != argc) && (cmFound != argc)) {
     // wrong number args
     printf("Program takes 0 or 1 arguments\n");
-    printf("ex: for 1 argument to power down CM2: ./cmpwrdown 2\n");
+    printf("ex: for 1 argument to power down CM_2: ./cmpwrdown 2\n");
     printf("Terminating program\n");
     return -1;
   }
@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 //    default:
 //      {   
 //	printf("Program takes 0 or 1 arguments\n");
-//	printf("ex for 1 argument to power down CM2: ./cmpwrdown 2\n");
+//	printf("ex for 1 argument to power down CM_2: ./cmpwrdown 2\n");
 //	printf("Terminating program\n");
 //	return 0;
 //      }    

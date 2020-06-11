@@ -660,7 +660,7 @@ int main(int argc, char** argv) {
     // ====================================
     // Turn on CM uC      
     if (powerupCMuC){
-      SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",1);
+      SM->RegWriteRegister("CM.CM_1.CTRL.ENABLE_UC",1);
       syslog(LOG_INFO,"Powering up CM uC\n");
       sleep(powerupTime);
     }
@@ -691,7 +691,7 @@ int main(int argc, char** argv) {
       //      if(true == sensorsThroughZynq) {
       if(sensorsThroughZynq) {
 	temperatures temps;  
-      	if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
+      	if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
 	  try{
 	    temps = sendAndParse(SM);
 	  }catch(std::exception & e){
@@ -706,7 +706,7 @@ int main(int argc, char** argv) {
 	    temps.FPGATemp = 0;
 	    temps.REGTemp = 0;
 	  }
-	  CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
+	  CM_running = SM->RegReadRegister("CM.CM_1.CTRL.PWR_GOOD");
 	  
 	  sendTemps(SM, temps);
 	  if(!temps.validData){
@@ -760,7 +760,7 @@ int main(int argc, char** argv) {
   //make sure the CM is off
   //Shutdown the command module (if up)
   SM->PowerDownCM(1,5);
-  SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",0);
+  SM->RegWriteRegister("CM.CM_1.CTRL.ENABLE_UC",0);
 
   
   //If we are shutting down, do the handshanking.

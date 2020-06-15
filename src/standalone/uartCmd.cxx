@@ -52,10 +52,10 @@ int main(int argc, char** argv) {
 
     std::string ttyDev;
     char promptChar;
-    if(boost::algorithm::iequals(strArg[0],"CM_1")) {
+    if(boost::algorithm::iequals(strArg[0],"CM1")) {
       ttyDev.append("/dev/ttyUL1");    
       promptChar = '%';
-    } else if(boost::algorithm::iequals(strArg[0],"CM_2")) {
+    } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
       ttyDev.append("/dev/ttyUL2");
       promptChar = '%';
     } else if(boost::algorithm::iequals(strArg[0],"ESM")) {

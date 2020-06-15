@@ -81,7 +81,7 @@ bool ApolloSM::PowerUpCM(int CM_ID, int wait /*seconds*/){
     e.Append("Bad CM_ID");
     throw e;
   }
-  std::string CM_CTRL("CM.CM_");
+  std::string CM_CTRL("CM.CM");
   switch (CM_ID){
   case 2:
     CM_CTRL+="2";
@@ -123,7 +123,7 @@ bool ApolloSM::PowerDownCM(int CM_ID, int wait /*seconds*/){
     e.Append("Bad CM_ID");
     throw e;
   }
-  std::string CM_CTRL("CM.CM_");
+  std::string CM_CTRL("CM.CM");
   switch (CM_ID){
   case 2:
     CM_CTRL+="2";
@@ -167,7 +167,7 @@ void ApolloSM::unblockAXI() {
 }
 
 void ApolloSM::restartCMuC(std::string CM_ID) {
-  std::string command_string = "CM.CM_" + CM_ID + ".CTRL.ENABLE_UC";
+  std::string command_string = "CM.CM" + CM_ID + ".CTRL.ENABLE_UC";
   RegWriteRegister(command_string,1);
   usleep(10000); //Wait 10ms
   RegWriteRegister(command_string,0);

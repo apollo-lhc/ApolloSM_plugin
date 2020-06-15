@@ -284,9 +284,9 @@ CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string> strArg,
     return CommandReturn::BAD_ARGS;
   }
 
-  if(boost::algorithm::iequals(strArg[0],"CM_1")) {
+  if(boost::algorithm::iequals(strArg[0],"CM1")) {
     SM->UART_Terminal("/dev/ttyUL1");    
-  } else if(boost::algorithm::iequals(strArg[0],"CM_2")) {
+  } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
     SM->UART_Terminal("/dev/ttyUL2");
   } else if(boost::algorithm::iequals(strArg[0],"ESM")) {
     SM->UART_Terminal("/dev/ttyUL3");
@@ -305,10 +305,10 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
 
   std::string ttyDev;
   char promptChar;
-  if(boost::algorithm::iequals(strArg[0],"CM_1")) {
+  if(boost::algorithm::iequals(strArg[0],"CM1")) {
     ttyDev.append("/dev/ttyUL1");    
     promptChar = '%';
-  } else if(boost::algorithm::iequals(strArg[0],"CM_2")) {
+  } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
     ttyDev.append("/dev/ttyUL2");
     promptChar = '%';
   } else if(boost::algorithm::iequals(strArg[0],"ESM")) {

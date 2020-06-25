@@ -156,6 +156,15 @@ obj/%.o : src/%.cxx
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
 
+#specific rule for peek and pokeUIO
+bin/peekUIO.o : obj/standalone/peekUIO.o 
+	mkdir -p bin
+	${CXX} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system -lpug $^ -o $@
+bin/pokeUIO.o : obj/standalone/pokeUIO.o 
+	mkdir -p bin
+	${CXX} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system -lpug $^ -o $@
+
+
 bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
 	mkdir -p bin
 	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml $(filter-out %.so, $^) -o $@

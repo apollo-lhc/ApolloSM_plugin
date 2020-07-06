@@ -109,6 +109,7 @@ void Uptime(float & days, float &hours, float & minutes){
   return;
 }
 
+//returns inRate and outRate in bytes/second
 int networkMonitor(int &inRate, int &outRate, int time /*in seconds*/){
   //used to store values from file
   uint64_t InNoRoutes, InTruncatedPkts, InMcastPkts, OutMcastPkts, InBcastPkts, OutBcastPkts, InOctets, OutOctets;
@@ -121,26 +122,27 @@ int networkMonitor(int &inRate, int &outRate, int time /*in seconds*/){
     return 1;
   }
 
-  //Read line 3 from statFile
-  char buffer[2000]; //buffer must be greater than line one characters ~2000
-  char cpu_line[100];
-  fgets(buffer, 2000, statFile); //using fgets to skip past line one
-  fgets(buffer, 2000, statFile); //using fgets to skip past line two
+  //Read line 4 from statFile
+  char bufferOne[1000]; //buffers must be greater than line one characters ~2000
+  char bufferTwo[1000];
+  char bufferThree[1000];
+  char cpu_line[7];
+  fgets(bufferOne, 2000, statFile); //using fgets to skip past line one
+  fgets(bufferTwo, 2000, statFile); //using fgets to skip past line two
+  fgets(bufferThree, 2000, statFile); //using fgets to skip past line three
   fscanf(statFile, //file being scanned
-	 "%s %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64, //Formatting of line 3
-	 cpu_line, &InNoRoutes, &InTruncatedPkts, &InMcastPkts, &OutMcastPkts, &InBcastPkts, &OutBcastPkts, &InOctets, &OutOctets); //store into variables
-  printf("line three: %s\n", cpu_line);  
+  	 "%s %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64, //Formatting of line 3
+  	 cpu_line, &InNoRoutes, &InTruncatedPkts, &InMcastPkts, &OutMcastPkts, &InBcastPkts, &OutBcastPkts, &InOctets, &OutOctets); //store into variables
   fclose(statFile); //close file
 
-  //get diff
+  //get rate
   uint64_t inDiff = InOctets - InOctets_running;
   uint64_t outDiff = OutOctets - OutOctets_running;
-  //divide by time
   inRate = inDiff / time;
   outRate = outDiff / time;
+
   //re-assign running totals
   InOctets_running = InOctets;
   OutOctets_running = OutOctets;
-    
   return 0;
 }

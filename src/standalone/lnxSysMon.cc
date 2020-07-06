@@ -108,3 +108,40 @@ void Uptime(float & days, float &hours, float & minutes){
   }
   return;
 }
+
+int networkMonitor(int &inRate, int &outRate, int time /*in seconds*/){
+  //used to store values from file
+  uint64_t InNoRoutes, InTruncatedPkts, InMcastPkts, OutMcastPkts, InBcastPkts, OutBcastPkts, InOctets, OutOctets;
+  //static storage of values for diff
+  static uint64_t InOctets_running, OutOctets_running;
+
+  //open stat file
+  FILE * statFile = fopen("/proc/net/netstat","r");
+  if(NULL == statFile){
+    return 1;
+  }
+
+  //Read line 3 from statFile
+  char buffer[2000]; //buffer must be greater than line one characters ~2000
+  char cpu_line[100];
+  fgets(buffer, 2000, statFile); //using fgets to skip past line one
+  fgets(buffer, 2000, statFile); //using fgets to skip past line two
+  fscanf(statFile, //file being scanned
+	 "%s %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64, //Formatting of line 3
+	 cpu_line, &InNoRoutes, &InTruncatedPkts, &InMcastPkts, &OutMcastPkts, &InBcastPkts, &OutBcastPkts, &InOctets, &OutOctets); //store into variables
+  printf("line three: %s\n", cpu_line);  
+  fclose(statFile); //close file
+
+  //get diff
+  uint64_t inDiff = InOctets - InOctets_running;
+  uint64_t outDiff = OutOctets - OutOctets_running;
+  //divide by time
+  inRate = inDiff / time;
+  outRate = outDiff / time;
+  //re-assign running totals
+  InOctets_running = InOctets;
+  OutOctets_running = OutOctets;
+  //return rate
+  
+  return 0;
+}

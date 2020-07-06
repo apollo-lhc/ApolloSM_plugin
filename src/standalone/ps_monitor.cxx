@@ -262,6 +262,14 @@ int main(int argc, char ** argv) {
 	SM->RegWriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
 	mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
 	SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
+	int inRate, outRate;
+	int networkMon = networkMonitor(inRate, outRate, polltime_in_seconds);
+	if(!networkMon){ //networkMonitor was successful
+	  //SM->RegWriteRegister("PL_MEM.NETWORK.INOCTET_RATE",uint32_t(inRate));
+	  //SM->RegWriteRegister("PL_MEM.NETWORK.OUTOCTET_RATE",uint32_t(outRate));
+	} else { //networkMonitor failed
+	  syslog(LOG_ERR, "Error in networkMonitor\n");
+	}
 	float days,hours,minutes;
 	Uptime(days,hours,minutes);
 	SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.DAYS",uint32_t(100.0*days));

@@ -369,7 +369,7 @@ int main(int argc, char **argv) {
 
   //Setup XVCLock UIO
   //checking plxvc vs xvc local
-  if((xvcName.compare("XVC_LOCAL"))!=0){
+  if((xvcName.compare("XVC_LOCAL"))!=0){ //If xvcName is not 'XVC_LOCAL'
     XVCLock = &pXVC->lock_offset;
     if (XVCLock == NULL) {
       syslog(LOG_ERR,"Failed to assign XVCLock\n");

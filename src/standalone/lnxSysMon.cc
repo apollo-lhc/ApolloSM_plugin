@@ -119,6 +119,7 @@ int networkMonitor(int &inRate, int &outRate, int time /*in seconds*/){
   //open stat file
   FILE * statFile = fopen("/proc/net/netstat","r");
   if(NULL == statFile){
+    fprintf(stderr, "error opening /proc/net/netstat\n");
     return 1;
   }
 

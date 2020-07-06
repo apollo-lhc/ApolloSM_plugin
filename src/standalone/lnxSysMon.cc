@@ -141,7 +141,6 @@ int networkMonitor(int &inRate, int &outRate, int time /*in seconds*/){
   //re-assign running totals
   InOctets_running = InOctets;
   OutOctets_running = OutOctets;
-  //return rate
-  
+    
   return 0;
 }

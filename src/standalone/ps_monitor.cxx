@@ -265,8 +265,8 @@ int main(int argc, char ** argv) {
 	int inRate, outRate;
 	int networkMon = networkMonitor(inRate, outRate, polltime_in_seconds);
 	if(!networkMon){ //networkMonitor was successful
-	  //SM->RegWriteRegister("PL_MEM.NETWORK.INOCTET_RATE",uint32_t(inRate));
-	  //SM->RegWriteRegister("PL_MEM.NETWORK.OUTOCTET_RATE",uint32_t(outRate));
+	  SM->RegWriteRegister("PL_MEM.NETWORK.INOCTET_RATE",uint32_t(inRate));
+	  SM->RegWriteRegister("PL_MEM.NETWORK.OUTOCTET_RATE",uint32_t(outRate));
 	} else { //networkMonitor failed
 	  syslog(LOG_ERR, "Error in networkMonitor\n");
 	}

@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <string.h>
+#include <ctime>
 
 float MemUsage(){
   uint64_t totalMem,freeMem;
@@ -110,11 +111,13 @@ void Uptime(float & days, float &hours, float & minutes){
 }
 
 //returns inRate and outRate in bytes/second
-int networkMonitor(int &inRate, int &outRate, int time /*in seconds*/){
+int networkMonitor(int &inRate, int &outRate){
   //used to store values from file
   uint64_t InNoRoutes, InTruncatedPkts, InMcastPkts, OutMcastPkts, InBcastPkts, OutBcastPkts, InOctets, OutOctets;
+  time_t time_current;
   //static storage of values for diff
   static uint64_t InOctets_running, OutOctets_running;
+  static time_t time_running;
 
   //open stat file
   FILE * statFile = fopen("/proc/net/netstat","r");
@@ -131,16 +134,19 @@ int networkMonitor(int &inRate, int &outRate, int time /*in seconds*/){
   fgets(bufferOne, 2000, statFile); //using fgets to skip past line one
   fgets(bufferTwo, 2000, statFile); //using fgets to skip past line two
   fgets(bufferThree, 2000, statFile); //using fgets to skip past line three
+  time_current = time(NULL);
   fscanf(statFile, //file being scanned
   	 "%s %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64, //Formatting of line 3
   	 cpu_line, &InNoRoutes, &InTruncatedPkts, &InMcastPkts, &OutMcastPkts, &InBcastPkts, &OutBcastPkts, &InOctets, &OutOctets); //store into variables
   fclose(statFile); //close file
 
   //get rate
+  float time_dif = float(time_current - time_running);
+  time_running = time_current;
   uint64_t inDiff = InOctets - InOctets_running;
   uint64_t outDiff = OutOctets - OutOctets_running;
-  inRate = inDiff / time;
-  outRate = outDiff / time;
+  inRate = inDiff / time_dif;
+  outRate = outDiff / time_dif;
 
   //re-assign running totals
   InOctets_running = InOctets;

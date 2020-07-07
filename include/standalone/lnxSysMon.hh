@@ -3,5 +3,5 @@
 float MemUsage();
 float CPUUsage();
 void Uptime(float & days, float &hours, float & minutes);
-int networkMonitor(int &inRate, int&outRate, int time);
+int networkMonitor(int &inRate, int&outRate);
 #endif

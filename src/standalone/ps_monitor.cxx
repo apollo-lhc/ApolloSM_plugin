@@ -265,7 +265,7 @@ int main(int argc, char ** argv) {
 	mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
 	SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
 	networkMon_return = networkMonitor(inRate, outRate);
-	if(!networkMon){ //networkMonitor was successful
+	if(!networkMon_return){ //networkMonitor was successful
 	  SM->RegWriteRegister("PL_MEM.NETWORK.INOCTET_RATE",uint32_t(inRate));
 	  SM->RegWriteRegister("PL_MEM.NETWORK.OUTOCTET_RATE",uint32_t(outRate));
 	} else { //networkMonitor failed

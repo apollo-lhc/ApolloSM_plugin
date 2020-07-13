@@ -9,6 +9,24 @@
 #include <string.h>
 #include <ctime>
 
+#include <vector> //for vectors
+#include <boost/lexical_cast.hpp> //for lexical_cast
+
+std::vector<std::string> grabLine(FILE * file){
+  
+  std::vector<std::string> line;
+  bool running = true;
+  while(running){
+    char charArg;
+    char strArg[64] = "";
+    fscanf(file, "%s%c", strArg, &charArg);
+    std::string lineArg(strArg);
+    line.push_back(lineArg);
+    if(charArg == '\n') {running = false;} //end loop at newline
+  }
+  return line;
+}
+
 float MemUsage(){
   uint64_t totalMem,freeMem;
   //Open meminfo file
@@ -112,75 +130,92 @@ void Uptime(float & days, float &hours, float & minutes){
 
 //returns inRate and outRate in bytes/second
 int networkMonitor(int &inRate, int &outRate){
-  //used to store values from file
-  uint64_t InNoRoutes, InTruncatedPkts, InMcastPkts, OutMcastPkts, InBcastPkts, OutBcastPkts, InOctets, OutOctets;
-  time_t time_current;
-  //static storage of values for diff
+
+  //static storage of values for calculating differences
   static uint64_t InOctets_running, OutOctets_running;
   static time_t time_running;
 
   //open stat file
   FILE * statFile = fopen("/proc/net/netstat","r");
-  if(NULL == statFile){
-    fprintf(stderr, "error opening /proc/net/netstat\n");
-    return 1;
+  if(NULL == statFile){return 1;}
+
+  /* Read lineOne from statFile */
+  time_t time_current = time(NULL); //get current time
+  char lineTitle[10]; //to store line header
+  std::vector<std::string> lineOne;
+  bool line_captured = false;
+  fscanf(statFile /*file being scanned*/, "%s "/*store string*/, lineTitle /*store string into lineTitle*/); //first scan
+  while(!line_captured){
+    if((lineTitle[0] == 'I') && (lineTitle[1] == 'p') && (lineTitle[2] == 'E') && (lineTitle[3] == 'x') && (lineTitle[4] == 't') && (lineTitle[5] == ':')) { //lineTitle == "IpExt:"
+      lineOne = grabLine(statFile); //store line
+      line_captured = true; //end while loop
+    } else {
+      //move filepointer to newline
+      char throwAway = 'x';
+      while (throwAway != '\n'){
+  	throwAway = fgetc(statFile);
+      }
+    }
+    fscanf(statFile, "%s ", lineTitle); //get next line header
   }
 
-  //Read line 4 from statFile
-  char bufferOne[1000]; //buffers must be greater than line one characters ~2000
-  char bufferTwo[1000];
-  char bufferThree[1000];
-  char cpu_line[7];
-  fgets(bufferOne, 2000, statFile); //using fgets to skip past line one
-  fgets(bufferTwo, 2000, statFile); //using fgets to skip past line two
-  fgets(bufferThree, 2000, statFile); //using fgets to skip past line three
-  time_current = time(NULL);
-  fscanf(statFile, //file being scanned
-  	 "%s %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64, //Formatting of line 3
-  	 cpu_line, &InNoRoutes, &InTruncatedPkts, &InMcastPkts, &OutMcastPkts, &InBcastPkts, &OutBcastPkts, &InOctets, &OutOctets); //store into variables
+  /* Read lineTwo from statFile */
+  std::vector<std::string> lineTwo;
+  line_captured = false;
+  while(!line_captured){
+    if((lineTitle[0] == 'I') && (lineTitle[1] == 'p') && (lineTitle[2] == 'E') && (lineTitle[3] == 'x') && (lineTitle[4] == 't') && (lineTitle[5] == ':')) { //lineTitle == "IpExt:"
+      lineTwo = grabLine(statFile); //store line
+      line_captured = true; //end while loop
+    } else {
+      //move filepointer to newline
+      char throwAway = 'x';
+      while (throwAway != '\n'){
+  	throwAway = fgetc(statFile);
+      }
+    }
+    fscanf(statFile, "%s ", lineTitle); //get next line header
+  }
   fclose(statFile); //close file
 
-  //get rate
-  float time_dif = float(time_current - time_running);
-  time_running = time_current;
-  uint64_t inDiff = InOctets - InOctets_running;
-  uint64_t outDiff = OutOctets - OutOctets_running;
-  inRate = inDiff / time_dif;
-  outRate = outDiff / time_dif;
+  /* Error checking */
+  if(lineOne.size() != lineTwo.size()){
+    return 2;
+  }
 
-  //re-assign running totals
+  /* Determine which line is made of headers and which is made of values */
+  std::vector<std::string> headers, values;
+  if(isdigit(lineOne[0][0]) != 0){
+    headers = lineTwo;
+    values = lineOne;
+  } else {
+    headers = lineOne;
+    values = lineTwo;
+  }
+
+  /* Search headers for matching strings, then assign InOctet and OutOctet from the corresponding index in values */
+  uint64_t InOctets = 0;
+  uint64_t OutOctets = 0;
+  for (uint i = 0; i < headers.size(); i++) { //iterate through headers
+    if (headers[i] == "InOctets") {
+      InOctets = boost::lexical_cast<uint64_t>(values[i].c_str());
+    }
+    if (headers[i] == "OutOctets") {
+      OutOctets = boost::lexical_cast<uint64_t>(values[i].c_str());
+    }      
+  } 
+
+  /* calculate rate of change for InOctets and OutOctets */
+  //Get differences
+  float time_diff = float(time_current - time_running);
+  uint64_t InOctets_diff = InOctets - InOctets_running;
+  uint64_t OutOctets_diff = OutOctets - OutOctets_running;
+  //Re-assign running totals
+  time_running = time_current;
   InOctets_running = InOctets;
   OutOctets_running = OutOctets;
+  //Get rate of change
+  if (time_diff != 0) { //Do not divide by 0
+    inRate = InOctets_diff / time_diff;
+    outRate = OutOctets_diff / time_diff;}
   return 0;
 }
-cp /home/mikekremer/work/SM_ZYNQ_FW/os/centos/mods/build_Graphite.sh /home/mikekremer/work/SM_ZYNQ_FW/os/centos/image/tmp//Graphite/
-sudo cp /home/mikekremer/work/misc/ApolloMonitor.cc /home/mikekremer/work/SM_ZYNQ_FW/os/centos/image/tmp//Graphite/src/ApolloMonitor/ApolloMonitor.cc
-sudo chroot /home/mikekremer/work/SM_ZYNQ_FW/os/centos/image /usr/local/bin/qemu-arm-static /bin/bash /tmp/Graphite/build_Graphite.sh
-g++ -c -o build/ApolloMonitor/ApolloMonitor.o src/ApolloMonitor/ApolloMonitor.cc -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic -I/opt/BUTool/include -I/opt/cactus/include 
-  In file included from include/ApolloMonitor/ApolloMonitor.hh:3:0,
-  from src/ApolloMonitor/ApolloMonitor.cc:1:
-  /opt/BUTool/include/ApolloSM/ApolloSM.hh:12:83: error: extra ‘;’ [-Werror=pedantic]
-  ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n");
-                                                                                   ^
-  In file included from include/ApolloMonitor/ApolloMonitor.hh:1:0,
-  from src/ApolloMonitor/ApolloMonitor.cc:1:
-  include/base/SensorFactory.hh:18:16: error: ‘{anonymous}::registered’ defined but not used [-Werror=unused-variable]
-  const bool registered = SensorFactory::Instance()->Register(type,             \
-                ^
-							      include/ApolloMonitor/ApolloMonitor.hh:19:1: note: in expansion of macro ‘RegisterSensor’
-							      RegisterSensor(ApolloMonitor,"ApolloMonitor")
- ^
-							      cc1plus: all warnings being treated as errors
-							      make: *** [build/ApolloMonitor/ApolloMonitor.o] Error 1
-g++ -c -o build/graphite_monitor.o src/graphite_monitor.cxx -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic
-g++ -c -o build/base/Sensor.o src/base/Sensor.cc -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic
-g++ -c -o build/base/daemon.o src/base/daemon.cc -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic
-g++ -c -o build/base/SensorFactory.o src/base/SensorFactory.cc -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic
-							      src/base/SensorFactory.cc:8:13: error: ‘bool CLIArgsValid(const string&, const string&)’ defined but not used [-Werror=unused-function]
-							      static bool CLIArgsValid(std::string const & flag,std::string const & full_flag){
-             ^
-	     cc1plus: all warnings being treated as errors
-	     make: *** [build/base/SensorFactory.o] Error 1
-	     make: *** [/home/mikekremer/work/SM_ZYNQ_FW/os/centos/image/opt//Graphite_Monitor] Error 2
-FAILED_MAKE_CENTOS
-[mikekremer@tesla centos]$ 

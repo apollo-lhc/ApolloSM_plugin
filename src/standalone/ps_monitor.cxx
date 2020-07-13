@@ -248,6 +248,8 @@ int main(int argc, char ** argv) {
 
     //Do one read of users file before we start our loop
     uint32_t superUsers,normalUsers;
+    int inRate, outRate;
+    int networkMon_return = networkMonitor(inRate, outRate); //run once to burn invalid first values
     uCnt.GetUserCounts(superUsers,normalUsers);
     SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
     SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
@@ -262,13 +264,12 @@ int main(int argc, char ** argv) {
 	SM->RegWriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
 	mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
 	SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
-	int inRate, outRate;
-	int networkMon = networkMonitor(inRate, outRate);
+	networkMon_return = networkMonitor(inRate, outRate);
 	if(!networkMon){ //networkMonitor was successful
 	  SM->RegWriteRegister("PL_MEM.NETWORK.INOCTET_RATE",uint32_t(inRate));
 	  SM->RegWriteRegister("PL_MEM.NETWORK.OUTOCTET_RATE",uint32_t(outRate));
 	} else { //networkMonitor failed
-	  syslog(LOG_ERR, "Error in networkMonitor\n");
+	  syslog(LOG_ERR, "Error in networkMonitor, return %d\n", networkMon_return);
 	}
 	float days,hours,minutes;
 	Uptime(days,hours,minutes);

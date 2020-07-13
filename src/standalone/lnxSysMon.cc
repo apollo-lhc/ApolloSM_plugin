@@ -153,3 +153,34 @@ int networkMonitor(int &inRate, int &outRate){
   OutOctets_running = OutOctets;
   return 0;
 }
+cp /home/mikekremer/work/SM_ZYNQ_FW/os/centos/mods/build_Graphite.sh /home/mikekremer/work/SM_ZYNQ_FW/os/centos/image/tmp//Graphite/
+sudo cp /home/mikekremer/work/misc/ApolloMonitor.cc /home/mikekremer/work/SM_ZYNQ_FW/os/centos/image/tmp//Graphite/src/ApolloMonitor/ApolloMonitor.cc
+sudo chroot /home/mikekremer/work/SM_ZYNQ_FW/os/centos/image /usr/local/bin/qemu-arm-static /bin/bash /tmp/Graphite/build_Graphite.sh
+g++ -c -o build/ApolloMonitor/ApolloMonitor.o src/ApolloMonitor/ApolloMonitor.cc -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic -I/opt/BUTool/include -I/opt/cactus/include 
+  In file included from include/ApolloMonitor/ApolloMonitor.hh:3:0,
+  from src/ApolloMonitor/ApolloMonitor.cc:1:
+  /opt/BUTool/include/ApolloSM/ApolloSM.hh:12:83: error: extra ‘;’ [-Werror=pedantic]
+  ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n");
+                                                                                   ^
+  In file included from include/ApolloMonitor/ApolloMonitor.hh:1:0,
+  from src/ApolloMonitor/ApolloMonitor.cc:1:
+  include/base/SensorFactory.hh:18:16: error: ‘{anonymous}::registered’ defined but not used [-Werror=unused-variable]
+  const bool registered = SensorFactory::Instance()->Register(type,             \
+                ^
+							      include/ApolloMonitor/ApolloMonitor.hh:19:1: note: in expansion of macro ‘RegisterSensor’
+							      RegisterSensor(ApolloMonitor,"ApolloMonitor")
+ ^
+							      cc1plus: all warnings being treated as errors
+							      make: *** [build/ApolloMonitor/ApolloMonitor.o] Error 1
+g++ -c -o build/graphite_monitor.o src/graphite_monitor.cxx -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic
+g++ -c -o build/base/Sensor.o src/base/Sensor.cc -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic
+g++ -c -o build/base/daemon.o src/base/daemon.cc -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic
+g++ -c -o build/base/SensorFactory.o src/base/SensorFactory.cc -Iinclude -std=c++11 -fPIC -Wall -g -O3 -Werror -Wpedantic
+							      src/base/SensorFactory.cc:8:13: error: ‘bool CLIArgsValid(const string&, const string&)’ defined but not used [-Werror=unused-function]
+							      static bool CLIArgsValid(std::string const & flag,std::string const & full_flag){
+             ^
+	     cc1plus: all warnings being treated as errors
+	     make: *** [build/base/SensorFactory.o] Error 1
+	     make: *** [/home/mikekremer/work/SM_ZYNQ_FW/os/centos/image/opt//Graphite_Monitor] Error 2
+FAILED_MAKE_CENTOS
+[mikekremer@tesla centos]$ 

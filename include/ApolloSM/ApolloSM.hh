@@ -9,7 +9,7 @@
 #include <iostream>
 
 namespace BUException{
-  ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n");
+  ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n")
 }
 
 #include <stdint.h>

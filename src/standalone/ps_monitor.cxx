@@ -278,8 +278,8 @@ int main(int argc, char ** argv) {
 	networkMon_return = networkMonitor(inRate, outRate);
 	if(!networkMon_return){ //networkMonitor was successful
 	  try {
-	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0_RX",uint32_t(inRate));
-	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0_TX",uint32_t(outRate));
+	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0.RX",uint32_t(inRate));
+	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0.TX",uint32_t(outRate));
 	  }catch(std::exception const & e){
 	    syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	  }

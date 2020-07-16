@@ -14,7 +14,7 @@
 //#define DEFAULT_RUN_DIR     "/opt/address_tables/"
 #define DEFAULT_CONNECTION_FILE "/opt/address_tables/connections.xml"
 #define DEFAULT_CM_ID           1
-#define DEFAULT_CM_POWER_GOOD   "CM.CM1.CTRL.PWR_GOOD"
+#define DEFAULT_CM_POWER_GOOD   "CM.CM_1.CTRL.PWR_GOOD"
 #define DEFAULT_CM_POWER_UP     true // note: command modules power up variable actually does nothing in this program currently
 
 // ================================================================================
@@ -28,8 +28,8 @@ int main(int argc, char** argv) {
   if((noArgs != argc) && (cmFound != argc) && (cmAndPowerGood != argc)) {
     // wrong number args
     printf("Program takes 0, 1, or 2 arguments\n");
-    printf("ex: for 1 argument to power up CM2: ./cmpwrup 2\n");
-    printf("ex: for 2 arguments to power up CM2: ./cmpwrup 2 CM.CM2.CTRL.PWR_GOOD\n");
+    printf("ex: for 1 argument to power up CM_2: ./cmpwrup 2\n");
+    printf("ex: for 2 arguments to power up CM_2: ./cmpwrup 2 CM.CM_2.CTRL.PWR_GOOD\n");
     //printf("Terminating program\n");
     return -1;
   }
@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
     case cmFound:
       {
 	int ID                = std::stoi(argv[1]);
-	std::string powerGood = "CM.CM" + std::to_string(ID) + ".CTRL.PWR_GOOD";
+	std::string powerGood = "CM.CM_" + std::to_string(ID) + ".CTRL.PWR_GOOD";
 	commandModule->ID        = ID;
 	commandModule->powerGood = powerGood;
 	commandModule->powerUp   = true;
@@ -98,8 +98,8 @@ int main(int argc, char** argv) {
 //    default:
 //      {   
 //	printf("Program takes 0, 1, or 2 arguments\n");
-//	printf("ex for 1 argument to power up CM2: ./cmpwrup 2\n");
-//	printf("ex for 2 arguments to power up CM2: ./cmpwrup 2 CM.CM2.CTRL.PWR_GOOD\n");
+//	printf("ex for 1 argument to power up CM_2: ./cmpwrup 2\n");
+//	printf("ex for 2 arguments to power up CM_2: ./cmpwrup 2 CM.CM_2.CTRL.PWR_GOOD\n");
 //	printf("Terminating program\n");
 //	return 0;
 //      }    

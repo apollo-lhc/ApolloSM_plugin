@@ -39,6 +39,7 @@ public:
   void DebugDump(std::ostream & output = std::cout);
 
   void unblockAXI();
+  void restartCMuC(std::string CM_ID);
 
 private:  
   IPBusStatus * statusDisplay;

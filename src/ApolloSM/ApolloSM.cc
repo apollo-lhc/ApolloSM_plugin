@@ -162,7 +162,9 @@ void ApolloSM::unblockAXI() {
   RegWriteAction("C2C1_AXI_FW.UNBLOCK");
   RegWriteAction("C2C1_AXILITE_FW.UNBLOCK");
   RegWriteAction("C2C2_AXI_FW.UNBLOCK");
-  RegWriteAction("C2C2_AXILITE_FW.UNBLOCK");  
+  RegWriteAction("C2C2_AXILITE_FW.UNBLOCK");
+  RegWriteAction("CM.CM_1.C2C.CNT.RESET_COUNTERS");
+  RegWriteAction("CM.CM_2.C2C.CNT.RESET_COUNTERS");
   return;
 }
 

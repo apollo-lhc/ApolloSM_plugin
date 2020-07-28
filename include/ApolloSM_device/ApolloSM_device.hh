@@ -53,6 +53,7 @@ namespace BUTool{
     CommandReturn::status CloseFile(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status MrWuRegisterDump(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status StatusDisplay(std::vector<std::string>,std::vector<uint64_t>);
+    CommandReturn::status DumpGraphite(std::vector<std::string>,std::vector<uint64_t>);
 
     CommandReturn::status svfplayer(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status UART_Term(std::vector<std::string>,std::vector<uint64_t>);
@@ -73,7 +74,7 @@ namespace BUTool{
     //Command Module
     CommandReturn::status CMPowerUP(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status CMPowerDown(std::vector<std::string>,std::vector<uint64_t>);
-
+    CommandReturn::status restartCMuC(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status DumpDebug(std::vector<std::string>,std::vector<uint64_t>);
 
   };

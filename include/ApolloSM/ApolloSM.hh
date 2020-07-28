@@ -9,7 +9,7 @@
 #include <iostream>
 
 namespace BUException{
-  ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n");
+  ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n")
 }
 
 #include <stdint.h>
@@ -24,8 +24,8 @@ public:
   void GenerateStatusDisplay(size_t level,
 			     std::ostream & stream,
 			     std::string const & singleTable);
-
   std::string GenerateHTMLStatus(std::string filename, size_t level, std::string);
+  std::string GenerateGraphiteStatus(size_t level, std::string);
   
   void UART_Terminal(std::string const & ttyDev);
 
@@ -39,12 +39,12 @@ public:
   void DebugDump(std::ostream & output = std::cout);
 
   void unblockAXI();
-  //  void throwException(std::string message);
   
   void EnableEyeScan(std::string baseNode, uint32_t prescale);
   void SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t horzOffset);
   float SingleEyeScan(std::string baseNode, uint32_t maxPrescale);
   std::vector<eyescanCoords> EyeScan(std::string baseNode, double horzIncrement, int vertIncrement, uint32_t maxPrescale);
+  void restartCMuC(std::string CM_ID);
 
 private:  
   IPBusStatus * statusDisplay;

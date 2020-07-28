@@ -39,6 +39,7 @@
 #include <ApolloSM/uioLabelFinder.hh>
 #include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
 #include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
+#include <ApolloSM/ApolloSM.hh>
 
 //extern int errno;
 
@@ -51,14 +52,6 @@
 // ====================================================================================================
 // signal handling
 Daemon xvc_serverDaemon;
-//bool static volatile * loop; // xvc_server, unlike the other daemons, uses loop in two diferent places, so we need this to point to xvc_serverDaemon loop
-// void static signal_handler(int const signum) {
-//   if(SIGINT == signum || SIGTERM == signum) {
-//     loop = false;
-//   }
-// }
-
-// ==================================================
 
 #define MAP_SIZE      0x10000
 
@@ -67,7 +60,8 @@ typedef struct  {
   uint32_t tms_offset;
   uint32_t tdi_offset;
   uint32_t tdo_offset;
-  uint32_t ctrl_offset;
+  uint32_t ctrl_offset; //bit 1 is a go signal, bit 2 is a busy signal
+  uint32_t lock_offset;
 } sXVC;
 
 sXVC volatile * pXVC = NULL;
@@ -294,64 +288,15 @@ int main(int argc, char **argv) {
   // ============================================================================
   // Deamon book-keeping
   // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
-  //  Daemon xvc_serverDaemon;
   xvc_serverDaemon.daemonizeThisProgram(pidFileName, runPath);
-
-//  pid_t pid, sid;
-//  pid = fork();
-//  if(pid < 0){
-//    //Something went wrong.
-//    //log something
-//    exit(EXIT_FAILURE);
-//  }else if(pid > 0){
-//    //We are the parent and created a child with pid pid
-////    std::string pidFileName = DEFAULT_PID_FILE;
-////    pidFileName+=daemonName;
-////    pidFileName+=".pid";
-//    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-//    fprintf(pidFile,"%d\n",pid);
-//    fclose(pidFile);
-//    exit(EXIT_SUCCESS);
-//  }else{
-//    // I'm the child!
-//    openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
-//  }
-//  
-//  
-//  //Change the file mode mask to allow read/write
-//  umask(0);
-//  
-//  //  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
-//  syslog(LOG_INFO,"starting %s", daemonName);
-//  
-//
-//  // create new SID for the daemon.
-//  sid = setsid();
-//  if (sid < 0) {
-//    syslog(LOG_ERR,"Failed to change SID\n");
-//    exit(EXIT_FAILURE);
-//  }
-//  syslog(LOG_INFO,"Set SID to %d\n",sid);
-//
-//  //Move to RUN_DIR
-//  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
-//    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
-//    exit(EXIT_FAILURE);
-//  }
-//  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
-//
-//  //Everything looks good, close the standard file fds.
-//  close(STDIN_FILENO);
-//  close(STDOUT_FILENO);
-//  close(STDERR_FILENO);
-
   // ============================================================================
 
 
   //Find UIO number
-  uioN = label2uio(uioLabel.c_str());
+  std::string parentLabel = uioLabel.substr(0,uioLabel.find('.'));
+  uioN = label2uio(parentLabel.c_str());
   if(uioN < 0){
-    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",uioLabel.c_str());
+    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",parentLabel.c_str());
     return 1;      
   }
   size_t const uioFileNameLength = 1024;
@@ -366,10 +311,30 @@ int main(int argc, char **argv) {
     syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
     return 1;            
   }
-  
-  pXVC = (sXVC volatile*) mmap(NULL,sizeof(sXVC),
+
+  //Getting offset
+  ApolloSM * SM = new ApolloSM();
+  if(NULL == SM){
+    syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+  } else{
+    syslog(LOG_INFO,"Created new ApolloSM\n");
+  }
+  std::vector<std::string> arg;
+  arg.push_back("connections.xml");
+  SM->Connect(arg);
+
+  uint32_t uio_offset = SM->GetRegAddress(xvcName) - SM->GetRegAddress(xvcName.substr(0,xvcName.find('.')));
+  if(NULL != SM){
+    delete SM;
+  }
+   
+  pXVC = (sXVC volatile*) mmap(NULL, sizeof(sXVC) + uio_offset*sizeof(uint32_t),
 			       PROT_READ|PROT_WRITE, MAP_SHARED,
-			       fdUIO, 0x0);
+			       fdUIO, 0x0);// + uio_offset*sizeof(uint32_t));
+
+  pXVC += (uio_offset * 4) / sizeof(sXVC);
+
+
   if(MAP_FAILED == pXVC){
     syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
     return 1;            
@@ -379,45 +344,57 @@ int main(int argc, char **argv) {
 
 
   //Setup XVCLock UIO
-  int fdXVCLock = -1;
-  int uioNXVCLock = label2uio("PL_MEM");
-  if(uioNXVCLock < 0){
-    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n","PL_MEM");
-    return 1;      
-  }
-  uioFileName = new char[uioFileNameLength+1];
-  memset(uioFileName,0x0,uioFileNameLength+1);
-  snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioNXVCLock);
+  //checking plxvc vs xvc local
+  if((xvcName.compare("XVC_LOCAL"))!=0){ //If xvcName is not 'XVC_LOCAL'
+    XVCLock = &pXVC->lock_offset;
+    if (XVCLock == NULL) {
+      syslog(LOG_ERR,"Failed to assign XVCLock\n");
+    } else {
+      syslog(LOG_ERR,"XVCLock found");
+    }
+  } else {
+
+    int fdXVCLock = -1;
+    int uioNXVCLock = label2uio("PL_MEM");
+    if(uioNXVCLock < 0){
+      syslog(LOG_ERR,"Failed to find UIO device with label %s.\n","PL_MEM");
+      return 1;      
+    }
+    uioFileName = new char[uioFileNameLength+1];
+    memset(uioFileName,0x0,uioFileNameLength+1);
+    snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",uioNXVCLock);
     
-  syslog(LOG_ERR,"Found %s @ %s.\n","PL_MEM",uioFileName);
-  //Open UIO device
-  fdXVCLock = open(uioFileName,O_RDWR);
-  if(fdXVCLock < 0){
-    syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
-    return 1;            
-  }
-  uint32_t offset = 0;
-  if(!xvcName.compare("XVC1")){
-    offset=0x7e5;
-  }else if(!xvcName.compare("XVC2")){
-    offset=0x7e6;
-  }else if(!xvcName.compare("XVC_LOCAL")){
-    offset=0x7e7;
-  }
-  if(offset){  
-    XVCLock = ((uint32_t volatile*) mmap(NULL,sizeof(uint32_t)*0x800,
-					 PROT_READ|PROT_WRITE, MAP_SHARED,
-					 fdXVCLock,0x0))  + offset;
-    if(MAP_FAILED == XVCLock){
-      syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
+    syslog(LOG_ERR,"Found %s @ %s.\n","PL_MEM",uioFileName);
+    //Open UIO device
+    fdXVCLock = open(uioFileName,O_RDWR);
+    if(fdXVCLock < 0){
+      syslog(LOG_ERR,"Failed to open %s.\n",uioFileName);
       return 1;            
     }
-    syslog(LOG_ERR,"Found XVC lock register @ 0x%04X\n",offset);    
-  }else{
-    syslog(LOG_ERR,"No lock register found.\n");        
-    XVCLock = &offset;
+    uint32_t offset = 0;
+    if(!xvcName.compare("XVC1")){
+      offset=0x7e5;
+    }else if(!xvcName.compare("XVC2")){
+      offset=0x7e6;
+    }else if(!xvcName.compare("XVC_LOCAL")){
+      offset=0x7e7;
+    }
+    if(offset){  
+      XVCLock = ((uint32_t volatile*) mmap(NULL,sizeof(uint32_t)*0x800,
+					   PROT_READ|PROT_WRITE, MAP_SHARED,
+					   fdXVCLock,0x0))  + offset;
+      if(MAP_FAILED == XVCLock){
+	syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
+	return 1;            
+      }
+      syslog(LOG_ERR,"Found XVC lock register @ 0x%04X\n",offset);    
+    }else{
+      syslog(LOG_ERR,"No lock register found.\n");        
+      XVCLock = &offset;
+    }
+    delete [] uioFileName;  
   }
-  delete [] uioFileName;  
+
 
   opterr = 0;
   s = socket(AF_INET, SOCK_STREAM, 0);
@@ -461,17 +438,6 @@ int main(int argc, char **argv) {
   struct sigaction sa_INT,sa_TERM,old_sa;
   xvc_serverDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   xvc_serverDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
-
-//  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-//  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-//  //setup SA
-//  sa_INT.sa_handler  = signal_handler;
-//  sa_TERM.sa_handler = signal_handler;
-//  sigemptyset(&sa_INT.sa_mask);
-//  sigemptyset(&sa_TERM.sa_mask);
-//  sigaction(SIGINT,  &sa_INT , &old_sa);
-//  sigaction(SIGTERM, &sa_TERM, NULL);
-  //loop = &(xvc_serverDaemon.loop);
   xvc_serverDaemon.SetLoop(true);
 
   while (xvc_serverDaemon.GetLoop()) {

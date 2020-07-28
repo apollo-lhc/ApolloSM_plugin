@@ -117,5 +117,3 @@ void CM::SetUp(ApolloSM * SM) {
   // Print firmware build date for FPGA
   //     printBuildDate(SM, allCMs[i].ID);
 }
-
-

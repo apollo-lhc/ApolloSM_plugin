@@ -303,16 +303,6 @@ int main(int argc, char** argv) {
   // struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
   SM_bootDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   SM_bootDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
-  //  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
- //  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
- //  //setup SA
- //  sa_INT.sa_handler  = signal_handler;
- //  sa_TERM.sa_handler = signal_handler;
- //  sigemptyset(&sa_INT.sa_mask);
- //  sigemptyset(&sa_TERM.sa_mask);
- //  sigaction(SIGINT,  &sa_INT , &old_sa);
- //  sigaction(SIGTERM, &sa_TERM, NULL);
-  // sigaction(SIGTERM, &sa_TERM, &oldTERM_sa);
   SM_bootDaemon.SetLoop(true);
 
   // ====================================
@@ -344,7 +334,7 @@ int main(int argc, char** argv) {
     // ====================================
     // Turn on CM uC      
     if (powerupCMuC){
-      SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",1);
+      SM->RegWriteRegister("CM.CM_1.CTRL.ENABLE_UC",1);
       syslog(LOG_INFO,"Powering up CM uC\n");
       sleep(powerupTime);
     }
@@ -382,7 +372,7 @@ int main(int argc, char** argv) {
       //      if(true == sensorsThroughZynq) {
       if(sensorsThroughZynq) {
 	temperatures temps;  
-      	if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
+      	if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
 	  try{
 	    temps = sendAndParse(SM);
 	  }catch(std::exception & e){
@@ -397,7 +387,7 @@ int main(int argc, char** argv) {
 	    temps.FPGATemp = 0;
 	    temps.REGTemp = 0;
 	  }
-	  CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
+	  CM_running = SM->RegReadRegister("CM.CM_1.CTRL.PWR_GOOD");
 	  
 	  sendTemps(SM, temps);
 	  if(!temps.validData){
@@ -449,7 +439,8 @@ int main(int argc, char** argv) {
   //make sure the CM is off
   //Shutdown the command module (if up)
   SM->PowerDownCM(1,5);
-  SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",0);
+  SM->RegWriteRegister("CM.CM_1.CTRL.ENABLE_UC",0);
+
   
   //If we are shutting down, do the handshanking.
   if(inShutdown){
@@ -489,7 +480,6 @@ int main(int argc, char** argv) {
 
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-//  sigaction(SIGTERM, &oldTERM_sa, NULL);
   syslog(LOG_INFO,"SM boot Daemon ended\n");
 
   return 0;

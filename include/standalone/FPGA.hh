@@ -17,13 +17,6 @@ public:
   std::string name;
   std::string cm;
   bool program;
-  std::string svfFile;
-  std::string xvc;
-  std::string c2c;
-  std::string done;
-  std::string init;
-  std::string axi;
-  std::string axilite;
 private:
   bool checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal);
   int bringupCMFPGAs(ApolloSM * SM);

@@ -14,12 +14,14 @@ ApolloSM::~ApolloSM(){
 void ApolloSM::GenerateStatusDisplay(size_t level,
 				     std::ostream & stream=std::cout,
 				     std::string const & singleTable = std::string("")){
+  statusDisplay->Clear();
   statusDisplay->Report(level,stream,singleTable);
+  statusDisplay->Clear();
 }
 
 
 std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = size_t(1), std::string type = std::string("HTML")) {
-
+  statusDisplay->Clear();
   //SETUP
   std::ofstream HTML;
   HTML.open(filename);
@@ -49,8 +51,28 @@ std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = si
   //END
   HTML.close();
   statusDisplay->UnsetHTML();
+  statusDisplay->Clear();
   return "GOOD";
 }
+
+std::string ApolloSM::GenerateGraphiteStatus(size_t level = size_t(1), std::string table="") {
+  statusDisplay->Clear();
+  //SETUP
+  std::stringstream output;
+
+  //Setting Status Display
+  statusDisplay->SetGraphite();
+
+  //Get report
+  statusDisplay->Report(level,output,table);
+
+  //END
+  statusDisplay->UnsetGraphite();
+  statusDisplay->Clear();
+  return output.str();
+}
+
+
 
 bool ApolloSM::PowerUpCM(int CM_ID, int wait /*seconds*/){
   const uint32_t RUNNING_STATE = 3;
@@ -59,7 +81,7 @@ bool ApolloSM::PowerUpCM(int CM_ID, int wait /*seconds*/){
     e.Append("Bad CM_ID");
     throw e;
   }
-  std::string CM_CTRL("CM.CM");
+  std::string CM_CTRL("CM.CM_");
   switch (CM_ID){
   case 2:
     CM_CTRL+="2";
@@ -101,7 +123,7 @@ bool ApolloSM::PowerDownCM(int CM_ID, int wait /*seconds*/){
     e.Append("Bad CM_ID");
     throw e;
   }
-  std::string CM_CTRL("CM.CM");
+  std::string CM_CTRL("CM.CM_");
   switch (CM_ID){
   case 2:
     CM_CTRL+="2";
@@ -142,4 +164,11 @@ void ApolloSM::unblockAXI() {
   RegWriteAction("C2C2_AXI_FW.UNBLOCK");
   RegWriteAction("C2C2_AXILITE_FW.UNBLOCK");  
   return;
+}
+
+void ApolloSM::restartCMuC(std::string CM_ID) {
+  std::string command_string = "CM.CM_" + CM_ID + ".CTRL.ENABLE_UC";
+  RegWriteRegister(command_string,1);
+  usleep(10000); //Wait 10ms
+  RegWriteRegister(command_string,0);
 }

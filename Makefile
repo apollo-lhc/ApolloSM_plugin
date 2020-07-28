@@ -141,6 +141,8 @@ install: all
 	 install -b -m 775 ./lib/* ${INSTALL_PATH}/lib
 	 install -m 775 -d ${INSTALL_PATH}/bin
 	 install -b -m 775 ./bin/* ${INSTALL_PATH}/bin
+	 install -m 775 -d ${INSTALL_PATH}/include
+	 cp -r include/* ${INSTALL_PATH}/include
 
 
 
@@ -153,6 +155,15 @@ obj/%.o : src/%.cxx
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
+
+#specific rule for peek and pokeUIO
+bin/peekUIO.o : obj/standalone/peekUIO.o 
+	mkdir -p bin
+	${CXX} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system -lpug $^ -o $@
+bin/pokeUIO.o : obj/standalone/pokeUIO.o 
+	mkdir -p bin
+	${CXX} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system -lpug $^ -o $@
+
 
 bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
 	mkdir -p bin

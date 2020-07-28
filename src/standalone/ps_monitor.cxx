@@ -41,15 +41,6 @@
 
 
 
-// ====================================================================================================
-// Kill program if it is in background
-//bool static volatile loop;
-//
-//void static signal_handler(int const signum) {
-//  if(SIGINT == signum || SIGTERM == signum) {
-//    loop = false;
-//  }
-//}
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -118,51 +109,6 @@ int main(int argc, char ** argv) {
   Daemon ps_monitorDaemon;
   ps_monitorDaemon.daemonizeThisProgram(pidFileName, runPath);
 
-//  pid_t pid, sid;
-//  pid = fork();
-//  if(pid < 0){
-//    //Something went wrong.
-//    //log something
-//    exit(EXIT_FAILURE);
-//  }else if(pid > 0){
-//    //We are the parent and created a child with pid pid
-//    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-//    fprintf(pidFile,"%d\n",pid);
-//    fclose(pidFile);
-//    exit(EXIT_SUCCESS);
-//  }else{
-//    // I'm the child!
-//    //open syslog
-//    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
-//  }
-//
-//  
-//  //Change the file mode mask to allow read/write
-//  umask(0);
-//
-//  //Start logging
-//  syslog(LOG_INFO,"Opened log file\n");
-//
-//  // create new SID for the daemon.
-//  sid = setsid();
-//  if (sid < 0) {
-//    syslog(LOG_ERR,"Failed to change SID\n");
-//    exit(EXIT_FAILURE);
-//  }
-//  syslog(LOG_INFO,"Set SID to %d\n",sid);
-//
-//  //Move to RUN_DIR
-//  if ((chdir(runPath.c_str())) < 0) {
-//    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
-//    exit(EXIT_FAILURE);
-//  }
-//  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
-//
-//  //Everything looks good, close the standard file fds.
-//  close(STDIN_FILENO);
-//  close(STDOUT_FILENO);
-//  close(STDERR_FILENO);
-
   
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
@@ -176,15 +122,6 @@ int main(int argc, char ** argv) {
   struct sigaction sa_INT,sa_TERM,old_sa;
   ps_monitorDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   ps_monitorDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
-//  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-//  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-//  //setup SA
-//  sa_INT.sa_handler  = signal_handler;
-//  sa_TERM.sa_handler = signal_handler;
-//  sigemptyset(&sa_INT.sa_mask);
-//  sigemptyset(&sa_TERM.sa_mask);
-//  sigaction(SIGINT,  &sa_INT , &old_sa);
-//  sigaction(SIGTERM, &sa_TERM, NULL);
   ps_monitorDaemon.SetLoop(true);
 
   // ==================================================
@@ -237,33 +174,64 @@ int main(int argc, char ** argv) {
 
     //Do one read of users file before we start our loop
     uint32_t superUsers,normalUsers;
+    int inRate, outRate;
+    int networkMon_return = networkMonitor(inRate, outRate); //run once to burn invalid first values
     uCnt.GetUserCounts(superUsers,normalUsers);
-    SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
-    SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
- 
-    while(ps_monitorDaemon.GetLoop()) {
+    try {
+      SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
+      SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
+    }catch(std::exception const & e){
+      syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
+    }
+    while(loop){
       readSet_ret = readSet;
       int pselRet = pselect(maxFDp1,&readSet_ret,NULL,NULL,&timeout,NULL);
       if(0 == pselRet){
 	//timeout, do CPU/mem monitoring
 	uint32_t mon;
 	mon = MemUsage()*100; //Scale the value by 100 to get two decimal places for reg   
-	SM->RegWriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
+	try {
+	  SM->RegWriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
+	}catch(std::exception const & e){
+	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
+	}
 	mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
-	SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
+	try {
+	  SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
+	}catch(std::exception const & e){
+	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
+	}
+	networkMon_return = networkMonitor(inRate, outRate);
+	if(!networkMon_return){ //networkMonitor was successful
+	  try {
+	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0.RX",uint32_t(inRate));
+	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0.TX",uint32_t(outRate));
+	  }catch(std::exception const & e){
+	    syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
+	  }
+	} else { //networkMonitor failed
+	  syslog(LOG_ERR, "Error in networkMonitor, return %d\n", networkMon_return);
+	}
 	float days,hours,minutes;
 	Uptime(days,hours,minutes);
-	SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.DAYS",uint32_t(100.0*days));
-	SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.HOURS",uint32_t(100.0*hours));
-	SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.MINS",uint32_t(100.0*minutes));
-	
+	try {
+	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.DAYS",uint32_t(100.0*days));
+	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.HOURS",uint32_t(100.0*hours));
+	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.MINS",uint32_t(100.0*minutes));
+	} catch(std::exception const & e){
+	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
+	}
       }else if(pselRet > 0){
 	//a FD is readable. 
 	if(FD_ISSET(fdUserCount,&readSet_ret)){
 	  if(uCnt.ProcessWatchEvent()){
 	    uCnt.GetUserCounts(superUsers,normalUsers);
-	    SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
-	    SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);
+	    try {
+	      SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
+	      SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);
+	    }catch(std::exception const & e){
+	      syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
+	    }
 	  }
 	}
       }else{

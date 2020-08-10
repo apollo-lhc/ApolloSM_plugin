@@ -25,7 +25,7 @@
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/htmlStatus"
-#define DEFAULT_RUN_DIR     "/opt/address_tables/"
+#define DEFAULT_RUN_DIR     "/opt/address_table/"
 #define DEFAULT_PID_FILE    "/var/run/htmlStatus.pid"
 
 #define DEFAULT_OUTFILE     "/var/www/lighttpd/index.html"

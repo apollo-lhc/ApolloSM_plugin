@@ -36,7 +36,7 @@
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
-#define DEFAULT_RUN_DIR     "/opt/address_tables/"
+#define DEFAULT_RUN_DIR     "/opt/address_table/"
 #define DEFAULT_PID_FILE    "/var/run/ps_monitor.pid"
 
 

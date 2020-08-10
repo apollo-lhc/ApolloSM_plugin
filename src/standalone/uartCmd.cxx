@@ -11,8 +11,8 @@
 #include <boost/algorithm/string/predicate.hpp> // for iequals
 
 // ================================================================================
-//#define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_CONNECTION_FILE "/opt/address_tables/connections.xml"
+//#define DEFAULT_RUN_DIR     "/opt/address_table/"
+#define DEFAULT_CONNECTION_FILE "/opt/address_table/connections.xml"
 
 // ================================================================================
 int main(int argc, char** argv) { 

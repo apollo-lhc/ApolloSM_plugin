@@ -42,7 +42,7 @@
 
 //extern int errno;
 
-#define DEFAULT_RUN_DIR     "/opt/address_tables/"
+#define DEFAULT_RUN_DIR     "/opt/address_table/"
 #define DEFAULT_PID_FILE    "/var/run/"
 
 

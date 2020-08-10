@@ -11,8 +11,8 @@
 
 // ================================================================================
 //#define DEFAULT_CONFIG_FILE "/etc/cmpwrup"
-//#define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_CONNECTION_FILE "/opt/address_tables/connections.xml"
+//#define DEFAULT_RUN_DIR     "/opt/address_table/"
+#define DEFAULT_CONNECTION_FILE "/opt/address_table/connections.xml"
 #define DEFAULT_CM_ID           1
 
 // ================================================================================

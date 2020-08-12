@@ -10,10 +10,11 @@
 //#include <BUException/ExceptionBase.hh>
 
 // ================================================================================
-//#define DEFAULT_CONFIG_FILE "/etc/cmpwrup"
-//#define DEFAULT_RUN_DIR     "/opt/address_table/"
-#define DEFAULT_CONNECTION_FILE "/opt/address_table/connections.xml"
-#define DEFAULT_CM_ID           1
+#include <boost/program_options.hpp>
+#include <fstream>
+#include <iostream>
+#define DEFAULT_CONFIG_FILE "/etc/BUTool"
+namespace po = boost::program_options;
 
 // ================================================================================
 int main(int argc, char** argv) { 
@@ -29,6 +30,45 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  //Set up program options
+  po::options_description options("cmpwrdown options");
+  options.add_options()
+    ("DEFAULT_CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file")
+    ("DEFAULT_CM_ID,c",           po::value<int>()->default_value(1),                                             "Default CM to power down");
+  
+  //setup for loading program options
+  std::ifstream configFile(DEFAULT_CONFIG_FILE);
+  po::variables_map progOptions;
+
+  try { //Get options from command line
+    po::store(parse_command_line(argc, argv, options), progOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    std::cout << options << std::endl;
+    return 0;
+  }
+
+  if(configFile) { //If configFile opens, get options from config file
+    try{ 
+      po::store(parse_config_file(configFile,options,true), progOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+      std::cout << options << std::endl;
+      return 0; 
+    }
+  }
+
+  //Set connection file
+  std::string connectionFile = "";
+  if (progOptions.count("DEFAULT_CONNECTION_FILE")) {
+    connectionFile = progOptions["DEFAULT_CONNECTION_FILE"].as<std::string>();
+  }
+  //Set CM_ID
+  int CM_ID = 0;
+  if (progOptions.count("DEFAULT_CM_ID")) {
+    CM_ID = progOptions["DEFAULT_CM_ID"].as<int>();
+  }
+  
   // Make an ApolloSM and command module
   CM * commandModule = NULL;  
   ApolloSM * SM      = NULL;
@@ -42,7 +82,6 @@ int main(int argc, char** argv) {
     }
     // load connection file
     std::vector<std::string> arg;
-    std::string connectionFile = DEFAULT_CONNECTION_FILE;
     printf("Using %s\n", connectionFile.c_str());
     arg.push_back(connectionFile);
     SM->Connect(arg);
@@ -61,20 +100,20 @@ int main(int argc, char** argv) {
     // ==============================
     // parse command line
     
-    switch(argc) {
+    /*switch(argc) {
     case noArgs: 
       {
-	commandModule->ID  = DEFAULT_CM_ID;
+	commandModule->ID  = CM_ID;
 	printf("No arguments specified. Default: Powering down CM %d\n", commandModule->ID);
 	break;
       }
     case cmFound:
       {
-	int ID = std::stoi(argv[1]);
-	commandModule->ID = ID;
+	int ID = std::stoi(argv[1]); */
+    commandModule->ID = CM_ID;/*ID;
 	printf("One argument specified. Powering down CM %d\n", ID);
 	break;
-      }    
+      }     
 //    default:
 //      {   
 //	printf("Program takes 0 or 1 arguments\n");
@@ -82,7 +121,7 @@ int main(int argc, char** argv) {
 //	printf("Terminating program\n");
 //	return 0;
 //      }    
-    }
+} */
     
     // ==============================
     // power down CM

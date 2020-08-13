@@ -6,7 +6,6 @@
  *  Description : XAPP1251 Xilinx Virtual Cable Server for Linux
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -34,17 +33,53 @@
 #include <vector>
 #include <string>
 
-//TCLAP parser
-#include <tclap/CmdLine.h>
-
 #include <ApolloSM/uioLabelFinder.hh>
 #include <ApolloSM/ApolloSM.hh>
 
 //extern int errno;
 
-#define DEFAULT_RUN_DIR     "/opt/address_table/"
-#define DEFAULT_PID_FILE    "/var/run/"
+// ================================================================================
+// Setup for boost program_options
+#include <boost/program_options.hpp>
+#include <fstream>
+#include <iostream>
+#define DEFAULT_CONFIG_FILE "/etc/BUTool"
+namespace po = boost::program_options;
 
+po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
+  //container for prog options grabbed from commandline and config file
+  po::variables_map progOptions;
+  //open config file
+  std::ifstream File(configFile);
+
+  //Get options from command line
+  try { 
+    po::store(po::parse_command_line(argc, argv, options), progOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    std::cout << options << std::endl;
+    return 0;
+  }
+
+  //If configFile opens, get options from config file
+  if(File) { 
+    try{ 
+      po::store(po::parse_config_file(File,options,true), progOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+      std::cout << options << std::endl;
+      return 0; 
+    }
+  }
+
+  //help option, this assumes help is a member of options_description
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
+ 
+  return progOptions;
+}
 
 // ====================================================================================================
 // signal handling
@@ -218,47 +253,42 @@ int main(int argc, char **argv) {
   struct sockaddr_in address;
 
   int uioN = -1;
-  std::string uioLabel;
- 
-  int port;
-  std::string xvcName;
+
+  //Set up program options
+  po::options_description options("cmpwrdown options");
+  options.add_options()
+    ("help,h",    "Help screen")
+    ("RUN_DIR,r",   po::value<std::string>()->default_value("/opt/address_table/"), "Path to default run directory")
+    ("PID_DIR,d",   po::value<std::string>()->default_value("/var/run/"),           "Path to default pid directory")
+    ("xvcPrefix,v", po::value<std::string>()->default_value(""),                    "xvc prefix")
+    ("xvcPort,p",   po::value<int>()->default_value(-1),                            "xvc_port number");
   
-  try {
-    TCLAP::CmdLine cmd("Apollo XVC.",
-		       ' ',
-		       "XVC");
-   
-    // XVC name base
-    TCLAP::ValueArg<std::string> xvcPreFix("v",              //one char flag
-					       "xvc",      // full flag name
-					       "xvc prefix",//description
-					       true,            //required
-					       std::string(""),  //Default is empty
-					       "string",         // type
-					       cmd);
+  //setup for loading program options
+  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
+  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
 
-    // port number
-    TCLAP::ValueArg<int> xvcPort("p",              //one char flag
-				 "port",      // full flag name
-				 "xvc port number",//description
-				 true,            //required
-				 -1,  //Default is empty
-				 "int",         // type
-				 cmd);
-
-  
-    //Parse the command line arguments
-    cmd.parse(argc,argv);
-
-    port = xvcPort.getValue();
-    xvcName=xvcPreFix.getValue();
-    uioLabel = xvcPreFix.getValue();
-  }catch (TCLAP::ArgException &e) {  
-    syslog(LOG_ERR, "Error %s for arg %s\n",
-	   e.error().c_str(), e.argId().c_str());
-    return 0;
+  //Set port
+  int port = 0;
+  if(progOptions.count("xvcPort")){
+    port = progOptions["xvcPort"].as<int>();
   }
-
+  //setxvcName
+  std::string xvcName = "";
+  if(progOptions.count("xvcName")){
+    xvcName = progOptions["xvcName"].as<std::string>();
+  }
+  //set PID_DIR
+  std::string PID_DIR = "";
+  if(progOptions.count("PID_DIR")){
+    PID_DIR = progOptions["PID_DIR"].as<std::string>();
+  }
+  //Set RUN_DIR
+  std::string RUN_DIR = "";
+  if(progOptions.count("RUN_DIR")){
+    RUN_DIR = progOptions["RUN_DIR"].as<std::string>();
+  }
+  //use xvcName to get uiLabel
+  std::string uioLabel = xvcName;
 
   //now that we know the port, setup the log
   char daemonName[] = "xvc_server.XXXXXY"; //The 'Y' is so strlen is properly padded
@@ -274,7 +304,7 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }else if(pid > 0){
     //We are the parent and created a child with pid pid
-    std::string pidFileName = DEFAULT_PID_FILE;
+    std::string pidFileName = PID_DIR;
     pidFileName+=daemonName;
     pidFileName+=".pid";
     FILE * pidFile = fopen(pidFileName.c_str(),"w");
@@ -302,11 +332,11 @@ int main(int argc, char **argv) {
   syslog(LOG_INFO,"Set SID to %d\n",sid);
 
   //Move to RUN_DIR
-  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
+  if ((chdir(RUN_DIR.c_str())) < 0) {
+    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",RUN_DIR.c_str());    
     exit(EXIT_FAILURE);
   }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
+  syslog(LOG_INFO,"Changed path to \"%s\"\n",RUN_DIR.c_str());    
 
   //Everything looks good, close the standard file fds.
   close(STDIN_FILENO);

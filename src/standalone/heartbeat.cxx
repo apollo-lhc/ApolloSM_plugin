@@ -13,24 +13,54 @@
 
 #include <BUException/ExceptionBase.hh>
 
-#include <tclap/CmdLine.h> //TCLAP parser
-
 #include <syslog.h>  ///for syslog
 
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
 
-#define DEFAULT_POLLTIME_IN_SECONDS 10
-#define DEFAULT_CONFIG_FILE "/etc/heartbeat"
-#define DEFAULT_RUN_DIR     "/opt/address_table/"
-#define DEFAULT_PID_FILE    "/var/run/heartbeat.pid"
-
-// ====================================================================================================
+#define DEFAULT_PID_FILE    "heartbeat.pid"
+// ================================================================================
+// Setup for boost program_options
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/BUTool"
 namespace po = boost::program_options;
+
+po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
+  //container for prog options grabbed from commandline and config file
+  po::variables_map progOptions;
+  //open config file
+  std::ifstream File(configFile);
+
+  //Get options from command line
+  try { 
+    po::store(po::parse_command_line(argc, argv, options), progOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    std::cout << options << std::endl;
+    return 0;
+  }
+
+  //If configFile opens, get options from config file
+  if(File) { 
+    try{ 
+      po::store(po::parse_config_file(File,options,true), progOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+      std::cout << options << std::endl;
+      return 0; 
+    }
+  }
+
+  //help option, this assumes help is a member of options_description
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
+ 
+  return progOptions;
+}
 
 // ====================================================================================================
 // signal handling
@@ -50,55 +80,44 @@ long us_difftime(struct timespec cur, struct timespec end){
 // ====================================================================================================
 int main(int argc, char** argv) { 
 
-  TCLAP::CmdLine cmd("ApolloSM PS Heartbeat");
-  TCLAP::ValueArg<std::string> configFile("c",                 //one char flag
-					  "config_file",       // full flag name
-					  "config file",       //description
-					  false,               //required argument
-					  DEFAULT_CONFIG_FILE, //Default value
- 					  "string",            //type
-					  cmd);
-  TCLAP::ValueArg<std::string>    runPath    ("r","run_path","run path",false,DEFAULT_RUN_DIR ,"string",cmd);
-  TCLAP::ValueArg<std::string>    pidFileName("p","pid_file","pid file",false,DEFAULT_PID_FILE,"string",cmd);
 
-    //Set up program options
+  // ============================================================================
+  // Read from configuration file and set up parameters
+
+  //Set up program options
   po::options_description options("cmpwrup options");
   options.add_options()
     ("help,h",    "Help screen")
-    ("DEFAULT_CONNECTION_FILE,c", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default connections file")
-    ("runPath,r" po::value<std::string>()->default_value("/opt/address_table/"), "run path")
-    ("pidFile,p", po::value<std::string>()->default_value("/etc/heartbeat"), "pid file");
+    ("POLLTIME_IN_SECONDS,s", po::value<int>()->default_value(10), "default polltime in seconds")
+    ("CONNECTION_FILE,c",     po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default connections file")
+    ("RUN_DIR,r",             po::value<std::string>()->default_value("/opt/address_table/"), "run path")
+    ("PID_DIR,p",             po::value<std::string>()->default_value("/etc/heartbeat"), "pid file");
 
   //setup for loading program options
-  std::ifstream configFile(DEFAULT_CONFIG_FILE);
-  po::variables_map progOptions;
-  
-  //Get options from command line
-  try { 
-    po::store(parse_command_line(argc, argv, options), progOptions);
-  } catch (std::exception &e) {
-    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
-    std::cout << options << std::endl;
-    return 0;
-  }
+  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
+  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE); 
 
-  //If configFile opens, get options from config file
-  if(configFile) { 
-    try{ 
-      po::store(parse_config_file(configFile,options,true), progOptions);
-    } catch (std::exception &e) {
-      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
-      std::cout << options << std::endl;
-      return 0; 
-    }
+  //set polltime_in_seconds
+  int polltime_in_seconds = 0;
+  if (progOptions.count("POLLTIME_IN_SECONDS")){
+    polltime_in_seconds = progOptions["POLLTIME_IN_SECONDS"].as<int>();
   }
-
-  //help option
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
-    return 0;
+  //Set connection file
+  std::string connectionFile = "";
+  if (progOptions.count("CONNECTION_FILE")) {
+    connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();
   }
- 
+  //Set runDir
+  std::string runPath = "";
+  if (progOptions.count("RUN_DIR")){
+    runPath = progOptions["RUN_DIR"].as<std::string>();
+  }
+  //Set pidFileName
+  std::string pidPath = "";
+  if (progOptions.count("PID_DIR")){
+    pidPath = progOptions["PID_DIR"].as<std::string>();
+  }
+  std::string pidFileName = pidPath + DEFAULT_PID_FILE;
 
 
   // ============================================================================
@@ -111,7 +130,7 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }else if(pid > 0){
     //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen(pidFileName.getValue().c_str(),"w");
+    FILE * pidFile = fopen(pidFileName.c_str(),"w");
     fprintf(pidFile,"%d\n",pid);
     fclose(pidFile);
     exit(EXIT_SUCCESS);
@@ -137,11 +156,11 @@ int main(int argc, char** argv) {
   syslog(LOG_INFO,"Set SID to %d\n",sid);
 
   //Move to RUN_DIR
-  if ((chdir(runPath.getValue().c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.getValue().c_str());    
+  if ((chdir(runPath.c_str())) < 0) {
+    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
     exit(EXIT_FAILURE);
   }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.getValue().c_str());    
+  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
 
   //Everything looks good, close the standard file fds.
   close(STDIN_FILENO);
@@ -149,34 +168,6 @@ int main(int argc, char** argv) {
   close(STDERR_FILENO);
 
   
-  // ============================================================================
-  // Read from configuration file and set up parameters
-  syslog(LOG_INFO,"Reading from config file now\n");
-  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
- 
-  // fileOptions is for parsing config files
-  boost::program_options::options_description fileOptions{"File"};
-  //sigh... with boost comes compilcated c++ magic
-  fileOptions.add_options() 
-    ("polltime", 
-     boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), 
-     "polling interval");
-  boost::program_options::variables_map configOptions;  
-  try{
-    configOptions = loadConfig(configFile.getValue(),fileOptions);
-    // Check for information in configOptions
-    if(configOptions.count("polltime")) {
-      polltime_in_seconds = configOptions["polltime"].as<int>();
-    }  
-    syslog(LOG_INFO,
-	   "Setting poll time to %d seconds (%s)\n",
-	   polltime_in_seconds, 
-	   configOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
-        
-  }catch(const boost::program_options::error &ex){
-    syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
-  }
-
 
   // ============================================================================
   // Daemon code setup

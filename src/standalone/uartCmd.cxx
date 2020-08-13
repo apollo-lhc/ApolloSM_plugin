@@ -11,8 +11,47 @@
 #include <boost/algorithm/string/predicate.hpp> // for iequals
 
 // ================================================================================
-//#define DEFAULT_RUN_DIR     "/opt/address_table/"
-#define DEFAULT_CONNECTION_FILE "/opt/address_table/connections.xml"
+// Setup for boost program_options
+#include <boost/program_options.hpp>
+#include <fstream>
+#include <iostream>
+#define DEFAULT_CONFIG_FILE "/etc/BUTool"
+namespace po = boost::program_options;
+
+po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
+  //container for prog options grabbed from commandline and config file
+  po::variables_map progOptions;
+  //open config file
+  std::ifstream File(configFile);
+
+  //Get options from command line
+  try { 
+    po::store(po::parse_command_line(argc, argv, options), progOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    std::cout << options << std::endl;
+    return 0;
+  }
+
+  //If configFile opens, get options from config file
+  if(File) { 
+    try{ 
+      po::store(po::parse_config_file(File,options,true), progOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+      std::cout << options << std::endl;
+      return 0; 
+    }
+  }
+
+  //help option, this assumes help is a member of options_description
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
+ 
+  return progOptions;
+}
 
 // ================================================================================
 int main(int argc, char** argv) { 
@@ -23,6 +62,28 @@ int main(int argc, char** argv) {
     printf("Wrong number of arguments. Please include at least a device and a command\n");
     return -1;
   }
+
+    //Set up program options
+  po::options_description options("cmpwrdown options");
+  options.add_options()
+    ("help,h",    "Help screen")
+    ("CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file");
+    //three args?
+
+  //setup for loading program options
+  //  std::ifstream configFile(DEFAULT_CONFIG_FILE);
+  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+
+  //Set connection file
+  std::string connectionFile = "";
+  if (progOptions.count("CONNECTION_FILE")) {
+    connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();
+  }
+
+
+
+
+
   
   // Make an ApolloSM
   ApolloSM * SM = NULL;
@@ -36,7 +97,7 @@ int main(int argc, char** argv) {
     //}
     // load connection file
     std::vector<std::string> arg;
-    std::string connectionFile = DEFAULT_CONNECTION_FILE;
+    //std::string connectionFile = DEFAULT_CONNECTION_FILE;
     //printf("Using %s\n", connectionFile.c_str());
     arg.push_back(connectionFile);
     SM->Connect(arg);

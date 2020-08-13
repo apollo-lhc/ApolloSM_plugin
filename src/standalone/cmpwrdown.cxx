@@ -17,13 +17,15 @@
 #define DEFAULT_CONFIG_FILE "/etc/BUTool"
 namespace po = boost::program_options;
 
-po::variables_map getVariableMap(int argc, char** argv, po::options_descriptiom options, std::ifstream configFile) {
+po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
   //container for prog options grabbed from commandline and config file
   po::variables_map progOptions;
+  //open config file
+  std::ifstream File(configFile);
 
   //Get options from command line
   try { 
-    po::store(parse_command_line(argc, argv, options), progOptions);
+    po::store(po::parse_command_line(argc, argv, options), progOptions);
   } catch (std::exception &e) {
     fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
     std::cout << options << std::endl;
@@ -31,9 +33,9 @@ po::variables_map getVariableMap(int argc, char** argv, po::options_descriptiom 
   }
 
   //If configFile opens, get options from config file
-  if(configFile) { 
+  if(File) { 
     try{ 
-      po::store(parse_config_file(configFile,options,true), progOptions);
+      po::store(po::parse_config_file(File,options,true), progOptions);
     } catch (std::exception &e) {
       fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
       std::cout << options << std::endl;
@@ -47,7 +49,7 @@ po::variables_map getVariableMap(int argc, char** argv, po::options_descriptiom 
     return 0;
   }
  
-  return progOptons;
+  return progOptions;
 }
 
 // ================================================================================
@@ -57,22 +59,22 @@ int main(int argc, char** argv) {
   po::options_description options("cmpwrdown options");
   options.add_options()
     ("help,h",    "Help screen")
-    ("DEFAULT_CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file")
-    ("DEFAULT_CM_ID,c",           po::value<int>()->default_value(1),                                             "Default CM to power down");
+    ("CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file")
+    ("CM_ID,c",           po::value<int>()->default_value(1),                                             "Default CM to power down");
   
   //setup for loading program options
-  std::ifstream configFile(DEFAULT_CONFIG_FILE);
-  po::variables_map progOptions = getVariableMap(argc, argv, options, configFile);
+  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
+  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
 
   //Set connection file
   std::string connectionFile = "";
-  if (progOptions.count("DEFAULT_CONNECTION_FILE")) {
-    connectionFile = progOptions["DEFAULT_CONNECTION_FILE"].as<std::string>();
+  if (progOptions.count("CONNECTION_FILE")) {
+    connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();
   }
   //Set CM_ID
   int CM_ID = 0;
-  if (progOptions.count("DEFAULT_CM_ID")) {
-    CM_ID = progOptions["DEFAULT_CM_ID"].as<int>();
+  if (progOptions.count("CM_ID")) {
+    CM_ID = progOptions["CM_ID"].as<int>();
   }
   
   // Make an ApolloSM and command module

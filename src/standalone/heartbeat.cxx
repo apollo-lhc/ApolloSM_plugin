@@ -52,12 +52,6 @@ po::variables_map getVariableMap(int argc, char** argv, po::options_description 
       return 0; 
     }
   }
-
-  //help option, this assumes help is a member of options_description
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
-    return 0;
-  }
  
   return progOptions;
 }
@@ -94,29 +88,26 @@ int main(int argc, char** argv) {
     ("PID_DIR,p",             po::value<std::string>()->default_value("/etc/heartbeat"), "pid file");
 
   //setup for loading program options
-  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
   po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE); 
+
+  //help option
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
 
   //set polltime_in_seconds
   int polltime_in_seconds = 0;
-  if (progOptions.count("POLLTIME_IN_SECONDS")){
-    polltime_in_seconds = progOptions["POLLTIME_IN_SECONDS"].as<int>();
-  }
+  if (progOptions.count("POLLTIME_IN_SECONDS")){polltime_in_seconds = progOptions["POLLTIME_IN_SECONDS"].as<int>();}
   //Set connection file
   std::string connectionFile = "";
-  if (progOptions.count("CONNECTION_FILE")) {
-    connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();
-  }
+  if (progOptions.count("CONNECTION_FILE")) {connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();}
   //Set runDir
   std::string runPath = "";
-  if (progOptions.count("RUN_DIR")){
-    runPath = progOptions["RUN_DIR"].as<std::string>();
-  }
+  if (progOptions.count("RUN_DIR")){runPath = progOptions["RUN_DIR"].as<std::string>();}
   //Set pidFileName
   std::string pidPath = "";
-  if (progOptions.count("PID_DIR")){
-    pidPath = progOptions["PID_DIR"].as<std::string>();
-  }
+  if (progOptions.count("PID_DIR")){pidPath = progOptions["PID_DIR"].as<std::string>();}
   std::string pidFileName = pidPath + DEFAULT_PID_FILE;
 
 

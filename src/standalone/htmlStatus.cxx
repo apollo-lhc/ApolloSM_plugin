@@ -51,12 +51,6 @@ po::variables_map getVariableMap(int argc, char** argv, po::options_description 
       return 0; 
     }
   }
-
-  //help option, this assumes help is a member of options_description
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
-    return 0;
-  }
  
   return progOptions;
 }
@@ -97,43 +91,36 @@ int main(int argc, char** argv) {
     ("OUTPUT_TYPE", po::value<std::string>()->default_value("HTML"),                         "html output type");
 
   //setup for loading program options
-  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
   po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+
+  //help option
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
 
   //Set pidPath
   std::string pidPath = "";
-  if(progOptions.count("PID_DIR")){
-    pidPath = progOptions["PID_DIR"].as<std::string>();
-  }
+  if(progOptions.count("PID_DIR")){pidPath = progOptions["PID_DIR"].as<std::string>();}
   std::string pidFileName = pidPath + DEFAULT_PID_FILE;
   //Set runpath
   std::string runPath = "";
-  if(progOptions.count("RUN_DIR")) {
-    runPath = progOptions["RUN_DIR"].as<std::string>();
-  }
+  if(progOptions.count("RUN_DIR")) {runPath = progOptions["RUN_DIR"].as<std::string>();}
   //Set polltime_in_seconds
   int polltime_in_seconds = 0;
-  if(progOptions.count("POLLTIME_IN_SECONDS")) {
-    polltime_in_seconds = progOptions["POLLTIME_IN_SECONDS"].as<int>();
-  }
+  if(progOptions.count("POLLTIME_IN_SECONDS")) {polltime_in_seconds = progOptions["POLLTIME_IN_SECONDS"].as<int>();}
   syslog(LOG_INFO, "Setting poll time to %d seconds (%s)\n", polltime_in_seconds, progOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
   //Set logLevel
   int logLevel = 0;
-  if(progOptions.count("LOG_LEVEL")) {
-    logLevel = progOptions["LOG_LEVEL"].as<int>();
-  }
+  if(progOptions.count("LOG_LEVEL")) {logLevel = progOptions["LOG_LEVEL"].as<int>();}
   syslog(LOG_INFO, "Setting log level to %d (%s)\n", logLevel, progOptions.count("log_level") ? "CONFIG FILE" : "DEFAULT");
   //Set outfile
   std::string outfile = "";
-  if(progOptions.count("OUTFILE")) {
-    outfile = progOptions["OUTFILE"].as<std::string>();
-  }
+  if(progOptions.count("OUTFILE")) {outfile = progOptions["OUTFILE"].as<std::string>();}
   syslog(LOG_INFO, "Sending output to %s (%s)\n", outfile.c_str(), progOptions.count("outfile") ? "CONFIG FILE" : "DEFAULT");
   //Set outputType
-    std::string outputType = "";
-  if(progOptions.count("OUTPUT_TYPE")) {
-    outputType = progOptions["OUTPUT_TYPE"].as<std::string>();
-  }
+  std::string outputType = "";
+  if(progOptions.count("OUTPUT_TYPE")) {outputType = progOptions["OUTPUT_TYPE"].as<std::string>();}
   syslog(LOG_INFO, "Sending output type to %s (%s)\n", outputType.c_str(), progOptions.count("output_type") ? "CONFIG FILE" : "DEFAULT");
 
   // ============================================================================

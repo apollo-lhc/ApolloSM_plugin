@@ -43,15 +43,8 @@ po::variables_map getVariableMap(int argc, char** argv, po::options_description 
     }
   }
 
-  //help option, this assumes help is a member of options_description
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
-    return 0;
-  }
- 
   return progOptions;
 }
-
 // ================================================================================
 int main(int argc, char** argv) { 
   
@@ -66,29 +59,26 @@ int main(int argc, char** argv) {
   //note DEFAULT_CM_POWER_UP option does nothing currenty
 
   //setup for loading program options
-  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
   po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+
+  //help option
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
   
   //Set connection file
   std::string connectionFile = "";
-  if (progOptions.count("CONNECTION_FILE")) {
-    connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();
-  }
+  if (progOptions.count("CONNECTION_FILE")) {connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();}
   //Set CM_ID
   int CM_ID = 0;
-  if (progOptions.count("CM_ID")) {
-    CM_ID = progOptions["CM_ID"].as<int>();
-  }
+  if (progOptions.count("CM_ID")) {CM_ID = progOptions["CM_ID"].as<int>();}
   //Set powerGood
   std::string powerGood = "";
-  if (progOptions.count("CM_POWER_GOOD")) {
-    powerGood = progOptions["CM_POWER_GOOD"].as<std::string>();
-  }
+  if (progOptions.count("CM_POWER_GOOD")) {powerGood = progOptions["CM_POWER_GOOD"].as<std::string>();}
   //Set powerUp
   bool powerUp = "";
-  if (progOptions.count("CM_POWER_UP")) {
-    powerUp = progOptions["CM_POWER_UP"].as<bool>();
-  }
+  if (progOptions.count("CM_POWER_UP")) {powerUp = progOptions["CM_POWER_UP"].as<bool>();}
 
   // Make an ApolloSM and CM
   ApolloSM * SM      = NULL;
@@ -98,26 +88,21 @@ int main(int argc, char** argv) {
     if(NULL == SM){
       fprintf(stderr, "Failed to create new ApolloSM. Terminating program\n");
       exit(EXIT_FAILURE);
-    }//else{
-    //  fprintf(stdout,"Created new ApolloSM\n");      
-    //}
+    }
+
     // load connection file
     std::vector<std::string> arg;
-    //std::string connectionFile = DEFAULT_CONNECTION_FILE;
     printf("Using %s\n", connectionFile.c_str());
     arg.push_back(connectionFile);
     SM->Connect(arg);
     
     // ==============================
     // Make a command module
-    //CM * commandModule = NULL;
     commandModule = new CM();
     if(NULL == commandModule){
       fprintf(stderr, "Failed to create new CM. Terminating program\n");
       exit(EXIT_FAILURE);
-    }//else{
-    //  fprintf(stdout,"Created new CM\n");      
-    //}
+    }
     
     // ==============================
     // power up CM
@@ -126,7 +111,6 @@ int main(int argc, char** argv) {
     commandModule->powerUp   = powerUp;
 
     int wait_time = 5; // 1 second
-    //printf("Using wait_time = 1 second\n");    
     bool success = SM->PowerUpCM(commandModule->ID, wait_time);
     if(success) {
       printf("CM %d is powered up\n", commandModule->ID);
@@ -134,7 +118,6 @@ int main(int argc, char** argv) {
       printf("CM %d did not power up in %d second(s)\n", commandModule->ID, (wait_time / 5));
     }
 
-  
     // read power good and print
     printf("%s is %d\n", commandModule->powerGood.c_str(), (int)(SM->RegReadRegister(commandModule->powerGood)));
 
@@ -145,12 +128,10 @@ int main(int argc, char** argv) {
   }
   
   // Clean up
-  //printf("Deleting CM\n");
   if(NULL != commandModule) {
     delete commandModule;
   }
   
-  //printf("Deleting ApolloSM\n");
   if(NULL != SM) {
     delete SM;
   }

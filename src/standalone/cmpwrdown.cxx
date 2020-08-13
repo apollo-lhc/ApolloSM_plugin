@@ -42,12 +42,6 @@ po::variables_map getVariableMap(int argc, char** argv, po::options_description 
       return 0; 
     }
   }
-
-  //help option, this assumes help is a member of options_description
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
-    return 0;
-  }
  
   return progOptions;
 }
@@ -63,19 +57,20 @@ int main(int argc, char** argv) {
     ("CM_ID,c",           po::value<int>()->default_value(1),                                             "Default CM to power down");
   
   //setup for loading program options
-  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
   po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+
+  //Help option
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
 
   //Set connection file
   std::string connectionFile = "";
-  if (progOptions.count("CONNECTION_FILE")) {
-    connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();
-  }
+  if (progOptions.count("CONNECTION_FILE")) {connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();}
   //Set CM_ID
   int CM_ID = 0;
-  if (progOptions.count("CM_ID")) {
-    CM_ID = progOptions["CM_ID"].as<int>();
-  }
+  if (progOptions.count("CM_ID")) {CM_ID = progOptions["CM_ID"].as<int>();}
   
   // Make an ApolloSM and command module
   CM * commandModule = NULL;  

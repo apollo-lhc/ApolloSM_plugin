@@ -71,12 +71,6 @@ po::variables_map getVariableMap(int argc, char** argv, po::options_description 
       return 0; 
     }
   }
-
-  //help option, this assumes help is a member of options_description
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
-    return 0;
-  }
  
   return progOptions;
 }
@@ -264,29 +258,26 @@ int main(int argc, char **argv) {
     ("xvcPort,p",   po::value<int>()->default_value(-1),                            "xvc_port number");
   
   //setup for loading program options
-  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
   po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+
+  //help option
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
 
   //Set port
   int port = 0;
-  if(progOptions.count("xvcPort")){
-    port = progOptions["xvcPort"].as<int>();
-  }
+  if(progOptions.count("xvcPort")){port = progOptions["xvcPort"].as<int>();}
   //setxvcName
   std::string xvcName = "";
-  if(progOptions.count("xvcName")){
-    xvcName = progOptions["xvcName"].as<std::string>();
-  }
+  if(progOptions.count("xvcName")){xvcName = progOptions["xvcName"].as<std::string>();}
   //set PID_DIR
   std::string PID_DIR = "";
-  if(progOptions.count("PID_DIR")){
-    PID_DIR = progOptions["PID_DIR"].as<std::string>();
-  }
+  if(progOptions.count("PID_DIR")){PID_DIR = progOptions["PID_DIR"].as<std::string>();}
   //Set RUN_DIR
   std::string RUN_DIR = "";
-  if(progOptions.count("RUN_DIR")){
-    RUN_DIR = progOptions["RUN_DIR"].as<std::string>();
-  }
+  if(progOptions.count("RUN_DIR")){RUN_DIR = progOptions["RUN_DIR"].as<std::string>();}
   //use xvcName to get uiLabel
   std::string uioLabel = xvcName;
 
@@ -342,8 +333,6 @@ int main(int argc, char **argv) {
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
-
-
 
 
   //Find UIO number

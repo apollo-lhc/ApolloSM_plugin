@@ -13,9 +13,6 @@
 
 #include <BUException/ExceptionBase.hh>
 
-#include <boost/program_options.hpp>  //for configfile parsing
-#include <fstream>
-
 #include <tclap/CmdLine.h> //TCLAP parser
 
 #include <syslog.h>  ///for syslog
@@ -28,6 +25,12 @@
 #define DEFAULT_RUN_DIR     "/opt/address_table/"
 #define DEFAULT_PID_FILE    "/var/run/heartbeat.pid"
 
+// ====================================================================================================
+#include <boost/program_options.hpp>
+#include <fstream>
+#include <iostream>
+#define DEFAULT_CONFIG_FILE "/etc/BUTool"
+namespace po = boost::program_options;
 
 // ====================================================================================================
 // signal handling
@@ -38,40 +41,11 @@ void static signal_handler(int const signum) {
   }
 }
 
-
-
-// ====================================================================================================
-// Read from config files and set up all parameters
-// For further information see https://theboostcpplibraries.com/boost.program_options
-
-boost::program_options::variables_map loadConfig(std::string const & configFileName,
-						 boost::program_options::options_description const & fileOptions) {
-  // This is a container for the information that fileOptions will get from the config file
-  boost::program_options::variables_map vm;  
-
-  // Check if config file exists
-  std::ifstream ifs{configFileName};
-  syslog(LOG_INFO, "Config file \"%s\" %s\n",configFileName.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
-
-  if(ifs) {
-    // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
-    boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
-  }
-
-  return vm;
-}
-
-
-
-
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
   return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
 	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
 }
-
-
-
 
 // ====================================================================================================
 int main(int argc, char** argv) { 
@@ -82,18 +56,49 @@ int main(int argc, char** argv) {
 					  "config file",       //description
 					  false,               //required argument
 					  DEFAULT_CONFIG_FILE, //Default value
-					  "string",            //type
+ 					  "string",            //type
 					  cmd);
   TCLAP::ValueArg<std::string>    runPath    ("r","run_path","run path",false,DEFAULT_RUN_DIR ,"string",cmd);
   TCLAP::ValueArg<std::string>    pidFileName("p","pid_file","pid file",false,DEFAULT_PID_FILE,"string",cmd);
 
-  try {
-    cmd.parse(argc, argv);
-  }catch (TCLAP::ArgException &e) {
-    fprintf(stderr, "Failed to Parse Command Line\n");
-    return -1;
+    //Set up program options
+  po::options_description options("cmpwrup options");
+  options.add_options()
+    ("help,h",    "Help screen")
+    ("DEFAULT_CONNECTION_FILE,c", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default connections file")
+    ("runPath,r" po::value<std::string>()->default_value("/opt/address_table/"), "run path")
+    ("pidFile,p", po::value<std::string>()->default_value("/etc/heartbeat"), "pid file");
+
+  //setup for loading program options
+  std::ifstream configFile(DEFAULT_CONFIG_FILE);
+  po::variables_map progOptions;
+  
+  //Get options from command line
+  try { 
+    po::store(parse_command_line(argc, argv, options), progOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    std::cout << options << std::endl;
+    return 0;
   }
 
+  //If configFile opens, get options from config file
+  if(configFile) { 
+    try{ 
+      po::store(parse_config_file(configFile,options,true), progOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+      std::cout << options << std::endl;
+      return 0; 
+    }
+  }
+
+  //help option
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
+ 
 
 
   // ============================================================================

@@ -10,37 +10,19 @@
 //#include <BUException/ExceptionBase.hh>
 
 // ================================================================================
+// Setup for boost program_options
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/BUTool"
 namespace po = boost::program_options;
 
-// ================================================================================
-int main(int argc, char** argv) { 
-
-  int const noArgs         = 1;
-  int const cmFound        = 2;
-  
-  if((noArgs != argc) && (cmFound != argc)) {
-    // wrong number args
-    printf("Program takes 0 or 1 arguments\n");
-    printf("ex: for 1 argument to power down CM_2: ./cmpwrdown 2\n");
-    printf("Terminating program\n");
-    return -1;
-  }
-
-  //Set up program options
-  po::options_description options("cmpwrdown options");
-  options.add_options()
-    ("DEFAULT_CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file")
-    ("DEFAULT_CM_ID,c",           po::value<int>()->default_value(1),                                             "Default CM to power down");
-  
-  //setup for loading program options
-  std::ifstream configFile(DEFAULT_CONFIG_FILE);
+po::variables_map getVariableMap(int argc, char** argv, po::options_descriptiom options, std::ifstream configFile) {
+  //container for prog options grabbed from commandline and config file
   po::variables_map progOptions;
 
-  try { //Get options from command line
+  //Get options from command line
+  try { 
     po::store(parse_command_line(argc, argv, options), progOptions);
   } catch (std::exception &e) {
     fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
@@ -48,7 +30,8 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  if(configFile) { //If configFile opens, get options from config file
+  //If configFile opens, get options from config file
+  if(configFile) { 
     try{ 
       po::store(parse_config_file(configFile,options,true), progOptions);
     } catch (std::exception &e) {
@@ -57,6 +40,29 @@ int main(int argc, char** argv) {
       return 0; 
     }
   }
+
+  //help option, this assumes help is a member of options_description
+  if(progOptions.count("help")){
+    std::cout << options << '\n';
+    return 0;
+  }
+ 
+  return progOptons;
+}
+
+// ================================================================================
+int main(int argc, char** argv) { 
+
+  //Set up program options
+  po::options_description options("cmpwrdown options");
+  options.add_options()
+    ("help,h",    "Help screen")
+    ("DEFAULT_CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file")
+    ("DEFAULT_CM_ID,c",           po::value<int>()->default_value(1),                                             "Default CM to power down");
+  
+  //setup for loading program options
+  std::ifstream configFile(DEFAULT_CONFIG_FILE);
+  po::variables_map progOptions = getVariableMap(argc, argv, options, configFile);
 
   //Set connection file
   std::string connectionFile = "";
@@ -80,6 +86,7 @@ int main(int argc, char** argv) {
     }else{
       fprintf(stdout,"Created new ApolloSM\n");      
     }
+
     // load connection file
     std::vector<std::string> arg;
     printf("Using %s\n", connectionFile.c_str());
@@ -88,7 +95,6 @@ int main(int argc, char** argv) {
     
     // ==============================
     // Make a command module
-    //
     commandModule = new CM();
     if(NULL == commandModule){
       fprintf(stderr, "Failed to create new CM. Terminating program\n");
@@ -96,35 +102,10 @@ int main(int argc, char** argv) {
     }else{
       fprintf(stdout,"Created new CM\n");      
     }
-    
-    // ==============================
-    // parse command line
-    
-    /*switch(argc) {
-    case noArgs: 
-      {
-	commandModule->ID  = CM_ID;
-	printf("No arguments specified. Default: Powering down CM %d\n", commandModule->ID);
-	break;
-      }
-    case cmFound:
-      {
-	int ID = std::stoi(argv[1]); */
-    commandModule->ID = CM_ID;/*ID;
-	printf("One argument specified. Powering down CM %d\n", ID);
-	break;
-      }     
-//    default:
-//      {   
-//	printf("Program takes 0 or 1 arguments\n");
-//	printf("ex for 1 argument to power down CM_2: ./cmpwrdown 2\n");
-//	printf("Terminating program\n");
-//	return 0;
-//      }    
-} */
-    
+
     // ==============================
     // power down CM
+    commandModule->ID = CM_ID;
     int wait_time = 5; // 1 second
     printf("Using wait_time = 1 second\n");    
     bool success = SM->PowerDownCM(commandModule->ID, wait_time);

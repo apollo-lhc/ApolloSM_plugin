@@ -15,6 +15,8 @@
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/cmpwrdown"
+#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
+#define DEFAULT_CM_ID 1
 namespace po = boost::program_options;
 
 po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
@@ -49,28 +51,72 @@ po::variables_map getVariableMap(int argc, char** argv, po::options_description 
 // ================================================================================
 int main(int argc, char** argv) { 
 
+  //======================
   //Set up program options
-  po::options_description options("cmpwrdown options");
-  options.add_options()
+  po::options_description cli_options("cmpwrdown options"); //options read from command line
+  cli_options.add_options()
     ("help,h",    "Help screen")
-    ("CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file")
-    ("CM_ID,c",           po::value<int>()->default_value(1),                                             "Default CM to power down");
+    ("CONN_FILE,C", po::value<std::string>()->implicit_value(""), "Path to the default config file")
+    ("CM_ID,c",     po::value<int>()->implicit_value(0),          "Default CM to power down");
   
-  //setup for loading program options
-  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
-
+  po::options_description cfg_options("cmpwrdown options"); //options read from config file
+  cfg_options.add_options()
+    ("CONN_FILE,C", po::value<std::string>(), "Path to the default config file")
+    ("CM_ID,c",     po::value<int>(),         "Default CM to power down");
+  
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+  
+  //store command line arguments
+  try {
+    po::store(po::parse_command_line(argc, argv, cli_options), cli_map);
+  } catch (std::exception &e) {
+    fprintf(stderr, "ERROR in BOOST parse_command_line: %s\n", e.what());
+    std::cout << cli_options << std::endl;
+    return 0;
+  }
+  //store config file arguments
+  std::ifstream configFile(DEFAULT_CONFIG_FILE);
+  if(configFile){
+    try {
+      po::store(po::parse_config_file(configFile,cfg_options,true), cfg_map);
+    } catch(std::exception &e) {
+      fprintf(stderr, "ERROR in BOOST parse_config_file: %s\n", e.what());
+      std::cout << cfg_options << std::endl;
+      return 0;
+    }
+  }
+  
   //Help option
-  if(progOptions.count("help")){
+  if(cli_map.count("help")){
     std::cout << options << '\n';
     return 0;
   }
 
-  //Set connection file
-  std::string connectionFile = "";
-  if (progOptions.count("CONNECTION_FILE")) {connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();}
-  //Set CM_ID
-  int CM_ID = 0;
-  if (progOptions.count("CM_ID")) {CM_ID = progOptions["CM_ID"].as<int>();}
+  std::string connectionFile = DEFAULT_CONN_FILE; //Assign default connection file
+  if(cli_map.count("CONN_FILE")) { //if connection file argument used on command line
+    std::string cliArg = cli_map["CONN_FILE"].as<std::string>(); //get argument
+    if (cliArg == "") { //cli argument is empty 
+      if (cfg_map.count("CONN_FILE")) { //if option is in config file
+	connectionFile = cfg_map["CONN_FILE"].as<std::string>();
+      }    
+    } else { //use command line arg
+      connectionFile = cliArg;
+    }
+  }
+  
+  int CM_ID = DEFAULT_CM_ID; //Assign defaul cm_id
+  if(cli_map.count("CM_ID")) { //if connection file argument used on command line
+    int cliArg = cli_map["CM_ID"].as<int>(); //get argument
+    if (cliArg = 0) { //cli argument is empty
+      if (cfg_map.count("CM_ID")) { //if option is in config file
+	CM_ID = cfg_map["CM_ID"].as<int>();
+      }
+    } else { //use command line arg
+      CM_ID = cliArg;
+    }
+  }
   
   // Make an ApolloSM and command module
   CM * commandModule = NULL;  

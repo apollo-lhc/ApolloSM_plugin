@@ -29,13 +29,12 @@
 #define SEC_IN_US 1000000
 #define NS_IN_US 1000
 
-#define DEFAULT_PID_FILE "ps_monitor.pid"
 // ================================================================================
 // Setup for boost program_options
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
-#define DEFAULT_CONFIG_FILE "/etc/BUTool"
+#define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
 namespace po = boost::program_options;
 
 po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
@@ -115,9 +114,8 @@ int main(int argc, char ** argv) {
   std::string runPath = "";
   if (progOptions.count("RUN_DIR")){runPath = progOptions["RUN_DIR"].as<std::string>();}
   //set pidFileName
-  std::string pidPath = "";
-  if (progOptions.count("PID_DIR")){pidPath = progOptions["PID_DIR"].as<std::string>();}
-  std::string pidFileName = pidPath + DEFAULT_PID_FILE;
+  std::string pidFileName = "";
+  if (progOptions.count("PID_DIR")){pidFileName = progOptions["PID_DIR"].as<std::string>();}
   //Set connectionFile ??
     
 

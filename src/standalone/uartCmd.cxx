@@ -15,7 +15,7 @@
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
-#define DEFAULT_CONFIG_FILE "/etc/BUTool"
+#define DEFAULT_CONFIG_FILE "/etc/uartCmd"
 namespace po = boost::program_options;
 
 po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {

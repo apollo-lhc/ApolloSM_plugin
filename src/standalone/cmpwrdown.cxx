@@ -12,6 +12,7 @@
 // ================================================================================
 // Setup for boost program_options
 #include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/cmpwrdown"
@@ -95,28 +96,31 @@ int main(int argc, char** argv) {
   }
 
   std::string connectionFile = DEFAULT_CONN_FILE; //Assign default connection file
-  if(cli_map.count("CONN_FILE")) { //if connection file argument used on command line
-    std::string cliArg = cli_map["CONN_FILE"].as<std::string>(); //get argument
-    if (cliArg == "") { //cli argument is empty 
-      if (cfg_map.count("CONN_FILE")) { //if option is in config file
-	connectionFile = cfg_map["CONN_FILE"].as<std::string>();
-      }    
-    } else { //use command line arg
-      connectionFile = cliArg;
-    }
-  }
+  setOptionValue(connectionFile, "CONN_FILE", cli_map, cfg_map);
+
+    // if(cli_map.count("CONN_FILE")) { //if connection file argument used on command line
+  //   std::string cliArg = cli_map["CONN_FILE"].as<std::string>(); //get argument
+  //   if (cliArg == "") { //cli argument is empty 
+  //     if (cfg_map.count("CONN_FILE")) { //if option is in config file
+  // 	connectionFile = cfg_map["CONN_FILE"].as<std::string>();
+  //     }    
+  //   } else { //use command line arg
+  //     connectionFile = cliArg;
+  //   }
+  // }
   
   int CM_ID = DEFAULT_CM_ID; //Assign defaul cm_id
-  if(cli_map.count("CM_ID")) { //if connection file argument used on command line
-    int cliArg = cli_map["CM_ID"].as<int>(); //get argument
-    if (cliArg == 0) { //cli argument is empty
-      if (cfg_map.count("CM_ID")) { //if option is in config file
-	CM_ID = cfg_map["CM_ID"].as<int>();
-      }
-    } else { //use command line arg
-      CM_ID = cliArg;
-    }
-  }
+  setOptionValue(CM_ID, "CM_ID", cli_map, cfg_map);
+  // if(cli_map.count("CM_ID")) { //if connection file argument used on command line
+  //   int cliArg = cli_map["CM_ID"].as<int>(); //get argument
+  //   if (cliArg == 0) { //cli argument is empty
+  //     if (cfg_map.count("CM_ID")) { //if option is in config file
+  // 	CM_ID = cfg_map["CM_ID"].as<int>();
+  //     }
+  //   } else { //use command line arg
+  //     CM_ID = cliArg;
+  //   }
+  // }
   
   // Make an ApolloSM and command module
   CM * commandModule = NULL;  

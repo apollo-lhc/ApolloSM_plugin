@@ -23,7 +23,8 @@
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h> 
-#include <pthread.h>
+#include <arpa/inet.h>  //for inet_ntoa
+#include <pthread.h> // Why is this here?
 
 #include <sys/stat.h> //for umask
 #include <sys/types.h> //for umask
@@ -64,6 +65,8 @@ typedef struct  {
   uint32_t tdo_offset;
   uint32_t ctrl_offset; //bit 1 is a go signal, bit 2 is a busy signal
   uint32_t lock_offset;
+  uint32_t IP;
+  uint32_t port;
 } sXVC;
 
 sXVC volatile * pXVC = NULL;
@@ -471,6 +474,9 @@ int main(int argc, char **argv) {
   sigaction(SIGTERM, &sa_TERM, NULL);
   loop = true;
 
+  //zero remote info
+  pXVC->IP =0;
+  pXVC->port = 0;
   while (loop) {
     fd_set read = conn, except = conn;
     int fd;
@@ -488,7 +494,8 @@ int main(int argc, char **argv) {
 
 	  newfd = accept(s, (struct sockaddr*) &address, &nsize);
 
-	  syslog(LOG_INFO,"connection accepted - fd %d\n", newfd);
+	  
+	  syslog(LOG_INFO,"connection accepted - fd %d %s:%u\n", newfd,inet_ntoa(address.sin_addr),address.sin_port);
 	  if (newfd < 0) {
 	    syslog(LOG_ERR,"accept: %s",strerror(errno));
 	  } else {
@@ -501,17 +508,19 @@ int main(int argc, char **argv) {
 				       sizeof(int));
 	    if (optResult < 0)
 	      syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
-	    if (newfd > maxfd) {
-	      maxfd = newfd;
-	    }
-	    FD_SET(newfd, &conn);
-	  }
-	}
-	else if (handle_data(fd)) {
+	    
+	    
+	    pXVC->IP =address.sin_addr.s_addr;
+	    pXVC->port = address.sin_port;
 
-	  syslog(LOG_INFO,"connection closed - fd %d\n", fd);
-	  close(fd);
-	  FD_CLR(fd, &conn);
+	    handle_data(newfd);
+
+	    syslog(LOG_INFO,"connection closed - fd %d %s:%u\n", newfd,inet_ntoa(address.sin_addr),address.sin_port);
+	    pXVC->IP =0;
+	    pXVC->port = 0;
+
+	    close(newfd);
+	  }
 	}
       }
       else if (FD_ISSET(fd, &except)) {

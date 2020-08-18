@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
   
   //Help option
   if(cli_map.count("help")){
-    std::cout << options << '\n';
+    std::cout << cli_options << '\n';
     return 0;
   }
 
@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
   int CM_ID = DEFAULT_CM_ID; //Assign defaul cm_id
   if(cli_map.count("CM_ID")) { //if connection file argument used on command line
     int cliArg = cli_map["CM_ID"].as<int>(); //get argument
-    if (cliArg = 0) { //cli argument is empty
+    if (cliArg == 0) { //cli argument is empty
       if (cfg_map.count("CM_ID")) { //if option is in config file
 	CM_ID = cfg_map["CM_ID"].as<int>();
       }

@@ -28,19 +28,18 @@ int main(int argc, char** argv) {
   po::options_description cli_options("cmpwrdown options"); //options read from command line
   cli_options.add_options()
     ("help,h",    "Help screen")
-    ("CONN_FILE,C", po::value<std::string>()->implicit_value(""), "Path to the default config file")
+    ("CONN_FILE,C", po::value<std::string>()->implicit_value(""), "Path to the default connection file")
     ("CM_ID,c",     po::value<int>()->implicit_value(0),          "Default CM to power down");
   
   po::options_description cfg_options("cmpwrdown options"); //options read from config file
   cfg_options.add_options()
-    ("CONN_FILE", po::value<std::string>(), "Path to the default config file")
+    ("CONN_FILE", po::value<std::string>(), "Path to the default connection file")
     ("CM_ID",     po::value<int>(),         "Default CM to power down");
   
   //variable_maps for holding program options
   po::variables_map cli_map;
   po::variables_map cfg_map;
   
-  //std::ifstream configFile(DEFAULT_CONFIG_FILE);
   try {
     cli_map = storeCliArguments(cli_options, argc, argv);
     cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
@@ -58,7 +57,6 @@ int main(int argc, char** argv) {
   //Set connectionFile
   std::string connectionFile = DEFAULT_CONN_FILE; //Assign default connection file
   setOptionValue(connectionFile, "CONN_FILE", cli_map, cfg_map);
-
   //Set CM_ID
   int CM_ID = DEFAULT_CM_ID; //Assign defaul cm_id
   setOptionValue(CM_ID, "CM_ID", cli_map, cfg_map);

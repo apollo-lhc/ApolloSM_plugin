@@ -57,4 +57,16 @@ void setOptionValue(std::string &Arg, std::string option, po::variables_map cli_
   }
   return;
 }
-
+void setOptionValue(bool &Arg, std::string option, po::variables_map cli_map, po::variables_map cfg_map) {
+  if (cli_map.count(option)) { //if option used on command line
+    bool cliArg = cli_map[option].as<bool>();
+    if (cliArg == true) { //cli argument is empty
+      if (cfg_map.count(option)) { //if option used in config file
+	Arg = cfg_map[option].as<bool>(); //assign argument from config file
+      }
+    } else {
+      Arg = cliArg;
+    }
+  }
+  return;
+}

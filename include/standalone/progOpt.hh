@@ -15,5 +15,6 @@ po::variables_map storeCfgArguments(po::options_description cfg_options, std::st
 //Overloaded Function for returning an argument from an option 
 void setOptionValue(int &Arg, std::string option, po::variables_map cli_map, po::variables_map cfg_map);
 void setOptionValue(std::string &Arg, std::string option, po::variables_map cli_map, po::variables_map cfg_map);
+void setOptionValue(bool &Arg, std::string option, po::variables_map cli_map, po::variables_map cfg_map);
 
 #endif

@@ -12,73 +12,66 @@
 // ================================================================================
 // Setup for boost program_options
 #include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/cmpwrup"
+#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
+#define DEFAULT_CM_ID 1
+#define DEFAULT_CM_POWER_GOOD "CM.CM_1.CTRL.PWR_GOOD"
+#define DEFAULT_CM_POWER_UP true
 namespace po = boost::program_options;
-
-po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
-  //container for prog options grabbed from commandline and config file
-  po::variables_map progOptions;
-  //open config file
-  std::ifstream File(configFile);
-
-  //Get options from command line
-  try { 
-    po::store(po::parse_command_line(argc, argv, options), progOptions);
-  } catch (std::exception &e) {
-    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
-    std::cout << options << std::endl;
-    return 0;
-  }
-
-  //If configFile opens, get options from config file
-  if(File) { 
-    try{ 
-      po::store(po::parse_config_file(File,options,true), progOptions);
-    } catch (std::exception &e) {
-      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
-      std::cout << options << std::endl;
-      return 0; 
-    }
-  }
-
-  return progOptions;
-}
 // ================================================================================
 int main(int argc, char** argv) { 
-  
+
+  //======================
   //Set up program options
-  po::options_description options("cmpwrup options");
-  options.add_options()
+  po::options_description cli_options("cmpwrup options");
+  cli_options.add_options()
     ("help,h",    "Help screen")
-    ("CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file")
-    ("CM_ID,c",           po::value<int>()->default_value(1),                                            "Default CM to power down")
-    ("CM_POWER_GOOD,g",   po::value<std::string>()->default_value("CM.CM_1.CTRL.PWR_GOOD"),              "Default register for PWR_GOOD")
-    ("CM_POWER_UP,p",     po::value<bool>()->default_value(true),                                        "Default power up variable"); 
+    ("CONN_FILE,C",     po::value<std::string>()->implicit_value("/opt/address_table/connections.xml"), "Path to the default connection file")
+    ("CM_ID,c",         po::value<int>()->implicit_value(1),                                            "Default CM to power down")
+    ("CM_POWER_GOOD,g", po::value<std::string>()->implicit_value("CM.CM_1.CTRL.PWR_GOOD"),              "Default register for PWR_GOOD")
+    ("CM_POWER_UP,p",   po::value<bool>()->implicit_value(true),                                        "Default power up variable"); 
   //note DEFAULT_CM_POWER_UP option does nothing currenty
 
-  //setup for loading program options
-  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+  po::options_description cfg_options("cmpwrup options");
+  cfg_options.add_options()
+    ("CONN_FILE,C",      po::value<std::string>(), "Path to the default connection file")
+    ("CM_ID,c",          po::value<int>(),         "Default CM to power down")
+    ("CM_POWER_GOOD,g",  po::value<std::string>(), "Default register for PWR_GOOD")
+    ("CM_POWER_UP,p",    po::value<bool>(),        "Default power up variable"); 
 
-  //help option
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
+    return 0;
+  }
+  
+  //Help option
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
     return 0;
   }
   
   //Set connection file
-  std::string connectionFile = "";
-  if (progOptions.count("CONNECTION_FILE")) {connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();}
+  std::string connectionFile = DEFAULT_CONN_FILE;
+  setOptionValue(connectionFile, "CONN_FILE", cli_map, cfg_map);
   //Set CM_ID
-  int CM_ID = 0;
-  if (progOptions.count("CM_ID")) {CM_ID = progOptions["CM_ID"].as<int>();}
+  int CM_ID = DEFAULT_CM_ID;
+  setOptionValue(CM_ID, "CM_ID", cli_map, cfg_map);
   //Set powerGood
-  std::string powerGood = "";
-  if (progOptions.count("CM_POWER_GOOD")) {powerGood = progOptions["CM_POWER_GOOD"].as<std::string>();}
+  std::string powerGood = DEFAULT_CM_POWER_GOOD;
+  setOptionValue(powerGood, "CM_POWER_GOOD", cli_map, cfg_map);
   //Set powerUp
-  bool powerUp = "";
-  if (progOptions.count("CM_POWER_UP")) {powerUp = progOptions["CM_POWER_UP"].as<bool>();}
+  bool powerUp = DEFAULT_CM_POWER_UP;
+  setOptionValue(powerUp, "CM_POWER_UP", cli_map, cfg_map);
 
   // Make an ApolloSM and CM
   ApolloSM * SM      = NULL;

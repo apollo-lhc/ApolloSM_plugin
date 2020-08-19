@@ -13,7 +13,6 @@
 #define DEFAULT_CONFIG_FILE "/etc/cmpwrup"
 #define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
 #define DEFAULT_CM_ID 1
-#define DEFAULT_CM_POWER_GOOD "CM.CM_1.CTRL.PWR_GOOD"
 #define DEFAULT_CM_POWER_UP true
 namespace po = boost::program_options;
 
@@ -29,7 +28,6 @@ int main(int argc, char** argv) {
     ("help,h",    "Help screen")
     ("CONN_FILE,C",     po::value<std::string>()->implicit_value(""), "Path to the default connection file")
     ("CM_ID,c",         po::value<int>()->implicit_value(0),          "Default CM to power down")
-    ("CM_POWER_GOOD,g", po::value<std::string>()->implicit_value(""), "Default register for PWR_GOOD")
     ("CM_POWER_UP,p",   po::value<bool>()->implicit_value(true),      "Default power up variable");  //note DEFAULT_CM_POWER_UP option does nothing currenty
  
   //Config File options
@@ -37,7 +35,6 @@ int main(int argc, char** argv) {
   cfg_options.add_options()
     ("CONN_FILE",     po::value<std::string>(), "Path to the default connection file")
     ("CM_ID",         po::value<int>(),         "Default CM to power down")
-    ("CM_POWER_GOOD", po::value<std::string>(), "Default register for PWR_GOOD")
     ("CM_POWER_UP",   po::value<bool>(),        "Default power up variable"); 
 
   //variable_maps for holding program options
@@ -66,8 +63,13 @@ int main(int argc, char** argv) {
   int CM_ID = DEFAULT_CM_ID;
   setOptionValue(CM_ID, "CM_ID", cli_map, cfg_map);
   //Set powerGood
-  std::string powerGood = DEFAULT_CM_POWER_GOOD;
-  setOptionValue(powerGood, "CM_POWER_GOOD", cli_map, cfg_map);
+  std::string powerGood;
+  if (CM_ID != 0) {
+    std::string num = boost::lexical_cast<std::string>(CM_ID);
+    powerGood = "CM.CM_" + num + ".CTRL.PWR_GOOD";
+  } else {
+    powerGood = " ";
+  }
   //Set powerUp
   bool powerUp = DEFAULT_CM_POWER_UP;
   setOptionValue(powerUp, "CM_POWER_UP", cli_map, cfg_map);

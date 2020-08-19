@@ -21,39 +21,15 @@
 // ================================================================================
 // Setup for boost program_options
 #include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/heartbeat"
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
+#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_PID_FILE "/var/run/heartbeat.pid"
 namespace po = boost::program_options;
-
-po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
-  //container for prog options grabbed from commandline and config file
-  po::variables_map progOptions;
-  //open config file
-  std::ifstream File(configFile);
-
-  //Get options from command line
-  try { 
-    po::store(po::parse_command_line(argc, argv, options), progOptions);
-  } catch (std::exception &e) {
-    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
-    std::cout << options << std::endl;
-    return 0;
-  }
-
-  //If configFile opens, get options from config file
-  if(File) { 
-    try{ 
-      po::store(po::parse_config_file(File,options,true), progOptions);
-    } catch (std::exception &e) {
-      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
-      std::cout << options << std::endl;
-      return 0; 
-    }
-  }
- 
-  return progOptions;
-}
 
 // ====================================================================================================
 // signal handling
@@ -73,42 +49,57 @@ long us_difftime(struct timespec cur, struct timespec end){
 // ====================================================================================================
 int main(int argc, char** argv) { 
 
-
-  // ============================================================================
-  // Read from configuration file and set up parameters
-
-  //Set up program options
-  po::options_description options("cmpwrup options");
-  options.add_options()
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("cmpwrup options");
+  cli_options.add_options()
     ("help,h",    "Help screen")
-    ("POLLTIME_IN_SECONDS,s", po::value<int>()->default_value(10), "default polltime in seconds")
-    ("CONNECTION_FILE,c",     po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default connections file")
-    ("RUN_DIR,r",             po::value<std::string>()->default_value("/opt/address_table/"), "run path")
-    ("PID_DIR,p",             po::value<std::string>()->default_value("/etc/heartbeat"), "pid file");
+    ("POLLTIME_IN_SECONDS,s", po::value<int>()->implicit_value(0),          "Default polltime in seconds")
+    ("CONN_FILE,c",           po::value<std::string>()->implicit_value(""), "Path to the default connections file")
+    ("RUN_DIR,r",             po::value<std::string>()->implicit_value(""), "run path")
+    ("PID_FILE,p",            po::value<std::string>()->implicit_value(""), "pid file");
 
-  //setup for loading program options
-  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE); 
+  //Config File options
+  po::options_description cfg_options("cmpwrup options");
+  cfg_options.add_options()
+    ("POLLTIME_IN_SECONDS", po::value<int>(),         "default polltime in seconds")
+    ("CONN_FILE",           po::value<std::string>(), "Path to the default connections file")
+    ("RUN_DIR",             po::value<std::string>(), "run path")
+    ("PID_FILE",            po::value<std::string>(), "pid file");
 
-  //help option
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  //Store command line and config file arguments into cli_map and cfg_map
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
     return 0;
   }
-
-  //set polltime_in_seconds
-  int polltime_in_seconds = 0;
-  if (progOptions.count("POLLTIME_IN_SECONDS")){polltime_in_seconds = progOptions["POLLTIME_IN_SECONDS"].as<int>();}
+  
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
+    return 0;
+  }
+  
+  //Set polltime
+  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+  setOptionValue(polltime_in_seconds, "POLLTIME_IN_SECONDS", cli_map, cfg_map);
   //Set connection file
-  std::string connectionFile = "";
-  if (progOptions.count("CONNECTION_FILE")) {connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();}
-  //Set runDir
-  std::string runPath = "";
-  if (progOptions.count("RUN_DIR")){runPath = progOptions["RUN_DIR"].as<std::string>();}
-  //Set pidFileName
-  std::string pidFileName = "";
-  if (progOptions.count("PID_DIR")){pidFileName = progOptions["PID_DIR"].as<std::string>();}
-
-
+  std::string connectionFile = DEFAULT_CONN_FILE;
+  setOptionValue(connectionFile, "CONN_FILE", cli_map, cfg_map);
+  //Set run dir
+  std::string runPath = DEFAULT_RUN_DIR;
+  setOptionValue(runPath, "RUN_DIR", cli_map, cfg_map);
+  //set pidFileName
+  std::string pidFileName = DEFAULT_PID_FILE;
+  setOptionValue(pidFileName, "PID_FILE", cli_map, cfg_map);
 
   // ============================================================================
   // Deamon book-keeping
@@ -183,7 +174,9 @@ int main(int argc, char** argv) {
 
   long update_period_us = polltime_in_seconds*SEC_IN_US; //sleep time in microseconds
 
-
+  //=======================================================================
+  // Set up heartbeat
+  //=======================================================================
   ApolloSM * SM = NULL;
   try{
     // ==================================

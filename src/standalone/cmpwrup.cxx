@@ -1,13 +1,8 @@
 #include <stdio.h>
 #include <ApolloSM/ApolloSM.hh>
-//#include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <standalone/CM.hh>
-//#include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
-//#include <sys/stat.h> //for umask
-//#include <sys/types.h> //for umask
-//#include <BUException/ExceptionBase.hh>
 
 // ================================================================================
 // Setup for boost program_options
@@ -21,31 +16,35 @@
 #define DEFAULT_CM_POWER_GOOD "CM.CM_1.CTRL.PWR_GOOD"
 #define DEFAULT_CM_POWER_UP true
 namespace po = boost::program_options;
+
 // ================================================================================
 int main(int argc, char** argv) { 
 
-  //======================
-  //Set up program options
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
   po::options_description cli_options("cmpwrup options");
   cli_options.add_options()
     ("help,h",    "Help screen")
-    ("CONN_FILE,C",     po::value<std::string>()->implicit_value("/opt/address_table/connections.xml"), "Path to the default connection file")
-    ("CM_ID,c",         po::value<int>()->implicit_value(1),                                            "Default CM to power down")
-    ("CM_POWER_GOOD,g", po::value<std::string>()->implicit_value("CM.CM_1.CTRL.PWR_GOOD"),              "Default register for PWR_GOOD")
-    ("CM_POWER_UP,p",   po::value<bool>()->implicit_value(true),                                        "Default power up variable"); 
-  //note DEFAULT_CM_POWER_UP option does nothing currenty
-
+    ("CONN_FILE,C",     po::value<std::string>()->implicit_value(""), "Path to the default connection file")
+    ("CM_ID,c",         po::value<int>()->implicit_value(0),          "Default CM to power down")
+    ("CM_POWER_GOOD,g", po::value<std::string>()->implicit_value(""), "Default register for PWR_GOOD")
+    ("CM_POWER_UP,p",   po::value<bool>()->implicit_value(true),      "Default power up variable");  //note DEFAULT_CM_POWER_UP option does nothing currenty
+ 
+  //Config File options
   po::options_description cfg_options("cmpwrup options");
   cfg_options.add_options()
-    ("CONN_FILE,C",      po::value<std::string>(), "Path to the default connection file")
-    ("CM_ID,c",          po::value<int>(),         "Default CM to power down")
-    ("CM_POWER_GOOD,g",  po::value<std::string>(), "Default register for PWR_GOOD")
-    ("CM_POWER_UP,p",    po::value<bool>(),        "Default power up variable"); 
+    ("CONN_FILE",     po::value<std::string>(), "Path to the default connection file")
+    ("CM_ID",         po::value<int>(),         "Default CM to power down")
+    ("CM_POWER_GOOD", po::value<std::string>(), "Default register for PWR_GOOD")
+    ("CM_POWER_UP",   po::value<bool>(),        "Default power up variable"); 
 
   //variable_maps for holding program options
   po::variables_map cli_map;
   po::variables_map cfg_map;
 
+  //Store command line and config file arguments into cli_map and cfg_map
   try {
     cli_map = storeCliArguments(cli_options, argc, argv);
     cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
@@ -54,7 +53,7 @@ int main(int argc, char** argv) {
     return 0;
   }
   
-  //Help option
+  //Help option - ends program
   if(cli_map.count("help")){
     std::cout << cli_options << '\n';
     return 0;
@@ -73,6 +72,9 @@ int main(int argc, char** argv) {
   bool powerUp = DEFAULT_CM_POWER_UP;
   setOptionValue(powerUp, "CM_POWER_UP", cli_map, cfg_map);
 
+  //=======================================================================
+  // Power up Command Module
+  //=======================================================================
   // Make an ApolloSM and CM
   ApolloSM * SM      = NULL;
   CM * commandModule = NULL;

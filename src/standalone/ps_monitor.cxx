@@ -32,39 +32,14 @@
 // ================================================================================
 // Setup for boost program_options
 #include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_RUN_DIR "/opt/address_table"
+#define DEFAULT_PID_FILE "/var/run/ps_monitor.pid"
 namespace po = boost::program_options;
-
-po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
-  //container for prog options grabbed from commandline and config file
-  po::variables_map progOptions;
-  //open config file
-  std::ifstream File(configFile);
-
-  //Get options from command line
-  try { 
-    po::store(parse_command_line(argc, argv, options), progOptions);
-  } catch (std::exception &e) {
-    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
-    std::cout << options << std::endl;
-    return 0;
-  }
-
-  //If configFile opens, get options from config file
-  if(File) { 
-    try{ 
-      po::store(parse_config_file(File,options,true), progOptions);
-    } catch (std::exception &e) {
-      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
-      std::cout << options << std::endl;
-      return 0; 
-    }
-  }
- 
-  return progOptions;
-}
 
 // ====================================================================================================
 // Kill program if it is in background
@@ -86,38 +61,52 @@ long us_difftime(struct timespec cur, struct timespec end){
 
 int main(int argc, char ** argv) {
 
-  // ============================================================================
-  // Read from configuration file and set up parameters
-
-  //Set up program options
-  po::options_description options("cmpwrdown options");
-  options.add_options()
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("cmpwrdown options");
+  cli_options.add_options()
     ("help,h",    "Help screen")
-    ("POLLTIME_IN_SECONDS,s",     po::value<int>()->default_value(10), "Default polltime in seconds")
-    ("RUN_DIR,r",                 po::value<std::string>()->default_value("/opt/address_table"),           "run path")
-    ("PID_DIR,d",                 po::value<std::string>()->default_value("/var/run/"),                    "pud path");
-    //("DEFAULT_CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file")
-  
-  //setup for loading program options
-  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+    ("POLLTIME_IN_SECONDS,s", po::value<int>()->implicit_value(0),          "polltime in seconds")
+    ("RUN_DIR,r",             po::value<std::string>()->implicit_value(""), "run path")
+    ("PID_FILE,d",            po::value<std::string>()->implicit_value(""), "pid file");
 
-  //help option
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
+  //Config File options
+  po::options_description cfg_options("cmpwrdown options");
+  cfg_options.add_options()
+    ("POLLTIME_IN_SECONDS", po::value<int>(),         "polltime in seconds")
+    ("RUN_DIR",             po::value<std::string>(), "run path")
+    ("PID_FILE",            po::value<std::string>(), "pid file");
+
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  //Store command line and config file arguments into cli_map and cfg_map
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
+    return 0;
+  }
+  
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
     return 0;
   }
 
   //Set polltime_in_seconds
-  int polltime_in_seconds = 0;
-  if (progOptions.count("POLLTIME_IN_SECONDS")){polltime_in_seconds = progOptions["POLLTIME_IN_SECONDS"].as<int>();}
+  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+  setOptionValue(polltime_in_seconds, "POLLTIME_IN_SECONDS", cli_map, cfg_map);
   //Set runPath
-  std::string runPath = "";
-  if (progOptions.count("RUN_DIR")){runPath = progOptions["RUN_DIR"].as<std::string>();}
+  std::string runPath = DEFAULT_RUN_DIR;
+  setOptionValue(runPath, "RUN_DIR", cli_map, cfg_map);
   //set pidFileName
-  std::string pidFileName = "";
-  if (progOptions.count("PID_DIR")){pidFileName = progOptions["PID_DIR"].as<std::string>();}
-  //Set connectionFile ??
-    
+  std::string pidFileName = DEFAULT_PID_FILE;
+  setOptionValue(pidFileName, "PID_FILE", cli_map, cfg_map);
 
   // ============================================================================
   // Deamon book-keeping
@@ -166,9 +155,6 @@ int main(int argc, char ** argv) {
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-  
-
-
   // ============================================================================
   // Daemon code setup
 
@@ -197,6 +183,9 @@ int main(int argc, char ** argv) {
     }
   }
 
+  //=======================================================================
+  // Start ps monitor
+  //=======================================================================
   ApolloSM * SM = NULL;
   try{
     // ==================================

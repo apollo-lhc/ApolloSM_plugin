@@ -20,39 +20,17 @@
 // ================================================================================
 // Setup for boost program_options
 #include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/htmlStatus"
+#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_PID_FILE "/var/run/htmlStatus.pid"
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_OUTFILE "/var/www/lighttpd/index.html"
+#define DEFAULT_LOG_LEVEL 1
+#define DEFAULT_OUTPUT_TYPE "HTML"
 namespace po = boost::program_options;
-
-po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
-  //container for prog options grabbed from commandline and config file
-  po::variables_map progOptions;
-  //open config file
-  std::ifstream File(configFile);
-
-  //Get options from command line
-  try { 
-    po::store(po::parse_command_line(argc, argv, options), progOptions);
-  } catch (std::exception &e) {
-    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
-    std::cout << options << std::endl;
-    return 0;
-  }
-
-  //If configFile opens, get options from config file
-  if(File) { 
-    try{ 
-      po::store(po::parse_config_file(File,options,true), progOptions);
-    } catch (std::exception &e) {
-      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
-      std::cout << options << std::endl;
-      return 0; 
-    }
-  }
- 
-  return progOptions;
-}
 
 // ====================================================================================================
 // signal handling
@@ -78,48 +56,71 @@ int main(int argc, char** argv) {
   // Read from configuration file and set up parameters
   syslog(LOG_INFO,"Reading from config file now\n");
  
-  //Set up program options
-  po::options_description options("cmpwrdown options");
-  options.add_options()
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("cmpwrdown options");
+  cli_options.add_options()
     ("help,h",    "Help screen")
-    ("RUN_DIR",     po::value<std::string>()->default_value("/opt/address_table"),           "run path")
-    ("PID_DIR",     po::value<std::string>()->default_value("/var/run/"),                    "pud path")
-    ("POLLTIME_IN_SECONDS",    po::value<int>()->default_value(10),                                     "polling interval")
-    ("OUTFILE",     po::value<std::string>()->default_value("/var/www/lighttpd/index.html"), "html output file")
-    ("LOG_LEVEL",   po::value<int>()->default_value(1),                                      "status display log level")
-    ("OUTPUT_TYPE", po::value<std::string>()->default_value("HTML"),                         "html output type");
+    ("RUN_DIR",             po::value<std::string>()->implicit_value(""), "run path")
+    ("PID_FILE",             po::value<std::string>()->implicit_value(""), "pid path")
+    ("POLLTIME_IN_SECONDS", po::value<int>()->implicit_value(0),          "polling interval")
+    ("OUTFILE",             po::value<std::string>()->implicit_value(""), "html output file")
+    ("LOG_LEVEL",           po::value<int>()->implicit_value(0),          "status display log level")
+    ("OUTPUT_TYPE",         po::value<std::string>()->implicit_value(""), "html output type");
 
-  //setup for loading program options
-  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+  //Config File options
+  po::options_description cfg_options("cmpwrdown options");
+  cfg_options.add_options()
+    ("RUN_DIR",             po::value<std::string>(),  "run path")
+    ("PID_FILE",             po::value<std::string>(),  "pud path")
+    ("POLLTIME_IN_SECONDS", po::value<int>(),          "polling interval")
+    ("OUTFILE",             po::value<std::string>(),  "html output file")
+    ("LOG_LEVEL",           po::value<int>(),          "status display log level")
+    ("OUTPUT_TYPE",         po::value<std::string>(), "html output type");
 
-  //help option
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  //Store command line and config file arguments into cli_map and cfg_map
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
     return 0;
   }
 
-  //Set pidPath
-  std::string pidFileName = "";
-  if(progOptions.count("PID_DIR")){pidFileName = progOptions["PID_DIR"].as<std::string>();}
-  //Set runpath
-  std::string runPath = "";
-  if(progOptions.count("RUN_DIR")) {runPath = progOptions["RUN_DIR"].as<std::string>();}
-  //Set polltime_in_seconds
-  int polltime_in_seconds = 0;
-  if(progOptions.count("POLLTIME_IN_SECONDS")) {polltime_in_seconds = progOptions["POLLTIME_IN_SECONDS"].as<int>();}
-  syslog(LOG_INFO, "Setting poll time to %d seconds (%s)\n", polltime_in_seconds, progOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
-  //Set logLevel
-  int logLevel = 0;
-  if(progOptions.count("LOG_LEVEL")) {logLevel = progOptions["LOG_LEVEL"].as<int>();}
-  syslog(LOG_INFO, "Setting log level to %d (%s)\n", logLevel, progOptions.count("log_level") ? "CONFIG FILE" : "DEFAULT");
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
+    return 0;
+  }
+ 
+  //Set run dir
+  std::string runPath = DEFAULT_RUN_DIR;
+  setOptionValue(runPath, "RUN_DIR", cli_map, cfg_map);
+  //set pidFileName
+  std::string pidFileName = DEFAULT_PID_FILE;
+  setOptionValue(pidFileName, "PID_FILE", cli_map, cfg_map);
+  //Set polltime
+  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+  setOptionValue(polltime_in_seconds, "POLLTIME_IN_SECONDS", cli_map, cfg_map);
+  syslog(LOG_INFO, "Setting poll time to %d seconds (%s)\n", polltime_in_seconds, cli_map.count("polltime") ? "CONFIG FILE" : "DEFAULT");
   //Set outfile
-  std::string outfile = "";
-  if(progOptions.count("OUTFILE")) {outfile = progOptions["OUTFILE"].as<std::string>();}
-  syslog(LOG_INFO, "Sending output to %s (%s)\n", outfile.c_str(), progOptions.count("outfile") ? "CONFIG FILE" : "DEFAULT");
-  //Set outputType
-  std::string outputType = "";
-  if(progOptions.count("OUTPUT_TYPE")) {outputType = progOptions["OUTPUT_TYPE"].as<std::string>();}
-  syslog(LOG_INFO, "Sending output type to %s (%s)\n", outputType.c_str(), progOptions.count("output_type") ? "CONFIG FILE" : "DEFAULT");
+  std::string outfile = DEFAULT_OUTFILE;
+  setOptionValue(outfile, "OUTFILE", cli_map, cfg_map);
+  syslog(LOG_INFO, "Sending output to %s (%s)\n", outfile.c_str(), cli_map.count("outfile") ? "CONFIG FILE" : "DEFAULT");
+  //Set log level
+  int logLevel = DEFAULT_LOG_LEVEL;
+  setOptionValue(logLevel, "LOG_LEVEL", cli_map, cfg_map);
+  syslog(LOG_INFO, "Setting log level to %d (%s)\n", logLevel, cli_map.count("log_level") ? "CONFIG FILE" : "DEFAULT");
+  //Set output type
+  std::string outputType = DEFAULT_OUTPUT_TYPE;
+  setOptionValue(outputType, "OUTPUT_TYPE", cli_map, cfg_map);
+  syslog(LOG_INFO, "Sending output type to %s (%s)\n", outputType.c_str(), cli_map.count("output_type") ? "CONFIG FILE" : "DEFAULT");
 
   // ============================================================================
   // Deamon book-keeping
@@ -194,7 +195,9 @@ int main(int argc, char** argv) {
   long update_period_us = polltime_in_seconds*SEC_IN_US; //sleep time in microseconds
 
 
-
+  //=======================================================================
+  // Generate HTML status
+  //=======================================================================
   //Create ApolloSM class
   ApolloSM * SM = NULL;
   try{

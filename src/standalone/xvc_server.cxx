@@ -36,44 +36,18 @@
 #include <ApolloSM/uioLabelFinder.hh>
 #include <ApolloSM/ApolloSM.hh>
 
-//extern int errno;
-
 // ================================================================================
 // Setup for boost program_options
 #include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/xvc_server"
+#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_PID_FILE "/var/run/xvc_server.pid"
+#define DEFAULT_XVCPREFIX " "
+#define DEFAULT_XVCPORT -1
 namespace po = boost::program_options;
-
-po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
-  //container for prog options grabbed from commandline and config file
-  po::variables_map progOptions;
-  //open config file
-  std::ifstream File(configFile);
-
-  //Get options from command line
-  try { 
-    po::store(po::parse_command_line(argc, argv, options), progOptions);
-  } catch (std::exception &e) {
-    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
-    std::cout << options << std::endl;
-    return 0;
-  }
-
-  //If configFile opens, get options from config file
-  if(File) { 
-    try{ 
-      po::store(po::parse_config_file(File,options,true), progOptions);
-    } catch (std::exception &e) {
-      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
-      std::cout << options << std::endl;
-      return 0; 
-    }
-  }
- 
-  return progOptions;
-}
 
 // ====================================================================================================
 // signal handling
@@ -124,7 +98,7 @@ int handle_data(int fd) {
 
   do {    
     CHECK_LOCK
-    char cmd[16];
+      char cmd[16];
     unsigned char buffer[2048], result[1024];
     memset(cmd, 0, 16);
 
@@ -185,7 +159,7 @@ int handle_data(int fd) {
 
     while (bytesLeft > 0) {      
       CHECK_LOCK
-      tms = 0;
+	tms = 0;
       tdi = 0;
       tdo = 0;
       if (bytesLeft >= 4) {
@@ -248,36 +222,58 @@ int main(int argc, char **argv) {
 
   int uioN = -1;
 
-  //Set up program options
-  po::options_description options("cmpwrdown options");
-  options.add_options()
-    ("help,h",    "Help screen")
-    ("RUN_DIR,r",   po::value<std::string>()->default_value("/opt/address_table/"), "Path to default run directory")
-    ("PID_DIR,d",   po::value<std::string>()->default_value("/var/run/"),           "Path to default pid directory")
-    ("xvcPrefix,v", po::value<std::string>()->default_value(""),                    "xvc prefix")
-    ("xvcPort,p",   po::value<int>()->default_value(-1),                            "xvc_port number");
-  
-  //setup for loading program options
-  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
 
-  //help option
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("cmpwrdown options");
+  cli_options.add_options()
+    ("help,h",    "Help screen")
+    ("RUN_DIR,r",   po::value<std::string>()->implicit_value(""), "Path to default run directory")
+    ("PID_FILE,d",  po::value<std::string>()->implicit_value(""), "Path to default pid directory")
+    ("xvcPrefix,v", po::value<std::string>()->implicit_value(""), "xvc prefix")
+    ("xvcPort,p",   po::value<int>()->implicit_value(0),          "xvc_port number");
+
+  //Config File options
+  po::options_description cfg_options("cmpwrdown options");
+  cfg_options.add_options()
+    ("RUN_DIR",   po::value<std::string>(), "Path to default run directory")
+    ("PID_FILE",  po::value<std::string>(), "Path to default pid directory")
+    ("xvcPrefix", po::value<std::string>(), "xvc prefix")
+    ("xvcPort",   po::value<int>(),         "xvc_port number");
+
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  //Store command line and config file arguments into cli_map and cfg_map
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
+    return 0;
+  }
+  
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
     return 0;
   }
 
   //Set port
-  int port = 0;
-  if(progOptions.count("xvcPort")){port = progOptions["xvcPort"].as<int>();}
+  int port = DEFAULT_XVCPORT;
+  setOptionValue(port, "xvcPort", cli_map, cfg_map);
   //setxvcName
-  std::string xvcName = "";
-  if(progOptions.count("xvcName")){xvcName = progOptions["xvcName"].as<std::string>();}
+  std::string xvcName = DEFAULT_XVCPREFIX;
+  setOptionValue(xvcName, "xvcPrefix", cli_map, cfg_map);
   //set PID_DIR
-  std::string PID_DIR = "";
-  if(progOptions.count("PID_DIR")){PID_DIR = progOptions["PID_DIR"].as<std::string>();}
+  std::string PID_DIR = DEFAULT_PID_FILE;
+  setOptionValue(PID_DIR, "PID_FILE", cli_map, cfg_map);
   //Set RUN_DIR
-  std::string RUN_DIR = "";
-  if(progOptions.count("RUN_DIR")){RUN_DIR = progOptions["RUN_DIR"].as<std::string>();}
+  std::string RUN_DIR = DEFAULT_RUN_DIR;
+  setOptionValue(RUN_DIR, "RUN_DIR", cli_map, cfg_map);
   //use xvcName to get uiLabel
   std::string uioLabel = xvcName;
 

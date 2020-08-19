@@ -1,57 +1,19 @@
 #include <stdio.h>
 #include <ApolloSM/ApolloSM.hh>
-//#include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <standalone/CM.hh>
-//#include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
-//#include <sys/stat.h> //for umask
-//#include <sys/types.h> //for umask
-//#include <BUException/ExceptionBase.hh>
 #include <boost/algorithm/string/predicate.hpp> // for iequals
 
 // ================================================================================
 // Setup for boost program_options
 #include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
 #include <fstream>
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/uartCmd"
+#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
 namespace po = boost::program_options;
-
-po::variables_map getVariableMap(int argc, char** argv, po::options_description options, std::string configFile) {
-  //container for prog options grabbed from commandline and config file
-  po::variables_map progOptions;
-  //open config file
-  std::ifstream File(configFile);
-
-  //Get options from command line
-  try { 
-    po::store(po::parse_command_line(argc, argv, options), progOptions);
-  } catch (std::exception &e) {
-    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
-    std::cout << options << std::endl;
-    return 0;
-  }
-
-  //If configFile opens, get options from config file
-  if(File) { 
-    try{ 
-      po::store(po::parse_config_file(File,options,true), progOptions);
-    } catch (std::exception &e) {
-      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
-      std::cout << options << std::endl;
-      return 0; 
-    }
-  }
-
-  //help option, this assumes help is a member of options_description
-  if(progOptions.count("help")){
-    std::cout << options << '\n';
-    return 0;
-  }
- 
-  return progOptions;
-}
 
 // ================================================================================
 int main(int argc, char** argv) { 
@@ -63,28 +25,46 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-    //Set up program options
-  po::options_description options("cmpwrdown options");
-  options.add_options()
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("cmpwrdown options");
+  cli_options.add_options()
     ("help,h",    "Help screen")
-    ("CONNECTION_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file");
-    //three args?
+    ("CONN_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file");
 
-  //setup for loading program options
-  //  std::ifstream configFile(DEFAULT_CONFIG_FILE);
-  po::variables_map progOptions = getVariableMap(argc, argv, options, DEFAULT_CONFIG_FILE);
+  //Config File options
+  po::options_description cfg_options("cmpwrdown options");
+  cfg_options.add_options()
+    ("CONN_FILE", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file");
+  
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
 
-  //Set connection file
-  std::string connectionFile = "";
-  if (progOptions.count("CONNECTION_FILE")) {
-    connectionFile = progOptions["CONNECTION_FILE"].as<std::string>();
+  //Store command line and config file arguments into cli_map and cfg_map
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
+    return 0;
+  }
+  
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
+    return 0;
   }
 
+  //Set connection file
+  std::string connectionFile = DEFAULT_CONN_FILE;
+  setOptionValue(connectionFile, "CONN_FILE", cli_map, cfg_map);
 
-
-
-
-  
+  //=======================================================================
+  // Run UART command
+  //=======================================================================
   // Make an ApolloSM
   ApolloSM * SM = NULL;
   try{
@@ -92,13 +72,8 @@ int main(int argc, char** argv) {
     if(NULL == SM){
       fprintf(stderr, "Failed to create new ApolloSM. Terminating program\n");
       exit(EXIT_FAILURE);
-    }//else{
-    //  fprintf(stdout,"Created new ApolloSM\n");      
-    //}
-    // load connection file
+    }
     std::vector<std::string> arg;
-    //std::string connectionFile = DEFAULT_CONNECTION_FILE;
-    //printf("Using %s\n", connectionFile.c_str());
     arg.push_back(connectionFile);
     SM->Connect(arg);
     

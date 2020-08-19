@@ -1,13 +1,8 @@
 #include <stdio.h>
 #include <ApolloSM/ApolloSM.hh>
-//#include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <standalone/CM.hh>
-//#include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
-//#include <sys/stat.h> //for umask
-//#include <sys/types.h> //for umask
-//#include <BUException/ExceptionBase.hh>
 
 // ================================================================================
 // Setup for boost program_options
@@ -23,14 +18,17 @@ namespace po = boost::program_options;
 // ================================================================================
 int main(int argc, char** argv) { 
 
-  //======================
-  //Set up program options
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
   po::options_description cli_options("cmpwrdown options"); //options read from command line
   cli_options.add_options()
     ("help,h",    "Help screen")
     ("CONN_FILE,C", po::value<std::string>()->implicit_value(""), "Path to the default connection file")
     ("CM_ID,c",     po::value<int>()->implicit_value(0),          "Default CM to power down");
   
+  //Config File options
   po::options_description cfg_options("cmpwrdown options"); //options read from config file
   cfg_options.add_options()
     ("CONN_FILE", po::value<std::string>(), "Path to the default connection file")
@@ -40,6 +38,7 @@ int main(int argc, char** argv) {
   po::variables_map cli_map;
   po::variables_map cfg_map;
   
+  //Store command line and config file arguments into cli_map and cfg_map
   try {
     cli_map = storeCliArguments(cli_options, argc, argv);
     cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
@@ -48,7 +47,7 @@ int main(int argc, char** argv) {
     return 0;
   }
   
-  //Help option
+  //Help option - ends program
   if(cli_map.count("help")){
     std::cout << cli_options << '\n';
     return 0;
@@ -61,6 +60,9 @@ int main(int argc, char** argv) {
   int CM_ID = DEFAULT_CM_ID; //Assign defaul cm_id
   setOptionValue(CM_ID, "CM_ID", cli_map, cfg_map);
   
+  //=======================================================================
+  // Power down Command Module
+  //=======================================================================
   // Make an ApolloSM and command module
   CM * commandModule = NULL;  
   ApolloSM * SM      = NULL;

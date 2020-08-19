@@ -23,7 +23,8 @@
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h> 
-#include <pthread.h>
+#include <arpa/inet.h>  //for inet_ntoa
+#include <pthread.h> // Why is this here?
 
 #include <sys/stat.h> //for umask
 #include <sys/types.h> //for umask
@@ -64,6 +65,8 @@ typedef struct  {
   uint32_t tdo_offset;
   uint32_t ctrl_offset; //bit 1 is a go signal, bit 2 is a busy signal
   uint32_t lock_offset;
+  uint32_t IP;
+  uint32_t port;
 } sXVC;
 
 sXVC volatile * pXVC = NULL;
@@ -90,7 +93,7 @@ static int sread(int fd, void *target, int len) {
 }
 
 int handle_data(int fd) {
-
+  
   const char xvcInfo[] = "xvcServer_v1.0:2048\n"; 
 
   do {    
@@ -212,7 +215,7 @@ int handle_data(int fd) {
 
 int main(int argc, char **argv) {
   int i;
-  int s;
+  int listenFD;
 
   int fdUIO = -1;
   struct sockaddr_in address;
@@ -283,13 +286,14 @@ int main(int argc, char **argv) {
     exit(EXIT_SUCCESS);
   }else{
     // I'm the child!
+
   }
 
   
   //Change the file mode mask to allow read/write
   umask(0);
   
-  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
+  openlog(daemonName,LOG_PID|LOG_ODELAY,LOG_DAEMON);
   syslog(LOG_INFO,"starting %s", daemonName);
   
 
@@ -421,37 +425,30 @@ int main(int argc, char **argv) {
 
 
   opterr = 0;
-  s = socket(AF_INET, SOCK_STREAM, 0);
+  listenFD = socket(AF_INET, SOCK_STREAM, 0);
                
-  if (s < 0) {
+  if (listenFD < 0) {
     syslog(LOG_ERR,"socket: %s",strerror(errno));
     return 1;
   }
    
   i = 1;
-  setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
+  setsockopt(listenFD, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
 
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
   address.sin_family = AF_INET;
 
-  if (bind(s, (struct sockaddr*) &address, sizeof(address)) < 0) {
+  if (bind(listenFD, (struct sockaddr*) &address, sizeof(address)) < 0) {
     syslog(LOG_ERR,"bind: %s",strerror(errno));
     return 1;
   }
 
-  if (listen(s, 5) < 0) {
+  if (listen(listenFD, 5) < 0) {
     syslog(LOG_ERR,"listen: %s",strerror(errno));
     return 1;
   }
 
-  fd_set conn;
-  int maxfd = 0;
-
-  FD_ZERO(&conn);
-  FD_SET(s, &conn);
-
-  maxfd = s;
 
 
   // ============================================================================
@@ -471,55 +468,83 @@ int main(int argc, char **argv) {
   sigaction(SIGTERM, &sa_TERM, NULL);
   loop = true;
 
-  while (loop) {
-    fd_set read = conn, except = conn;
-    int fd;
 
-    if (select(maxfd + 1, &read, 0, &except, 0) < 0) {
+
+  //zero remote info
+  pXVC->IP =0;
+  pXVC->port = 0;
+
+  int maxFD = 0;
+
+  //setup the listen FDset for select
+  fd_set listenFDSet;
+  FD_ZERO(&listenFDSet);
+  FD_SET(listenFD, &listenFDSet);
+
+  //setup the connection FD set for select
+  int connectionFD = -1;
+  fd_set connectionFDSet;
+  FD_ZERO(&connectionFDSet);
+
+  //start by waiting on the listen socket
+  fd_set activeFDSet = listenFDSet;
+  maxFD = listenFD;
+  while (loop) {
+    fd_set read = activeFDSet, except = listenFDSet;
+
+    if (select(maxFD + 1, &read, 0, &except, 0) < 0) {
       syslog(LOG_ERR,"select: %s",strerror(errno));
       break;
     }
     
-    for (fd = 0; fd <= maxfd; ++fd) {
-      if (FD_ISSET(fd, &read)) {
-	if (fd == s) {
-	  int newfd;
-	  socklen_t nsize = sizeof(address);
+    //---------------------------------------------------------------------------
+    if (FD_ISSET(listenFD,&except)){
+      syslog(LOG_ERR,"Exceptional condition on listen socket\n");
+      break;
+    //---------------------------------------------------------------------------
+    } else if (FD_ISSET(listenFD, &read)) {
+      socklen_t nsize = sizeof(address);
 
-	  newfd = accept(s, (struct sockaddr*) &address, &nsize);
+      connectionFD = accept(listenFD, (struct sockaddr*) &address, &nsize);
 
-	  syslog(LOG_INFO,"connection accepted - fd %d\n", newfd);
-	  if (newfd < 0) {
-	    syslog(LOG_ERR,"accept: %s",strerror(errno));
-	  } else {
-	    syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
-	    int flag = 1;
-	    int optResult = setsockopt(newfd,
-				       IPPROTO_TCP,
-				       TCP_NODELAY,
-				       (char *)&flag,
-				       sizeof(int));
-	    if (optResult < 0)
-	      syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
-	    if (newfd > maxfd) {
-	      maxfd = newfd;
-	    }
-	    FD_SET(newfd, &conn);
-	  }
-	}
-	else if (handle_data(fd)) {
+	  
+      syslog(LOG_INFO,"connection accepted - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
+      if (connectionFD < 0) {
+	syslog(LOG_ERR,"accept: %s",strerror(errno));	
+      } else {
+	syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
+	int flag = 1;
+	int optResult = setsockopt(connectionFD,
+				   IPPROTO_TCP,
+				   TCP_NODELAY,
+				   (char *)&flag,
+				   sizeof(int));
+	if (optResult < 0)
+	  syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
+	
+	
+	pXVC->IP =address.sin_addr.s_addr;
+	pXVC->port = address.sin_port;
 
-	  syslog(LOG_INFO,"connection closed - fd %d\n", fd);
-	  close(fd);
-	  FD_CLR(fd, &conn);
-	}
+	//set the activeFDSet for read to now be the connection
+	FD_ZERO(&connectionFDSet);
+	FD_SET(connectionFD,&connectionFDSet);
+	activeFDSet = connectionFDSet;
+	maxFD = connectionFD;
       }
-      else if (FD_ISSET(fd, &except)) {
-	syslog(LOG_INFO,"connection aborted - fd %d\n", fd);
-	close(fd);
-	FD_CLR(fd, &conn);
-	if (fd == s)
-	  break;
+    //---------------------------------------------------------------------------
+    }else if((connectionFD > 0) &&
+	     (FD_ISSET(connectionFD,&read))){
+      if(handle_data(connectionFD)){
+	//error happened
+	syslog(LOG_INFO,"connection closed - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
+	pXVC->IP =0;
+	pXVC->port = 0;
+	
+	close(connectionFD);
+	activeFDSet = listenFDSet;
+	maxFD = listenFD;	
+	connectionFD = -1;
       }
     }
   }  

@@ -215,7 +215,7 @@ int handle_data(int fd) {
 
 int main(int argc, char **argv) {
   int i;
-  int listenSocket;
+  int listenFD;
 
   int fdUIO = -1;
   struct sockaddr_in address;
@@ -425,37 +425,30 @@ int main(int argc, char **argv) {
 
 
   opterr = 0;
-  listenSocket = socket(AF_INET, SOCK_STREAM, 0);
+  listenFD = socket(AF_INET, SOCK_STREAM, 0);
                
-  if (listenSocket < 0) {
+  if (listenFD < 0) {
     syslog(LOG_ERR,"socket: %s",strerror(errno));
     return 1;
   }
    
   i = 1;
-  setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
+  setsockopt(listenFD, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
 
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
   address.sin_family = AF_INET;
 
-  if (bind(listenSocket, (struct sockaddr*) &address, sizeof(address)) < 0) {
+  if (bind(listenFD, (struct sockaddr*) &address, sizeof(address)) < 0) {
     syslog(LOG_ERR,"bind: %s",strerror(errno));
     return 1;
   }
 
-  if (listen(listenSocket, 5) < 0) {
+  if (listen(listenFD, 5) < 0) {
     syslog(LOG_ERR,"listen: %s",strerror(errno));
     return 1;
   }
 
-  fd_set listenFDSet;
-  int maxfd = 0;
-
-  FD_ZERO(&listenFDSet);
-  FD_SET(listenSocket, &listenFDSet);
-
-  maxfd = listenSocket;
 
 
   // ============================================================================
@@ -475,31 +468,53 @@ int main(int argc, char **argv) {
   sigaction(SIGTERM, &sa_TERM, NULL);
   loop = true;
 
+
+
   //zero remote info
   pXVC->IP =0;
   pXVC->port = 0;
-  while (loop) {
-    fd_set read = listenFDSet, except = listenFDSet;
 
-    if (select(maxfd + 1, &read, 0, &except, 0) < 0) {
+  int maxFD = 0;
+
+  //setup the listen FDset for select
+  fd_set listenFDSet;
+  FD_ZERO(&listenFDSet);
+  FD_SET(listenFD, &listenFDSet);
+
+  //setup the connection FD set for select
+  int connectionFD = -1;
+  fd_set connectionFDSet;
+  FD_ZERO(&connectionFDSet);
+
+  //start by waiting on the listen socket
+  fd_set activeFDSet = listenFDSet;
+  maxFD = listenFD;
+  while (loop) {
+    fd_set read = activeFDSet, except = listenFDSet;
+
+    if (select(maxFD + 1, &read, 0, &except, 0) < 0) {
       syslog(LOG_ERR,"select: %s",strerror(errno));
       break;
     }
     
-    if (FD_ISSET(listenSocket, &read)) {
-      int newfd;
+    //---------------------------------------------------------------------------
+    if (FD_ISSET(listenFD,&except)){
+      syslog(LOG_ERR,"Exceptional condition on listen socket\n");
+      break;
+    //---------------------------------------------------------------------------
+    } else if (FD_ISSET(listenFD, &read)) {
       socklen_t nsize = sizeof(address);
 
-      newfd = accept(listenSocket, (struct sockaddr*) &address, &nsize);
+      connectionFD = accept(listenFD, (struct sockaddr*) &address, &nsize);
 
 	  
-      syslog(LOG_INFO,"connection accepted - fd %d %s:%u\n", newfd,inet_ntoa(address.sin_addr),address.sin_port);
-      if (newfd < 0) {
+      syslog(LOG_INFO,"connection accepted - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
+      if (connectionFD < 0) {
 	syslog(LOG_ERR,"accept: %s",strerror(errno));	
       } else {
 	syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
 	int flag = 1;
-	int optResult = setsockopt(newfd,
+	int optResult = setsockopt(connectionFD,
 				   IPPROTO_TCP,
 				   TCP_NODELAY,
 				   (char *)&flag,
@@ -510,14 +525,26 @@ int main(int argc, char **argv) {
 	
 	pXVC->IP =address.sin_addr.s_addr;
 	pXVC->port = address.sin_port;
-	
-	handle_data(newfd);
-	
-	syslog(LOG_INFO,"connection closed - fd %d %s:%u\n", newfd,inet_ntoa(address.sin_addr),address.sin_port);
+
+	//set the activeFDSet for read to now be the connection
+	FD_ZERO(&connectionFDSet);
+	FD_SET(connectionFD,&connectionFDSet);
+	activeFDSet = connectionFDSet;
+	maxFD = connectionFD;
+      }
+    //---------------------------------------------------------------------------
+    }else if((connectionFD > 0) &&
+	     (FD_ISSET(connectionFD,&read))){
+      if(handle_data(connectionFD)){
+	//error happened
+	syslog(LOG_INFO,"connection closed - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
 	pXVC->IP =0;
 	pXVC->port = 0;
 	
-	close(newfd);
+	close(connectionFD);
+	activeFDSet = listenFDSet;
+	maxFD = listenFD;	
+	connectionFD = -1;
       }
     }
   }  

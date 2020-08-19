@@ -286,13 +286,14 @@ int main(int argc, char **argv) {
     exit(EXIT_SUCCESS);
   }else{
     // I'm the child!
+
   }
 
   
   //Change the file mode mask to allow read/write
   umask(0);
   
-  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
+  openlog(daemonName,LOG_PID|LOG_ODELAY,LOG_DAEMON);
   syslog(LOG_INFO,"starting %s", daemonName);
   
 

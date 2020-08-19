@@ -87,11 +87,14 @@ int main(int argc, char** argv) {
   //Store command line and config file arguments into cli_map and cfg_map
   try {
     cli_map = storeCliArguments(cli_options, argc, argv);
-    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);
   } catch (std::exception &e) {
     std::cout << cli_options << std::endl;
     return 0;
   }
+
+  try {
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
+  } catch (std::exception &e) {}
 
   //Help option - ends program
   if(cli_map.count("help")){
@@ -141,7 +144,6 @@ int main(int argc, char** argv) {
     //open syslog
     openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
   }
-
   
   //Change the file mode mask to allow read/write
   umask(0);

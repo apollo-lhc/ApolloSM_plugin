@@ -6,14 +6,7 @@
 #include <boost/algorithm/string/predicate.hpp> // for iequals
 
 // ================================================================================
-// Setup for boost program_options
-#include <boost/program_options.hpp>
-#include <standalone/progOpt.hh>
-#include <fstream>
-#include <iostream>
-#define DEFAULT_CONFIG_FILE "/etc/uartCmd"
-#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
-namespace po = boost::program_options;
+#define DEFAULT_CONNECTION_FILE "/opt/address_table/connections.xml"
 
 // ================================================================================
 int main(int argc, char** argv) { 
@@ -24,50 +17,7 @@ int main(int argc, char** argv) {
     printf("Wrong number of arguments. Please include at least a device and a command\n");
     return -1;
   }
-
-  //=======================================================================
-  // Set up program options
-  //=======================================================================
-  //Command Line options
-  po::options_description cli_options("cmpwrdown options");
-  cli_options.add_options()
-    ("help,h",    "Help screen")
-    ("CONN_FILE,C", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file");
-
-  //Config File options
-  po::options_description cfg_options("cmpwrdown options");
-  cfg_options.add_options()
-    ("CONN_FILE", po::value<std::string>()->default_value("/opt/address_table/connections.xml"), "Path to the default config file");
   
-  //variable_maps for holding program options
-  po::variables_map cli_map;
-  po::variables_map cfg_map;
-
-  //Store command line and config file arguments into cli_map and cfg_map
-  try {
-    cli_map = storeCliArguments(cli_options, argc, argv);
-  } catch (std::exception &e) {
-    std::cout << cli_options << std::endl;
-    return 0;
-  }
-
-  try {
-    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
-  } catch (std::exception &e) {}
-  
-  //Help option - ends program
-  if(cli_map.count("help")){
-    std::cout << cli_options << '\n';
-    return 0;
-  }
-
-  //Set connection file
-  std::string connectionFile = DEFAULT_CONN_FILE;
-  setOptionValue(connectionFile, "CONN_FILE", cli_map, cfg_map);
-
-  //=======================================================================
-  // Run UART command
-  //=======================================================================
   // Make an ApolloSM
   ApolloSM * SM = NULL;
   try{
@@ -76,7 +26,10 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Failed to create new ApolloSM. Terminating program\n");
       exit(EXIT_FAILURE);
     }
+
     std::vector<std::string> arg;
+    std::string connectionFile = DEFAULT_CONNECTION_FILE;
+
     arg.push_back(connectionFile);
     SM->Connect(arg);
     
@@ -142,7 +95,6 @@ int main(int argc, char** argv) {
   }
   
   // Clean up
-  //printf("Deleting ApolloSM\n");
   if(NULL != SM) {
     delete SM;
   }

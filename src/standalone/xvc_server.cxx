@@ -6,7 +6,6 @@
  *  Description : XAPP1251 Xilinx Virtual Cable Server for Linux
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -23,7 +22,8 @@
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h> 
-#include <pthread.h>
+#include <arpa/inet.h>  //for inet_ntoa
+#include <pthread.h> // Why is this here?
 
 #include <sys/stat.h> //for umask
 #include <sys/types.h> //for umask
@@ -34,17 +34,21 @@
 #include <vector>
 #include <string>
 
-//TCLAP parser
-#include <tclap/CmdLine.h>
-
 #include <ApolloSM/uioLabelFinder.hh>
 #include <ApolloSM/ApolloSM.hh>
 
-//extern int errno;
-
-#define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_PID_FILE    "/var/run/"
-
+// ================================================================================
+// Setup for boost program_options
+#include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
+#include <fstream>
+#include <iostream>
+#define DEFAULT_CONFIG_FILE "/etc/xvc_server"
+#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_PID_FILE "/var/run/xvc_server.pid"
+#define DEFAULT_XVCPREFIX " "
+#define DEFAULT_XVCPORT -1
+namespace po = boost::program_options;
 
 // ====================================================================================================
 // signal handling
@@ -64,6 +68,8 @@ typedef struct  {
   uint32_t tdo_offset;
   uint32_t ctrl_offset; //bit 1 is a go signal, bit 2 is a busy signal
   uint32_t lock_offset;
+  uint32_t IP;
+  uint32_t port;
 } sXVC;
 
 sXVC volatile * pXVC = NULL;
@@ -90,12 +96,12 @@ static int sread(int fd, void *target, int len) {
 }
 
 int handle_data(int fd) {
-
+  
   const char xvcInfo[] = "xvcServer_v1.0:2048\n"; 
 
   do {    
     CHECK_LOCK
-    char cmd[16];
+      char cmd[16];
     unsigned char buffer[2048], result[1024];
     memset(cmd, 0, 16);
 
@@ -156,7 +162,7 @@ int handle_data(int fd) {
 
     while (bytesLeft > 0) {      
       CHECK_LOCK
-      tms = 0;
+	tms = 0;
       tdi = 0;
       tdo = 0;
       if (bytesLeft >= 4) {
@@ -212,53 +218,70 @@ int handle_data(int fd) {
 
 int main(int argc, char **argv) {
   int i;
-  int s;
+  int listenFD;
 
   int fdUIO = -1;
   struct sockaddr_in address;
 
   int uioN = -1;
-  std::string uioLabel;
- 
-  int port;
-  std::string xvcName;
-  
+
+
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("cmpwrdown options");
+  cli_options.add_options()
+    ("help,h",    "Help screen")
+    ("RUN_DIR,r",   po::value<std::string>()->implicit_value(""), "Path to default run directory")
+    ("PID_FILE,d",  po::value<std::string>()->implicit_value(""), "Path to default pid directory")
+    ("xvcPrefix,v", po::value<std::string>()->implicit_value(""), "xvc prefix")
+    ("xvcPort,p",   po::value<int>()->implicit_value(0),          "xvc_port number");
+
+  //Config File options
+  po::options_description cfg_options("cmpwrdown options");
+  cfg_options.add_options()
+    ("RUN_DIR",   po::value<std::string>(), "Path to default run directory")
+    ("PID_FILE",  po::value<std::string>(), "Path to default pid directory")
+    ("xvcPrefix", po::value<std::string>(), "xvc prefix")
+    ("xvcPort",   po::value<int>(),         "xvc_port number");
+
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  //Store command line and config file arguments into cli_map and cfg_map
   try {
-    TCLAP::CmdLine cmd("Apollo XVC.",
-		       ' ',
-		       "XVC");
-   
-    // XVC name base
-    TCLAP::ValueArg<std::string> xvcPreFix("v",              //one char flag
-					       "xvc",      // full flag name
-					       "xvc prefix",//description
-					       true,            //required
-					       std::string(""),  //Default is empty
-					       "string",         // type
-					       cmd);
-
-    // port number
-    TCLAP::ValueArg<int> xvcPort("p",              //one char flag
-				 "port",      // full flag name
-				 "xvc port number",//description
-				 true,            //required
-				 -1,  //Default is empty
-				 "int",         // type
-				 cmd);
-
-  
-    //Parse the command line arguments
-    cmd.parse(argc,argv);
-
-    port = xvcPort.getValue();
-    xvcName=xvcPreFix.getValue();
-    uioLabel = xvcPreFix.getValue();
-  }catch (TCLAP::ArgException &e) {  
-    syslog(LOG_ERR, "Error %s for arg %s\n",
-	   e.error().c_str(), e.argId().c_str());
+    cli_map = storeCliArguments(cli_options, argc, argv);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
     return 0;
   }
 
+  try {
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
+  } catch (std::exception &e) {}
+  
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
+    return 0;
+  }
+
+  //Set port
+  int port = DEFAULT_XVCPORT;
+  setOptionValue(port, "xvcPort", cli_map, cfg_map);
+  //setxvcName
+  std::string xvcName = DEFAULT_XVCPREFIX;
+  setOptionValue(xvcName, "xvcPrefix", cli_map, cfg_map);
+  //set PID_DIR
+  std::string PID_DIR = DEFAULT_PID_FILE;
+  setOptionValue(PID_DIR, "PID_FILE", cli_map, cfg_map);
+  //Set RUN_DIR
+  std::string RUN_DIR = DEFAULT_RUN_DIR;
+  setOptionValue(RUN_DIR, "RUN_DIR", cli_map, cfg_map);
+  //use xvcName to get uiLabel
+  std::string uioLabel = xvcName;
 
   //now that we know the port, setup the log
   char daemonName[] = "xvc_server.XXXXXY"; //The 'Y' is so strlen is properly padded
@@ -274,7 +297,7 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }else if(pid > 0){
     //We are the parent and created a child with pid pid
-    std::string pidFileName = DEFAULT_PID_FILE;
+    std::string pidFileName = PID_DIR;
     pidFileName+=daemonName;
     pidFileName+=".pid";
     FILE * pidFile = fopen(pidFileName.c_str(),"w");
@@ -283,13 +306,14 @@ int main(int argc, char **argv) {
     exit(EXIT_SUCCESS);
   }else{
     // I'm the child!
+
   }
 
   
   //Change the file mode mask to allow read/write
   umask(0);
   
-  openlog(daemonName,LOG_PERROR|LOG_PID|LOG_ODELAY,LOG_DAEMON);
+  openlog(daemonName,LOG_PID|LOG_ODELAY,LOG_DAEMON);
   syslog(LOG_INFO,"starting %s", daemonName);
   
 
@@ -302,18 +326,16 @@ int main(int argc, char **argv) {
   syslog(LOG_INFO,"Set SID to %d\n",sid);
 
   //Move to RUN_DIR
-  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
+  if ((chdir(RUN_DIR.c_str())) < 0) {
+    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",RUN_DIR.c_str());    
     exit(EXIT_FAILURE);
   }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
+  syslog(LOG_INFO,"Changed path to \"%s\"\n",RUN_DIR.c_str());    
 
   //Everything looks good, close the standard file fds.
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
-
-
 
 
   //Find UIO number
@@ -421,37 +443,30 @@ int main(int argc, char **argv) {
 
 
   opterr = 0;
-  s = socket(AF_INET, SOCK_STREAM, 0);
+  listenFD = socket(AF_INET, SOCK_STREAM, 0);
                
-  if (s < 0) {
+  if (listenFD < 0) {
     syslog(LOG_ERR,"socket: %s",strerror(errno));
     return 1;
   }
    
   i = 1;
-  setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
+  setsockopt(listenFD, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
 
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
   address.sin_family = AF_INET;
 
-  if (bind(s, (struct sockaddr*) &address, sizeof(address)) < 0) {
+  if (bind(listenFD, (struct sockaddr*) &address, sizeof(address)) < 0) {
     syslog(LOG_ERR,"bind: %s",strerror(errno));
     return 1;
   }
 
-  if (listen(s, 5) < 0) {
+  if (listen(listenFD, 5) < 0) {
     syslog(LOG_ERR,"listen: %s",strerror(errno));
     return 1;
   }
 
-  fd_set conn;
-  int maxfd = 0;
-
-  FD_ZERO(&conn);
-  FD_SET(s, &conn);
-
-  maxfd = s;
 
 
   // ============================================================================
@@ -471,55 +486,83 @@ int main(int argc, char **argv) {
   sigaction(SIGTERM, &sa_TERM, NULL);
   loop = true;
 
-  while (loop) {
-    fd_set read = conn, except = conn;
-    int fd;
 
-    if (select(maxfd + 1, &read, 0, &except, 0) < 0) {
+
+  //zero remote info
+  pXVC->IP =0;
+  pXVC->port = 0;
+
+  int maxFD = 0;
+
+  //setup the listen FDset for select
+  fd_set listenFDSet;
+  FD_ZERO(&listenFDSet);
+  FD_SET(listenFD, &listenFDSet);
+
+  //setup the connection FD set for select
+  int connectionFD = -1;
+  fd_set connectionFDSet;
+  FD_ZERO(&connectionFDSet);
+
+  //start by waiting on the listen socket
+  fd_set activeFDSet = listenFDSet;
+  maxFD = listenFD;
+  while (loop) {
+    fd_set read = activeFDSet, except = listenFDSet;
+
+    if (select(maxFD + 1, &read, 0, &except, 0) < 0) {
       syslog(LOG_ERR,"select: %s",strerror(errno));
       break;
     }
     
-    for (fd = 0; fd <= maxfd; ++fd) {
-      if (FD_ISSET(fd, &read)) {
-	if (fd == s) {
-	  int newfd;
-	  socklen_t nsize = sizeof(address);
+    //---------------------------------------------------------------------------
+    if (FD_ISSET(listenFD,&except)){
+      syslog(LOG_ERR,"Exceptional condition on listen socket\n");
+      break;
+    //---------------------------------------------------------------------------
+    } else if (FD_ISSET(listenFD, &read)) {
+      socklen_t nsize = sizeof(address);
 
-	  newfd = accept(s, (struct sockaddr*) &address, &nsize);
+      connectionFD = accept(listenFD, (struct sockaddr*) &address, &nsize);
 
-	  syslog(LOG_INFO,"connection accepted - fd %d\n", newfd);
-	  if (newfd < 0) {
-	    syslog(LOG_ERR,"accept: %s",strerror(errno));
-	  } else {
-	    syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
-	    int flag = 1;
-	    int optResult = setsockopt(newfd,
-				       IPPROTO_TCP,
-				       TCP_NODELAY,
-				       (char *)&flag,
-				       sizeof(int));
-	    if (optResult < 0)
-	      syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
-	    if (newfd > maxfd) {
-	      maxfd = newfd;
-	    }
-	    FD_SET(newfd, &conn);
-	  }
-	}
-	else if (handle_data(fd)) {
+	  
+      syslog(LOG_INFO,"connection accepted - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
+      if (connectionFD < 0) {
+	syslog(LOG_ERR,"accept: %s",strerror(errno));	
+      } else {
+	syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
+	int flag = 1;
+	int optResult = setsockopt(connectionFD,
+				   IPPROTO_TCP,
+				   TCP_NODELAY,
+				   (char *)&flag,
+				   sizeof(int));
+	if (optResult < 0)
+	  syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
+	
+	
+	pXVC->IP =address.sin_addr.s_addr;
+	pXVC->port = address.sin_port;
 
-	  syslog(LOG_INFO,"connection closed - fd %d\n", fd);
-	  close(fd);
-	  FD_CLR(fd, &conn);
-	}
+	//set the activeFDSet for read to now be the connection
+	FD_ZERO(&connectionFDSet);
+	FD_SET(connectionFD,&connectionFDSet);
+	activeFDSet = connectionFDSet;
+	maxFD = connectionFD;
       }
-      else if (FD_ISSET(fd, &except)) {
-	syslog(LOG_INFO,"connection aborted - fd %d\n", fd);
-	close(fd);
-	FD_CLR(fd, &conn);
-	if (fd == s)
-	  break;
+    //---------------------------------------------------------------------------
+    }else if((connectionFD > 0) &&
+	     (FD_ISSET(connectionFD,&read))){
+      if(handle_data(connectionFD)){
+	//error happened
+	syslog(LOG_INFO,"connection closed - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
+	pXVC->IP =0;
+	pXVC->port = 0;
+	
+	close(connectionFD);
+	activeFDSet = listenFDSet;
+	maxFD = listenFD;	
+	connectionFD = -1;
       }
     }
   }  

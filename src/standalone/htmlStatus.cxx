@@ -13,24 +13,24 @@
 
 #include <BUException/ExceptionBase.hh>
 
-#include <boost/program_options.hpp>  //for configfile parsing
-#include <fstream>
-
-#include <tclap/CmdLine.h> //TCLAP parser
-
 #include <syslog.h>  ///for syslog
 
-#define SEC_IN_US  1000000
+#define SEC_IN_US 1000000
 #define NS_IN_US 1000
-
-#define DEFAULT_POLLTIME_IN_SECONDS 10
+// ================================================================================
+// Setup for boost program_options
+#include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
+#include <fstream>
+#include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/htmlStatus"
-#define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_PID_FILE    "/var/run/htmlStatus.pid"
-
-#define DEFAULT_OUTFILE     "/var/www/lighttpd/index.html"
-#define DEFAULT_LOG_LEVEL   1
+#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_PID_FILE "/var/run/htmlStatus.pid"
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_OUTFILE "/var/www/lighttpd/index.html"
+#define DEFAULT_LOG_LEVEL 1
 #define DEFAULT_OUTPUT_TYPE "HTML"
+namespace po = boost::program_options;
 
 // ====================================================================================================
 // signal handling
@@ -41,60 +41,89 @@ void static signal_handler(int const signum) {
   }
 }
 
-
-
-// ====================================================================================================
-// Read from config files and set up all parameters
-// For further information see https://theboostcpplibraries.com/boost.program_options
-
-boost::program_options::variables_map loadConfig(std::string const & configFileName,
-						 boost::program_options::options_description const & fileOptions) {
-  // This is a container for the information that fileOptions will get from the config file
-  boost::program_options::variables_map vm;  
-
-  // Check if config file exists
-  std::ifstream ifs{configFileName};
-  syslog(LOG_INFO, "Config file \"%s\" %s\n",configFileName.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
-
-  
-
-  if(ifs) {
-    // If config file exists, parse ifs into fileOptions and store information from fileOptions into vm
-    boost::program_options::store(parse_config_file(ifs, fileOptions), vm);
-  }
-
-  return vm;
-}
-
-
-
-
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
   return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
 	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
 }
 
-
+// ====================================================================================================
+// MAIN
+// ====================================================================================================
 int main(int argc, char** argv) {
-    
-  TCLAP::CmdLine cmd("Apollo status display");
-  TCLAP::ValueArg<std::string> configFile("c",                 //one char flag
-					  "config_file",       // full flag name
-					  "config file",       //description
-					  false,               //required argument
-					  DEFAULT_CONFIG_FILE, //Default value
-					  "string",            //type
-					  cmd);
-  TCLAP::ValueArg<std::string>    runPath    ("r","run_path","run path",false,DEFAULT_RUN_DIR ,"string",cmd);
-  TCLAP::ValueArg<std::string>    pidFileName("p","pid_file","pid file",false,DEFAULT_PID_FILE,"string",cmd);
-  try {  
-    //Parse the command line arguments
-    cmd.parse(argc, argv);
-  }catch (TCLAP::ArgException &e) {
-    fprintf(stderr, "Failed to Parse Command Line\n");
-    return -1;
+
+  // ============================================================================
+  // Read from configuration file and set up parameters
+  syslog(LOG_INFO,"Reading from config file now\n");
+ 
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("cmpwrdown options");
+  cli_options.add_options()
+    ("help,h",    "Help screen")
+    ("RUN_DIR",             po::value<std::string>()->implicit_value(""), "run path")
+    ("PID_FILE",             po::value<std::string>()->implicit_value(""), "pid path")
+    ("POLLTIME_IN_SECONDS", po::value<int>()->implicit_value(0),          "polling interval")
+    ("OUTFILE",             po::value<std::string>()->implicit_value(""), "html output file")
+    ("LOG_LEVEL",           po::value<int>()->implicit_value(0),          "status display log level")
+    ("OUTPUT_TYPE",         po::value<std::string>()->implicit_value(""), "html output type");
+
+  //Config File options
+  po::options_description cfg_options("cmpwrdown options");
+  cfg_options.add_options()
+    ("RUN_DIR",             po::value<std::string>(),  "run path")
+    ("PID_FILE",             po::value<std::string>(),  "pud path")
+    ("POLLTIME_IN_SECONDS", po::value<int>(),          "polling interval")
+    ("OUTFILE",             po::value<std::string>(),  "html output file")
+    ("LOG_LEVEL",           po::value<int>(),          "status display log level")
+    ("OUTPUT_TYPE",         po::value<std::string>(), "html output type");
+
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  //Store command line and config file arguments into cli_map and cfg_map
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
+    return 0;
   }
+
+  try {
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
+  } catch (std::exception &e) {}
+
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
+    return 0;
+  }
+ 
+  //Set run dir
+  std::string runPath = DEFAULT_RUN_DIR;
+  setOptionValue(runPath, "RUN_DIR", cli_map, cfg_map);
+  //set pidFileName
+  std::string pidFileName = DEFAULT_PID_FILE;
+  setOptionValue(pidFileName, "PID_FILE", cli_map, cfg_map);
+  //Set polltime
+  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+  setOptionValue(polltime_in_seconds, "POLLTIME_IN_SECONDS", cli_map, cfg_map);
+  syslog(LOG_INFO, "Setting poll time to %d seconds (%s)\n", polltime_in_seconds, cli_map.count("polltime") ? "CONFIG FILE" : "DEFAULT");
+  //Set outfile
+  std::string outfile = DEFAULT_OUTFILE;
+  setOptionValue(outfile, "OUTFILE", cli_map, cfg_map);
+  syslog(LOG_INFO, "Sending output to %s (%s)\n", outfile.c_str(), cli_map.count("outfile") ? "CONFIG FILE" : "DEFAULT");
+  //Set log level
+  int logLevel = DEFAULT_LOG_LEVEL;
+  setOptionValue(logLevel, "LOG_LEVEL", cli_map, cfg_map);
+  syslog(LOG_INFO, "Setting log level to %d (%s)\n", logLevel, cli_map.count("log_level") ? "CONFIG FILE" : "DEFAULT");
+  //Set output type
+  std::string outputType = DEFAULT_OUTPUT_TYPE;
+  setOptionValue(outputType, "OUTPUT_TYPE", cli_map, cfg_map);
+  syslog(LOG_INFO, "Sending output type to %s (%s)\n", outputType.c_str(), cli_map.count("output_type") ? "CONFIG FILE" : "DEFAULT");
 
   // ============================================================================
   // Deamon book-keeping
@@ -106,7 +135,7 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }else if(pid > 0){
     //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen(pidFileName.getValue().c_str(),"w");
+    FILE * pidFile = fopen(pidFileName.c_str(),"w");
     fprintf(pidFile,"%d\n",pid);
     fclose(pidFile);
     exit(EXIT_SUCCESS);
@@ -115,7 +144,6 @@ int main(int argc, char** argv) {
     //open syslog
     openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
   }
-
   
   //Change the file mode mask to allow read/write
   umask(0);
@@ -132,11 +160,11 @@ int main(int argc, char** argv) {
   syslog(LOG_INFO,"Set SID to %d\n",sid);
 
   //Move to RUN_DIR
-  if ((chdir(runPath.getValue().c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.getValue().c_str());    
+  if ((chdir(runPath.c_str())) < 0) {
+    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
     exit(EXIT_FAILURE);
   }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.getValue().c_str());    
+  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
 
   //Everything looks good, close the standard file fds.
   close(STDIN_FILENO);
@@ -144,74 +172,6 @@ int main(int argc, char** argv) {
   close(STDERR_FILENO);
 
   
-
-
-  // ============================================================================
-  // Read from configuration file and set up parameters
-  syslog(LOG_INFO,"Reading from config file now\n");
-  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
-  std::string outfile = DEFAULT_OUTFILE;
-  std::string outputType = DEFAULT_OUTPUT_TYPE;
-  int logLevel = DEFAULT_LOG_LEVEL;
- 
-  // fileOptions is for parsing config files
-  boost::program_options::options_description fileOptions{"File"};
-  //sigh... with boost comes compilcated c++ magic
-  fileOptions.add_options() 
-    ("polltime", 
-     boost::program_options::value<int>()->default_value(DEFAULT_POLLTIME_IN_SECONDS), 
-     "polling interval")
-    ("outfile", 
-     boost::program_options::value<std::string>()->default_value(DEFAULT_OUTFILE), 
-     "html output file")
-    ("log_level", 
-     boost::program_options::value<int>()->default_value(DEFAULT_LOG_LEVEL), 
-     "status display log level")
-    ("output_type", 
-     boost::program_options::value<std::string>()->default_value(DEFAULT_OUTPUT_TYPE), 
-     "html output type");
-
-  boost::program_options::variables_map configOptions;  
-  try{
-    configOptions = loadConfig(configFile.getValue(),fileOptions);
-    // Check for information in configOptions
-    if(configOptions.count("polltime")) {
-      polltime_in_seconds = configOptions["polltime"].as<int>();
-    }
-    syslog(LOG_INFO,
-	   "Setting poll time to %d seconds (%s)\n",
-	   polltime_in_seconds, 
-	   configOptions.count("polltime") ? "CONFIG FILE" : "DEFAULT");
-
-    if(configOptions.count("log_level")) {
-      logLevel = configOptions["log_level"].as<int>();
-    }
-    syslog(LOG_INFO,
-	   "Setting log level to %d (%s)\n",
-	   logLevel, 
-	   configOptions.count("log_level") ? "CONFIG FILE" : "DEFAULT");
-
-    if(configOptions.count("outfile")) {
-      outfile = configOptions["outfile"].as<std::string>();
-    }
-    syslog(LOG_INFO,
-	   "Sending output to %s (%s)\n",
-	   outfile.c_str(), 
-	   configOptions.count("outfile") ? "CONFIG FILE" : "DEFAULT");
-
-    if(configOptions.count("output_type")) {
-      outputType = configOptions["output_type"].as<std::string>();
-    }
-    syslog(LOG_INFO,
-	   "Sending output type to %s (%s)\n",
-	   outputType.c_str(), 
-	   configOptions.count("output_type") ? "CONFIG FILE" : "DEFAULT");
-        
-  }catch(const boost::program_options::error &ex){
-    syslog(LOG_INFO, "Caught exception in function loadConfig(): %s \n", ex.what());    
-  }
-
-
   // ============================================================================
   // Daemon code setup
 
@@ -237,7 +197,9 @@ int main(int argc, char** argv) {
   long update_period_us = polltime_in_seconds*SEC_IN_US; //sleep time in microseconds
 
 
-
+  //=======================================================================
+  // Generate HTML status
+  //=======================================================================
   //Create ApolloSM class
   ApolloSM * SM = NULL;
   try{

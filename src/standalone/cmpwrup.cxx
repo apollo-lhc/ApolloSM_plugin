@@ -1,39 +1,85 @@
 #include <stdio.h>
 #include <ApolloSM/ApolloSM.hh>
-//#include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <standalone/CM.hh>
-//#include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
-//#include <sys/stat.h> //for umask
-//#include <sys/types.h> //for umask
-//#include <BUException/ExceptionBase.hh>
 
 // ================================================================================
-//#define DEFAULT_CONFIG_FILE "/etc/cmpwrup"
-//#define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_CONNECTION_FILE "/opt/address_tables/connections.xml"
-#define DEFAULT_CM_ID           1
-#define DEFAULT_CM_POWER_GOOD   "CM.CM_1.CTRL.PWR_GOOD"
-#define DEFAULT_CM_POWER_UP     true // note: command modules power up variable actually does nothing in this program currently
+// Setup for boost program_options
+#include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
+#include <fstream>
+#include <iostream>
+#define DEFAULT_CONFIG_FILE "/etc/cmpwrup"
+#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
+#define DEFAULT_CM_ID 1
+#define DEFAULT_CM_POWER_UP true
+namespace po = boost::program_options;
 
 // ================================================================================
 int main(int argc, char** argv) { 
-  
-  int const noArgs         = 1;
-  int const cmFound        = 2;
-  int const cmAndPowerGood = 3;
-  
 
-  if((noArgs != argc) && (cmFound != argc) && (cmAndPowerGood != argc)) {
-    // wrong number args
-    printf("Program takes 0, 1, or 2 arguments\n");
-    printf("ex: for 1 argument to power up CM_2: ./cmpwrup 2\n");
-    printf("ex: for 2 arguments to power up CM_2: ./cmpwrup 2 CM.CM_2.CTRL.PWR_GOOD\n");
-    //printf("Terminating program\n");
-    return -1;
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("cmpwrup options");
+  cli_options.add_options()
+    ("help,h",    "Help screen")
+    ("CONN_FILE,C",     po::value<std::string>()->implicit_value(""), "Path to the default connection file")
+    ("CM_ID,c",         po::value<int>()->implicit_value(0),          "Default CM to power down")
+    ("CM_POWER_UP,p",   po::value<bool>()->implicit_value(true),      "Default power up variable");  //note DEFAULT_CM_POWER_UP option does nothing currenty
+ 
+  //Config File options
+  po::options_description cfg_options("cmpwrup options");
+  cfg_options.add_options()
+    ("CONN_FILE",     po::value<std::string>(), "Path to the default connection file")
+    ("CM_ID",         po::value<int>(),         "Default CM to power down")
+    ("CM_POWER_UP",   po::value<bool>(),        "Default power up variable"); 
+
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  //Store command line and config file arguments into cli_map and cfg_map
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
+    return 0;
+  }
+
+  try {
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
+  } catch (std::exception &e) {}
+  
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
+    return 0;
   }
   
+  //Set connection file
+  std::string connectionFile = DEFAULT_CONN_FILE;
+  setOptionValue(connectionFile, "CONN_FILE", cli_map, cfg_map);
+  //Set CM_ID
+  int CM_ID = DEFAULT_CM_ID;
+  setOptionValue(CM_ID, "CM_ID", cli_map, cfg_map);
+  //Set powerGood
+  std::string powerGood;
+  if (CM_ID != 0) {
+    std::string num = boost::lexical_cast<std::string>(CM_ID);
+    powerGood = "CM.CM_" + num + ".CTRL.PWR_GOOD";
+  } else {
+    powerGood = " ";
+  }
+  //Set powerUp
+  bool powerUp = DEFAULT_CM_POWER_UP;
+  setOptionValue(powerUp, "CM_POWER_UP", cli_map, cfg_map);
+
+  //=======================================================================
+  // Power up Command Module
+  //=======================================================================
   // Make an ApolloSM and CM
   ApolloSM * SM      = NULL;
   CM * commandModule = NULL;
@@ -42,73 +88,29 @@ int main(int argc, char** argv) {
     if(NULL == SM){
       fprintf(stderr, "Failed to create new ApolloSM. Terminating program\n");
       exit(EXIT_FAILURE);
-    }//else{
-    //  fprintf(stdout,"Created new ApolloSM\n");      
-    //}
+    }
+
     // load connection file
     std::vector<std::string> arg;
-    std::string connectionFile = DEFAULT_CONNECTION_FILE;
     printf("Using %s\n", connectionFile.c_str());
     arg.push_back(connectionFile);
     SM->Connect(arg);
     
     // ==============================
     // Make a command module
-    //CM * commandModule = NULL;
     commandModule = new CM();
     if(NULL == commandModule){
       fprintf(stderr, "Failed to create new CM. Terminating program\n");
       exit(EXIT_FAILURE);
-    }//else{
-    //  fprintf(stdout,"Created new CM\n");      
-    //}
-    
-    // ==============================
-    // parse command line
-    
-    switch(argc) {
-    case noArgs: 
-      {
-	commandModule->ID        = DEFAULT_CM_ID;
-	commandModule->powerGood = DEFAULT_CM_POWER_GOOD;
-	commandModule->powerUp   = DEFAULT_CM_POWER_UP;
-	//printf("No arguments specified. Default: Powering up CM %d and checking %s\n", commandModule->ID, commandModule->powerGood.c_str());
-	break;
-      }
-    case cmFound:
-      {
-	int ID                = std::stoi(argv[1]);
-	std::string powerGood = "CM.CM_" + std::to_string(ID) + ".CTRL.PWR_GOOD";
-	commandModule->ID        = ID;
-	commandModule->powerGood = powerGood;
-	commandModule->powerUp   = true;
-	//printf("One argument specified. Powering up CM %d and checking %s\n", ID, powerGood.c_str());
-	break;
-      }    
-    case cmAndPowerGood:
-      {      
-	int ID                = std::stoi(argv[1]);
-	std::string powerGood = argv[2];
-	commandModule->ID        = ID;
-	commandModule->powerGood = powerGood;
-	commandModule->powerUp   = true;
-	//printf("Two arguments specified. Powering up CM %d with %s\n", ID, powerGood.c_str());
-	break;
-      }   
-//    default:
-//      {   
-//	printf("Program takes 0, 1, or 2 arguments\n");
-//	printf("ex for 1 argument to power up CM_2: ./cmpwrup 2\n");
-//	printf("ex for 2 arguments to power up CM_2: ./cmpwrup 2 CM.CM_2.CTRL.PWR_GOOD\n");
-//	printf("Terminating program\n");
-//	return 0;
-//      }    
     }
     
     // ==============================
     // power up CM
+    commandModule->ID        = CM_ID;
+    commandModule->powerGood = powerGood;
+    commandModule->powerUp   = powerUp;
+
     int wait_time = 5; // 1 second
-    //printf("Using wait_time = 1 second\n");    
     bool success = SM->PowerUpCM(commandModule->ID, wait_time);
     if(success) {
       printf("CM %d is powered up\n", commandModule->ID);
@@ -116,7 +118,6 @@ int main(int argc, char** argv) {
       printf("CM %d did not power up in %d second(s)\n", commandModule->ID, (wait_time / 5));
     }
 
-  
     // read power good and print
     printf("%s is %d\n", commandModule->powerGood.c_str(), (int)(SM->RegReadRegister(commandModule->powerGood)));
 
@@ -127,12 +128,10 @@ int main(int argc, char** argv) {
   }
   
   // Clean up
-  //printf("Deleting CM\n");
   if(NULL != commandModule) {
     delete commandModule;
   }
   
-  //printf("Deleting ApolloSM\n");
   if(NULL != SM) {
     delete SM;
   }

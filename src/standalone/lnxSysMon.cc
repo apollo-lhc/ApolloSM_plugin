@@ -216,6 +216,10 @@ int networkMonitor(int &inRate, int &outRate){
   //Get rate of change
   if (time_diff != 0) { //Do not divide by 0
     inRate = InOctets_diff / time_diff;
-    outRate = OutOctets_diff / time_diff;}
+    outRate = OutOctets_diff / time_diff;
+  } else { //this should make it obvious in the charts that something went wrong
+    inRate = -1;
+    outRate = -1;
+  }
   return 0;
 }

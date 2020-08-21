@@ -156,13 +156,13 @@ obj/%.o : src/%.cxx
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
 
-#specific rule for peek and pokeUIO
-bin/peekUIO.o : obj/standalone/peekUIO.o 
+#specific rule for peek and pokeUIO since we want them free of dynamic linking
+bin/peekUIO : src/standalone/peekUIO.cxx
 	mkdir -p bin
-	${CXX} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system -lpug $^ -o $@
-bin/pokeUIO.o : obj/standalone/pokeUIO.o 
+	${CXX} ${CXX_FLAGS} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system $^ -o $@
+bin/pokeUIO : src/standalone/pokeUIO.cxx
 	mkdir -p bin
-	${CXX} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system -lpug $^ -o $@
+	${CXX} ${CXX_FLAGS} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system $^ -o $@
 
 
 bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}

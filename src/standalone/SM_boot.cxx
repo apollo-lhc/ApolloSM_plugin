@@ -14,25 +14,26 @@
 
 #include <BUException/ExceptionBase.hh>
 
-#include <boost/program_options.hpp>
-#include <fstream>
-
-//#include <tclap/CmdLine.h> //TCLAP parser
-
 #include <syslog.h>  ///for syslog
 
+// ====================================================================================================
+// Constants
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
 
-
-#define DEFAULT_POLLTIME_IN_SECONDS 10
+// ====================================================================================================
+// Set up for boost program_options
+#include <boost/program_options.hpp>
+#include <standalone/progOpt.hh>
+#include <fstream>
+#include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
+#define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_RUN_DIR     "/opt/address_table/"
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
-
 #define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
-
+namespace po = boost::program_options; //Making life easier for boost
 // ====================================================================================================
 // signal handling
 bool static volatile loop;
@@ -62,37 +63,6 @@ boost::program_options::variables_map loadConfig(std::string const & configFileN
 
   return vm;
 }
-
-// // ====================================================================================================
-// // Function to set the parameter by parsing the command line. In particular, we ensure that the command line default does not override config options obtained from the config file.
-// void setParam(void * param, std::string paramString, boost::program_options::variables_map vm, bool param_from_config) {
-//   
-//   // Set parameter but make sure that the command line default does not override config options obtained from the config file. Every parameter must go through this nested if statement sequence.
-//   
-//   // Set parameter
-//   if(vm.count(paramString)) {
-//     // The parameter exists, but was it defaulted?
-//     if(vm[paramString].defaulted()) {
-//       // We have a defaulted parameter, but do we have a config option obtained from the config file?
-//       if(param_from_config) {
-// 	// We have a config option obtained from the config file. Do nothing
-// 	syslog(LOG_INFO, "Setting %s to (CONFIG FILE)\n", paramString);
-// 	return;
-//       } else {
-// 	// We do not have a config option obtained from the config file. Our default can be used.
-// 	*param = vm[paramString].as<typeof(*param)>();	
-// 	syslog(LOG_INFO, "Setting %s to (DEFAULT)\n", paramString);
-// 	return;
-//       } 
-//     } else { 
-//       // We have a non-defaulted parameter option set from the command line! This trumps everything
-//       *param = vm[paramString].as<typeof(*param)>();      
-//       syslog(LOG_INFO, "Setting %s to (COMMAND LINE)\n", paramString);
-//       return;
-//     }
-//   }
-//   
-// }
 
 // Function to add parameters/options. Saves a few lines of code. Not necessary.
 template <class T>
@@ -281,6 +251,9 @@ int main(int argc, char** argv) {
   bool powerupCMuC        = true;
   int powerupTime         = DEFAULT_POWERUP_TIME;
   bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
+
+  //Mikey
+  po::options_description cli_options("SM_boot options");
   
   // parse command line and config file to set parameters
   boost::program_options::options_description fileOptions{"File"}; // for parsing config file

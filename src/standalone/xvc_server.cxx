@@ -6,6 +6,7 @@
  *  Description : XAPP1251 Xilinx Virtual Cable Server for Linux
  */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -34,21 +35,17 @@
 #include <vector>
 #include <string>
 
+//TCLAP parser
+#include <tclap/CmdLine.h>
+
 #include <ApolloSM/uioLabelFinder.hh>
 #include <ApolloSM/ApolloSM.hh>
 
-// ================================================================================
-// Setup for boost program_options
-#include <boost/program_options.hpp>
-#include <standalone/progOpt.hh>
-#include <fstream>
-#include <iostream>
-#define DEFAULT_CONFIG_FILE "/etc/xvc_server"
-#define DEFAULT_RUN_DIR "/opt/address_table/"
-#define DEFAULT_PID_FILE "/var/run/xvc_server.pid"
-#define DEFAULT_XVCPREFIX " "
-#define DEFAULT_XVCPORT -1
-namespace po = boost::program_options;
+//extern int errno;
+
+#define DEFAULT_RUN_DIR     "/opt/address_tables/"
+#define DEFAULT_PID_FILE    "/var/run/"
+
 
 // ====================================================================================================
 // signal handling
@@ -101,7 +98,7 @@ int handle_data(int fd) {
 
   do {    
     CHECK_LOCK
-      char cmd[16];
+    char cmd[16];
     unsigned char buffer[2048], result[1024];
     memset(cmd, 0, 16);
 
@@ -162,7 +159,7 @@ int handle_data(int fd) {
 
     while (bytesLeft > 0) {      
       CHECK_LOCK
-	tms = 0;
+      tms = 0;
       tdi = 0;
       tdo = 0;
       if (bytesLeft >= 4) {
@@ -224,64 +221,47 @@ int main(int argc, char **argv) {
   struct sockaddr_in address;
 
   int uioN = -1;
-
-
-  //=======================================================================
-  // Set up program options
-  //=======================================================================
-  //Command Line options
-  po::options_description cli_options("cmpwrdown options");
-  cli_options.add_options()
-    ("help,h",    "Help screen")
-    ("RUN_DIR,r",   po::value<std::string>()->implicit_value(""), "Path to default run directory")
-    ("PID_FILE,d",  po::value<std::string>()->implicit_value(""), "Path to default pid directory")
-    ("xvcPrefix,v", po::value<std::string>()->implicit_value(""), "xvc prefix")
-    ("xvcPort,p",   po::value<int>()->implicit_value(0),          "xvc_port number");
-
-  //Config File options
-  po::options_description cfg_options("cmpwrdown options");
-  cfg_options.add_options()
-    ("RUN_DIR",   po::value<std::string>(), "Path to default run directory")
-    ("PID_FILE",  po::value<std::string>(), "Path to default pid directory")
-    ("xvcPrefix", po::value<std::string>(), "xvc prefix")
-    ("xvcPort",   po::value<int>(),         "xvc_port number");
-
-  //variable_maps for holding program options
-  po::variables_map cli_map;
-  po::variables_map cfg_map;
-
-  //Store command line and config file arguments into cli_map and cfg_map
-  try {
-    cli_map = storeCliArguments(cli_options, argc, argv);
-  } catch (std::exception &e) {
-    std::cout << cli_options << std::endl;
-    return 0;
-  }
-
-  try {
-    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
-  } catch (std::exception &e) {}
+  std::string uioLabel;
+ 
+  int port;
+  std::string xvcName;
   
-  //Help option - ends program
-  if(cli_map.count("help")){
-    std::cout << cli_options << '\n';
+  try {
+    TCLAP::CmdLine cmd("Apollo XVC.",
+		       ' ',
+		       "XVC");
+   
+    // XVC name base
+    TCLAP::ValueArg<std::string> xvcPreFix("v",              //one char flag
+					       "xvc",      // full flag name
+					       "xvc prefix",//description
+					       true,            //required
+					       std::string(""),  //Default is empty
+					       "string",         // type
+					       cmd);
+
+    // port number
+    TCLAP::ValueArg<int> xvcPort("p",              //one char flag
+				 "port",      // full flag name
+				 "xvc port number",//description
+				 true,            //required
+				 -1,  //Default is empty
+				 "int",         // type
+				 cmd);
+
+  
+    //Parse the command line arguments
+    cmd.parse(argc,argv);
+
+    port = xvcPort.getValue();
+    xvcName=xvcPreFix.getValue();
+    uioLabel = xvcPreFix.getValue();
+  }catch (TCLAP::ArgException &e) {  
+    syslog(LOG_ERR, "Error %s for arg %s\n",
+	   e.error().c_str(), e.argId().c_str());
     return 0;
   }
 
-  //Set port
-  int port = DEFAULT_XVCPORT;
-  setOptionValue(port, "xvcPort", cli_map, cfg_map);
-  //setxvcName
-  std::string xvcName = DEFAULT_XVCPREFIX;
-  setOptionValue(xvcName, "xvcPrefix", cli_map, cfg_map);
-  //set PID_DIR
-  std::string PID_DIR = DEFAULT_PID_FILE;
-  setOptionValue(PID_DIR, "PID_FILE", cli_map, cfg_map);
-  //Set RUN_DIR
-  std::string RUN_DIR = DEFAULT_RUN_DIR;
-  setOptionValue(RUN_DIR, "RUN_DIR", cli_map, cfg_map);
-  //use xvcName to get uiLabel
-  std::string uioLabel = xvcName;
 
   //now that we know the port, setup the log
   char daemonName[] = "xvc_server.XXXXXY"; //The 'Y' is so strlen is properly padded
@@ -297,7 +277,7 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }else if(pid > 0){
     //We are the parent and created a child with pid pid
-    std::string pidFileName = PID_DIR;
+    std::string pidFileName = DEFAULT_PID_FILE;
     pidFileName+=daemonName;
     pidFileName+=".pid";
     FILE * pidFile = fopen(pidFileName.c_str(),"w");
@@ -326,16 +306,18 @@ int main(int argc, char **argv) {
   syslog(LOG_INFO,"Set SID to %d\n",sid);
 
   //Move to RUN_DIR
-  if ((chdir(RUN_DIR.c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",RUN_DIR.c_str());    
+  if ((chdir(DEFAULT_RUN_DIR)) < 0) {
+    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",DEFAULT_RUN_DIR);    
     exit(EXIT_FAILURE);
   }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n",RUN_DIR.c_str());    
+  syslog(LOG_INFO,"Changed path to \"%s\"\n",DEFAULT_RUN_DIR);    
 
   //Everything looks good, close the standard file fds.
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
+
+
 
 
   //Find UIO number

@@ -256,14 +256,21 @@ int main(int argc, char** argv) {
   po::options_description cli_options("SM_boot options");
   cli_options.add_options()
     ("help,h", "Help screen")
-    ("run_path,r")
-    ("pid_file,f")
-    ("polltime,P")
-    ("cm_powerup,P")
-    ("cm_powerup_time,t")
-    ("sensorsThroughZynq,s");
-  
+    ("run_path,r",           po::value<std::string>()->implicit_value(""), "Path to run directory")
+    ("pid_file,f",           po::value<std::string>()->implicit_value(""), "pid file")
+    ("polltime,P",           po::value<int>()->implicit_value(0),          "Polltime in seconds")
+    ("cm_powerup,P",         po::value<bool>()->implicit_value(true),      "Powerup CM")
+    ("cm_powerup_time,t",    po::value<int>()->implicit_value(0),          "Powerup time in seconds")
+    ("sensorsThroughZynq,s", po::value<bool>()->implicit_value(true),      "Read sensors through the Zynq"); // This means: by default, read the sensors through the zynq
+   
   po::options_description cfg_options("SM_boot options");
+  cfg_options.add_options()
+    ("run_path",           po::value<std::string>(), "Path to run directory")
+    ("pid_file",           po::value<std::string>(), "pid file")
+    ("polltime",           po::value<int>(),         "Polltime in seconds")
+    ("cm_powerup",         po::value<bool>(),        "Powerup CM")
+    ("cm_powerup_time",    po::value<int>(),         "Powerup time in seconds")
+    ("sensorsThroughZynq", po::value<bool>(),        "Read sensors through the Zynq"); // This means: by default, read the sensors through the zynq
   
   //variable_maps for holding program options
   po::variables_map cli_map;

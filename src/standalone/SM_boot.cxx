@@ -338,8 +338,8 @@ int main(int argc, char** argv) {
 
   // Look at the config file and command line and see if we should change the parameters from their default values
   // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
-  setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
-  setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
+  // setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
+  // setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
 
   setOptionValue(runPath,  "run_path", cli_map, cfg_map);
   setOptionValue(pidFileName, "pid_file", cli_map, cfg_map);
@@ -393,15 +393,15 @@ int main(int argc, char** argv) {
 
   // ============================================================================
   // Now that syslog is available, we can continue to look at the config file and command line and see if we should change the parameters from their default values.
-  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true);
-  setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
-  setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
-  setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
+  // setParamValue(&po lltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true);
+  // setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
+  // setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
+  // setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
 
-  // setOptionValue(polltime_in_seconds, "polltime",           cli_map, cfg_map);
-  // setOptionValue(powerupCMuC,         "cm_powerup",         cli_map, cfg_map);
-  // setOptionValue(powerupTime,         "cm_powerup_time",    cli_map, cfg_map);
-  // setOptionValue(sensorsThroughZynq,  "sensorsThroughZynq", cli_map, cfg_map);
+  setOptionValue(polltime_in_seconds, "polltime",           cli_map, cfg_map);
+  setOptionValue(powerupCMuC,         "cm_powerup",         cli_map, cfg_map);
+  setOptionValue(powerupTime,         "cm_powerup_time",    cli_map, cfg_map);
+  setOptionValue(sensorsThroughZynq,  "sensorsThroughZynq", cli_map, cfg_map);
 
   // ============================================================================
   // Daemon code setup

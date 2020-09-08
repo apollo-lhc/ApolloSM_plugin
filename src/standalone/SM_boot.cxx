@@ -341,6 +341,9 @@ int main(int argc, char** argv) {
   setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
   setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
 
+  setOptionValue(runPath,  "run_path", cli_map, cfg_map);
+  setOptionValue(pidFileName, "pid_file", cli_map, cfg_map);
+
   // ============================================================================
   // Deamon book-keeping
   pid_t pid, sid;
@@ -394,6 +397,11 @@ int main(int argc, char** argv) {
   setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true);
   setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true);
   setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true);
+
+  // setOptionValue(polltime_in_seconds, "polltime",           cli_map, cfg_map);
+  // setOptionValue(powerupCMuC,         "cm_powerup",         cli_map, cfg_map);
+  // setOptionValue(powerupTime,         "cm_powerup_time",    cli_map, cfg_map);
+  // setOptionValue(sensorsThroughZynq,  "sensorsThroughZynq", cli_map, cfg_map);
 
   // ============================================================================
   // Daemon code setup

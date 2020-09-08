@@ -252,8 +252,40 @@ int main(int argc, char** argv) {
   int powerupTime         = DEFAULT_POWERUP_TIME;
   bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
 
-  //Mikey
+  //Mikey - finish
   po::options_description cli_options("SM_boot options");
+  cli_options.add_options()
+    ("help,h", "Help screen")
+    ("run_path,r")
+    ("pid_file,f")
+    ("polltime,P")
+    ("cm_powerup,P")
+    ("cm_powerup_time,t")
+    ("sensorsThroughZynq,s");
+  
+  po::options_description cfg_options("SM_boot options");
+  
+  //variable_maps for holding program options
+  po::variables_map cli_map;
+  po::variables_map cfg_map;
+
+  //Store command line and config file arguments into cli_map and cfg_map
+  try {
+    cli_map = storeCliArguments(cli_options, argc, argv);
+  } catch (std::exception &e) {
+    std::cout << cli_options << std::endl;
+    return 0;
+  }
+
+  try {
+    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
+  } catch (std::exception &e) {}
+  
+  //Help option - ends program
+  if(cli_map.count("help")){
+    std::cout << cli_options << '\n';
+    return 0;
+  }  
   
   // parse command line and config file to set parameters
   boost::program_options::options_description fileOptions{"File"}; // for parsing config file

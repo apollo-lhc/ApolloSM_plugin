@@ -11,9 +11,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
-
 #include <time.h>
 #include <stdint.h>
+
 
 #include <sys/mman.h>
 #include <fcntl.h>
@@ -45,7 +45,7 @@
 #include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/xvc_server"
 #define DEFAULT_RUN_DIR "/opt/address_table/"
-#define DEFAULT_PID_FILE "/var/run/xvc_server.pid"
+#define DEFAULT_PID_DIR "/var/run/"
 #define DEFAULT_XVCPREFIX " "
 #define DEFAULT_XVCPORT -1
 namespace po = boost::program_options;
@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
   po::options_description cfg_options("cmpwrdown options");
   cfg_options.add_options()
     ("RUN_DIR",   po::value<std::string>(), "Path to default run directory")
-    ("PID_FILE",  po::value<std::string>(), "Path to default pid directory")
+    ("PID_DIR",   po::value<std::string>(), "Path to default pid directory")
     ("xvcPrefix", po::value<std::string>(), "xvc prefix")
     ("xvcPort",   po::value<int>(),         "xvc_port number");
 
@@ -275,8 +275,8 @@ int main(int argc, char **argv) {
   std::string xvcName = DEFAULT_XVCPREFIX;
   setOptionValue(xvcName, "xvcPrefix", cli_map, cfg_map);
   //set PID_DIR
-  std::string PID_DIR = DEFAULT_PID_FILE;
-  setOptionValue(PID_DIR, "PID_FILE", cli_map, cfg_map);
+  std::string PID_DIR = DEFAULT_PID_DIR;
+  setOptionValue(PID_DIR, "PID_DIR", cli_map, cfg_map);
   //Set RUN_DIR
   std::string RUN_DIR = DEFAULT_RUN_DIR;
   setOptionValue(RUN_DIR, "RUN_DIR", cli_map, cfg_map);

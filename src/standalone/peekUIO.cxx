@@ -20,6 +20,9 @@ int main(int argc, char ** argv){
   case 4:
     //Get count
     count = strtoul(argv[3],NULL,0);
+    if(count == 0){
+      count = 1;
+    }
     //fallthrough
   case 3:
     //Get address
@@ -39,7 +42,7 @@ int main(int argc, char ** argv){
     fprintf(stderr,"%s not found\n",argv[1]);
     return 1;
   }else{
-    printf("UIO: %d\n",uio);
+    //    printf("UIO: %d\n",uio);
   }
   char UIOFilename[] = "/dev/uioXXXXXXXX";
   snprintf(UIOFilename,strlen(UIOFilename),
@@ -61,22 +64,26 @@ int main(int argc, char ** argv){
     return 1;
   }
 
-  uint32_t endAddress =  address+count;
-  for(uint32_t startAddress = address&(~0x7);
-      startAddress < endAddress;
-      ){
-    printf("0x%08X: ",startAddress);
-    for(int WordCount = 7; WordCount >= 0;WordCount--){
-      if(startAddress < endAddress){
-	if(startAddress < address){
-	  printf("         ");
-	}else{
-	  printf("0x%08X ",ptr[startAddress+WordCount]);
+  if(1 == count){
+    printf("0x%08X: 0x%08X\n",address,ptr[address]);    
+  }else{
+    uint32_t endAddress =  address+count;
+    for(uint32_t startAddress = address&(~0x7);
+	startAddress < endAddress;
+	){
+      printf("0x%08X: ",startAddress);
+      for(int WordCount = 7; WordCount >= 0;WordCount--){
+	if(startAddress < endAddress){
+	  if(startAddress < address){
+	    printf("         ");
+	  }else{
+	    printf("0x%08X ",ptr[startAddress+WordCount]);
+	  }
 	}
       }
+      startAddress +=8;
+      printf("\n");
     }
-    startAddress +=8;
-    printf("\n");
   }
 
   return 0;

@@ -41,6 +41,12 @@ public:
   void unblockAXI();
   void restartCMuC(std::string CM_ID);
 
+  int GetSerialNumber();
+  int GetRevNumber();
+  int GetShelfID();
+  uint32_t GetZynqIP();
+  uint32_t GetIPMCIP();
+
 private:  
   IPBusStatus * statusDisplay;
 };

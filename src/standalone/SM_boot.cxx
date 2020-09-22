@@ -18,6 +18,9 @@
 
 #include <standalone/optionParsing.hh>
 #include <standalone/daemon.hh>
+#include <boost/program_options.hpp>
+#include <fstream>
+#include <iostream>
 
 // ====================================================================================================
 // Constants
@@ -26,10 +29,6 @@
 
 // ====================================================================================================
 // Set up for boost program_options
-#include <boost/program_options.hpp>
-#include <standalone/progOpt.hh>
-#include <fstream>
-#include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_RUN_DIR     "/opt/address_table/"

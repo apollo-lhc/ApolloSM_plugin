@@ -16,11 +16,14 @@
 
 #include <syslog.h>  ///for syslog
 
-#include <standalone/optionParsing.hh>
-#include <standalone/daemon.hh>
 #include <boost/program_options.hpp>
+#include <standalone/optionParsing.hh>
+#include <standalone/optionParsing_bool.hh>
+#include <standalone/daemon.hh>
+
 #include <fstream>
 #include <iostream>
+
 
 // ====================================================================================================
 // Constants

@@ -13,7 +13,7 @@ namespace po = boost::program_options; //making life easier for boost
 void FillOptions(po::parsed_options Options,
 		 std::map<std::string,std::vector<std::string> > & parsedOptions);
 
-
+//#include <standalone/optionParsing_bool.hh>
 
 template<typename T> 
 T GetFinalParameterValue(std::string const & option,

@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/ApolloSM_Exceptions.hh>
+
 #include <standalone/userCount.hh>
 #include <standalone/lnxSysMon.hh>
 
@@ -18,38 +20,27 @@
 //signals
 #include <signal.h>
 
-//umask
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include <BUException/ExceptionBase.hh>
-
 #include <syslog.h>  ///for syslog
+
+
+#include <boost/program_options.hpp>
+#include <standalone/optionParsing.hh>
+#include <standalone/optionParsing_bool.hh>
+#include <standalone/daemon.hh>
+
+#include <fstream>
+#include <iostream>
+
 
 #define SEC_IN_US 1000000
 #define NS_IN_US 1000
 
 // ================================================================================
-// Setup for boost program_options
-#include <boost/program_options.hpp>
-#include <standalone/progOpt.hh>
-#include <fstream>
-#include <iostream>
 #define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_RUN_DIR "/opt/address_table"
 #define DEFAULT_PID_FILE "/var/run/ps_monitor.pid"
 namespace po = boost::program_options;
-
-// ====================================================================================================
-// Kill program if it is in background
-bool static volatile loop;
-
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -65,116 +56,73 @@ int main(int argc, char ** argv) {
   // Set up program options
   //=======================================================================
   //Command Line options
-  po::options_description cli_options("cmpwrdown options");
+  po::options_description cli_options("ps_monitor options");
   cli_options.add_options()
     ("help,h",    "Help screen")
-    ("POLLTIME_IN_SECONDS,s", po::value<int>()->implicit_value(0),          "polltime in seconds")
-    ("RUN_DIR,r",             po::value<std::string>()->implicit_value(""), "run path")
-    ("PID_FILE,d",            po::value<std::string>()->implicit_value(""), "pid file");
+    ("POLLTIME_IN_SECONDS,s", po::value<int>(),         "polltime in seconds")
+    ("RUN_DIR,r",             po::value<std::string>(), "run path")
+    ("PID_FILE,d",            po::value<std::string>(), "pid file")
+    ("config_file",           po::value<std::string>(), "config file");
+
 
   //Config File options
-  po::options_description cfg_options("cmpwrdown options");
+  po::options_description cfg_options("ps_monitor options");
   cfg_options.add_options()
     ("POLLTIME_IN_SECONDS", po::value<int>(),         "polltime in seconds")
     ("RUN_DIR",             po::value<std::string>(), "run path")
     ("PID_FILE",            po::value<std::string>(), "pid file");
 
-  //variable_maps for holding program options
-  po::variables_map cli_map;
-  po::variables_map cfg_map;
 
-  //Store command line and config file arguments into cli_map and cfg_map
-  try {
-    cli_map = storeCliArguments(cli_options, argc, argv);
+  std::map<std::string,std::vector<std::string> > allOptions;
+  
+  //Do a quick search of the command line only to look for a new config file.
+  //Get options from command line,
+  try { 
+    FillOptions(parse_command_line(argc, argv, cli_options),
+		allOptions);
   } catch (std::exception &e) {
-    std::cout << cli_options << std::endl;
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
     return 0;
   }
-
-  try {
-    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
-  } catch (std::exception &e) {}
-  
-  //Help option - ends program
-  if(cli_map.count("help")){
+  //Help option - ends program 
+  if(allOptions.find("help") != allOptions.end()){
     std::cout << cli_options << '\n';
     return 0;
+  }  
+  
+  std::string configFileName = GetFinalParameterValue(std::string("config_file"),allOptions,std::string(DEFAULT_CONFIG_FILE));
+  
+  //Get options from config file
+  std::ifstream configFile(configFileName.c_str());   
+  if(configFile){
+    try { 
+      FillOptions(parse_config_file(configFile,cfg_options,true),
+		  allOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+    }
+    configFile.close();
   }
 
+
   //Set polltime_in_seconds
-  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
-  setOptionValue(polltime_in_seconds, "POLLTIME_IN_SECONDS", cli_map, cfg_map);
+  int polltime_in_seconds = GetFinalParameterValue(std::string("POLLTIME_IN_SECONDS"), allOptions, DEFAULT_POLLTIME_IN_SECONDS);
   //Set runPath
-  std::string runPath = DEFAULT_RUN_DIR;
-  setOptionValue(runPath, "RUN_DIR", cli_map, cfg_map);
+  std::string runPath     = GetFinalParameterValue(std::string("RUN_DIR"),             allOptions, std::string(DEFAULT_RUN_DIR));
   //set pidFileName
-  std::string pidFileName = DEFAULT_PID_FILE;
-  setOptionValue(pidFileName, "PID_FILE", cli_map, cfg_map);
+  std::string pidFileName = GetFinalParameterValue(std::string("PID_FILE"),            allOptions, std::string(DEFAULT_PID_FILE));
 
   // ============================================================================
   // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
-    //open syslog
-    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
-  }
-
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-
-  //Start logging
-  syslog(LOG_INFO,"Opened log file\n");
-
-  // create new SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    syslog(LOG_ERR,"Failed to change SID\n");
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Set SID to %d\n",sid);
-
-  //Move to RUN_DIR
-  if ((chdir(runPath.c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",runPath.c_str());    
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
+  Daemon daemon;
+  daemon.daemonizeThisProgram(pidFileName, runPath);
 
   // ============================================================================
-  // Daemon code setup
-
-  // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
-
+  daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  daemon.SetLoop(true);
 
   // ==================================================
   // If /var/run/utmp does not exist we are done
@@ -238,7 +186,7 @@ int main(int argc, char ** argv) {
     }catch(std::exception const & e){
       syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
     }
-    while(loop){
+    while(daemon.GetLoop()){
       readSet_ret = readSet;
       int pselRet = pselect(maxFDp1,&readSet_ret,NULL,NULL,&timeout,NULL);
       if(0 == pselRet){

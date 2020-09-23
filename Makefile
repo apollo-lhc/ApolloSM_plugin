@@ -167,7 +167,27 @@ bin/pokeUIO : src/standalone/pokeUIO.cxx
 
 bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
 	mkdir -p bin
-	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml $(filter-out %.so, $^) -o $@
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $< ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} -o $@
+
+bin/SM_boot : obj/standalone/SM_boot.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
+bin/heartbeat : obj/standalone/heartbeat.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
+bin/xvc_server : obj/standalone/xvc_server.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
+bin/ps_monitor : obj/standalone/ps_monitor.o obj/standalone/optionParsing.o obj/standalone/daemon.o obj/standalone/userCount.o obj/standalone/lnxSysMon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
+bin/htmlStatus : obj/standalone/htmlStatus.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
 
 
 -include $(LIBRARY_OBJECT_FILES:.o=.d)

@@ -231,10 +231,10 @@ int main(int argc, char **argv) {
   po::options_description cli_options("XVC options");
   cli_options.add_options()
     ("help,h",    "Help screen")
-    ("RUN_DIR,r",   po::value<std::string>()->implicit_value(""), "Path to default run directory")
-    ("PID_FILE,d",  po::value<std::string>()->implicit_value(""), "Path to default pid directory")
-    ("xvcPrefix,v", po::value<std::string>()->implicit_value(""), "xvc prefix")
-    ("xvcPort,p",   po::value<int>()->implicit_value(0),          "xvc_port number")
+    ("RUN_DIR,r",   po::value<std::string>(), "Path to default run directory")
+    ("PID_FILE,d",  po::value<std::string>(), "Path to default pid directory")
+    ("xvcPrefix,v", po::value<std::string>(), "xvc prefix")
+    ("xvcPort,p",   po::value<int>(),         "xvc_port number")
     ("config_file", po::value<std::string>(), "config file");
   //Config File options
   po::options_description cfg_options("XVC options");

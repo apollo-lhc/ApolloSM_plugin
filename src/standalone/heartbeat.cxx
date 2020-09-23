@@ -59,16 +59,16 @@ int main(int argc, char** argv) {
   // Set up program options
   //=======================================================================
   //Command Line options
-  po::options_description cli_options("cmpwrup options");
+  po::options_description cli_options("heartbeat options");
   cli_options.add_options()
     ("help,h",    "Help screen")
-    ("POLLTIME_IN_SECONDS,s", po::value<int>()->implicit_value(0),          "Default polltime in seconds")
-    ("CONN_FILE,c",           po::value<std::string>()->implicit_value(""), "Path to the default connections file")
-    ("RUN_DIR,r",             po::value<std::string>()->implicit_value(""), "run path")
-    ("PID_FILE,p",            po::value<std::string>()->implicit_value(""), "pid file");
+    ("POLLTIME_IN_SECONDS,s", po::value<int>(),         "Default polltime in seconds")
+    ("CONN_FILE,c",           po::value<std::string>(), "Path to the default connections file")
+    ("RUN_DIR,r",             po::value<std::string>(), "run path")
+    ("PID_FILE,p",            po::value<std::string>(), "pid file");
 
   //Config File options
-  po::options_description cfg_options("cmpwrup options");
+  po::options_description cfg_options("heartbeat options");
   cfg_options.add_options()
     ("POLLTIME_IN_SECONDS", po::value<int>(),         "default polltime in seconds")
     ("CONN_FILE",           po::value<std::string>(), "Path to the default connections file")

@@ -27,7 +27,7 @@
 
 #include <sys/stat.h> //for umask
 #include <sys/types.h> //for umask
-                                                                                                                                                
+                                                                                                                                         
 #include <syslog.h>
 #include <errno.h>
 
@@ -37,12 +37,16 @@
 #include <ApolloSM/uioLabelFinder.hh>
 #include <ApolloSM/ApolloSM.hh>
 
-// ================================================================================
-// Setup for boost program_options
 #include <boost/program_options.hpp>
-#include <standalone/progOpt.hh>
+#include <standalone/optionParsing.hh>
+#include <standalone/optionParsing_bool.hh>
+#include <standalone/daemon.hh>
+
 #include <fstream>
 #include <iostream>
+
+// ================================================================================
+// Setup for boost program_options
 #define DEFAULT_CONFIG_FILE "/etc/xvc_server"
 #define DEFAULT_RUN_DIR "/opt/address_table/"
 #define DEFAULT_PID_DIR "/var/run/"
@@ -50,14 +54,6 @@
 #define DEFAULT_XVCPORT -1
 namespace po = boost::program_options;
 
-// ====================================================================================================
-// signal handling
-bool static volatile loop;
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
 
 #define MAP_SIZE      0x10000
 
@@ -82,6 +78,8 @@ uint32_t volatile * XVCLock = NULL;
     return -1;					\
   }						\
 
+//Daemon class;
+Daemon daemonInst;
 
 static int sread(int fd, void *target, int len) {
   unsigned char *t = (unsigned char *) target;
@@ -211,7 +209,7 @@ int handle_data(int fd) {
       return 1;
     }
 
-  } while (loop);
+  } while (daemonInst.GetLoop());
   /* Note: Need to fix JTAG state updates, until then no exit is allowed */
   return 0;
 }
@@ -230,113 +228,80 @@ int main(int argc, char **argv) {
   // Set up program options
   //=======================================================================
   //Command Line options
-  po::options_description cli_options("cmpwrdown options");
+  po::options_description cli_options("XVC options");
   cli_options.add_options()
     ("help,h",    "Help screen")
     ("RUN_DIR,r",   po::value<std::string>()->implicit_value(""), "Path to default run directory")
     ("PID_FILE,d",  po::value<std::string>()->implicit_value(""), "Path to default pid directory")
     ("xvcPrefix,v", po::value<std::string>()->implicit_value(""), "xvc prefix")
-    ("xvcPort,p",   po::value<int>()->implicit_value(0),          "xvc_port number");
-
+    ("xvcPort,p",   po::value<int>()->implicit_value(0),          "xvc_port number")
+    ("config_file", po::value<std::string>(), "config file");
   //Config File options
-  po::options_description cfg_options("cmpwrdown options");
+  po::options_description cfg_options("XVC options");
   cfg_options.add_options()
     ("RUN_DIR",   po::value<std::string>(), "Path to default run directory")
     ("PID_DIR",   po::value<std::string>(), "Path to default pid directory")
     ("xvcPrefix", po::value<std::string>(), "xvc prefix")
     ("xvcPort",   po::value<int>(),         "xvc_port number");
 
-  //variable_maps for holding program options
-  po::variables_map cli_map;
-  po::variables_map cfg_map;
-
-  //Store command line and config file arguments into cli_map and cfg_map
-  try {
-    cli_map = storeCliArguments(cli_options, argc, argv);
+  std::map<std::string,std::vector<std::string> > allOptions;
+  
+  //Do a quick search of the command line only to look for a new config file.
+  //Get options from command line,
+  try { 
+    FillOptions(parse_command_line(argc, argv, cli_options),
+		allOptions);
   } catch (std::exception &e) {
-    std::cout << cli_options << std::endl;
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
     return 0;
   }
-
-  try {
-    cfg_map = storeCfgArguments(cfg_options, DEFAULT_CONFIG_FILE);  
-  } catch (std::exception &e) {}
-  
-  //Help option - ends program
-  if(cli_map.count("help")){
+  //Help option - ends program 
+  if(allOptions.find("help") != allOptions.end()){
     std::cout << cli_options << '\n';
     return 0;
+  }  
+  
+  std::string configFileName = GetFinalParameterValue(std::string("config_file"),allOptions,std::string(DEFAULT_CONFIG_FILE));
+  
+  //Get options from config file
+  std::ifstream configFile(configFileName.c_str());   
+  if(configFile){
+    try { 
+      FillOptions(parse_config_file(configFile,cfg_options,true),
+		  allOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+    }
+    configFile.close();
   }
 
   //Set port
-  int port = DEFAULT_XVCPORT;
-  setOptionValue(port, "xvcPort", cli_map, cfg_map);
+  int port            = GetFinalParameterValue(std::string("xvcPort"),  allOptions,DEFAULT_XVCPORT);
   //setxvcName
-  std::string xvcName = DEFAULT_XVCPREFIX;
-  setOptionValue(xvcName, "xvcPrefix", cli_map, cfg_map);
+  std::string xvcName = GetFinalParameterValue(std::string("xvcPrefix"),allOptions,std::string(DEFAULT_XVCPREFIX));
   //set PID_DIR
-  std::string PID_DIR = DEFAULT_PID_DIR;
-  setOptionValue(PID_DIR, "PID_DIR", cli_map, cfg_map);
+  std::string PID_DIR = GetFinalParameterValue(std::string("PID_DIR"),  allOptions,std::string(DEFAULT_PID_DIR));
   //Set RUN_DIR
-  std::string RUN_DIR = DEFAULT_RUN_DIR;
-  setOptionValue(RUN_DIR, "RUN_DIR", cli_map, cfg_map);
+  std::string RUN_DIR = GetFinalParameterValue(std::string("RUN_DIR"),  allOptions,std::string(DEFAULT_RUN_DIR));
+
   //use xvcName to get uiLabel
   std::string uioLabel = xvcName;
 
   //now that we know the port, setup the log
   char daemonName[] = "xvc_server.XXXXXY"; //The 'Y' is so strlen is properly padded
   snprintf(daemonName,strlen(daemonName),"xvc_server.%u",port);
-  
+  std::string pidFileName = PID_DIR+std::string(daemonName)+std::string(".pid");
+
   // ============================================================================
   // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    std::string pidFileName = PID_DIR;
-    pidFileName+=daemonName;
-    pidFileName+=".pid";
-    FILE * pidFile = fopen(pidFileName.c_str(),"w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
+  daemonInst.daemonizeThisProgram(pidFileName, RUN_DIR);
 
-  }
-
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-  
-  openlog(daemonName,LOG_PID|LOG_ODELAY,LOG_DAEMON);
-  syslog(LOG_INFO,"starting %s", daemonName);
-  
-
-  // create new SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    syslog(LOG_ERR,"Failed to change SID\n");
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Set SID to %d\n",sid);
-
-  //Move to RUN_DIR
-  if ((chdir(RUN_DIR.c_str())) < 0) {
-    syslog(LOG_ERR,"Failed to change path to \"%s\"\n",RUN_DIR.c_str());    
-    exit(EXIT_FAILURE);
-  }
-  syslog(LOG_INFO,"Changed path to \"%s\"\n",RUN_DIR.c_str());    
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-
+  // ============================================================================
+  // Signal handling
+  struct sigaction sa_INT,sa_TERM,old_sa;
+  daemonInst.changeSignal(&sa_INT , &old_sa, SIGINT);
+  daemonInst.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  daemonInst.SetLoop(true);
 
   //Find UIO number
   std::string parentLabel = uioLabel.substr(0,uioLabel.find('.'));
@@ -469,24 +434,6 @@ int main(int argc, char **argv) {
 
 
 
-  // ============================================================================
-  // Daemon code setup
-
-  // ====================================
-  // Signal handling
-  struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
-
-
 
   //zero remote info
   pXVC->IP =0;
@@ -507,7 +454,7 @@ int main(int argc, char **argv) {
   //start by waiting on the listen socket
   fd_set activeFDSet = listenFDSet;
   maxFD = listenFD;
-  while (loop) {
+  while (daemonInst.GetLoop()) {
     fd_set read = activeFDSet, except = listenFDSet;
 
     if (select(maxFD + 1, &read, 0, &except, 0) < 0) {

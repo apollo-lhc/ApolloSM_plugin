@@ -177,6 +177,10 @@ bin/heartbeat : obj/standalone/heartbeat.o obj/standalone/optionParsing.o obj/st
 	mkdir -p bin
 	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
 
+bin/xvc_server : obj/standalone/xvc_server.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
 
 -include $(LIBRARY_OBJECT_FILES:.o=.d)
 

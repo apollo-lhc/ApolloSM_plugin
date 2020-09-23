@@ -9,11 +9,6 @@
 #include <signal.h>
 #include <time.h>
 
-#include <sys/stat.h> //for umask
-#include <sys/types.h> //for umask
-
-#include <BUException/ExceptionBase.hh>
-
 #include <syslog.h>  ///for syslog
 
 #include <boost/program_options.hpp>

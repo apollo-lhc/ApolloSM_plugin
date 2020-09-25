@@ -33,7 +33,7 @@ void Daemon::daemonizeThisProgram(std::string pidFileName, std::string runPath) 
   }else{
     // I'm the child!
     //open syslog
-    openlog(NULL,LOG_CONS|LOG_PID,LOG_DAEMON);
+    openlog(NULL,LOG_PID,LOG_DAEMON);
   }
 
   //Change the file mode mask to allow read/write

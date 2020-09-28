@@ -9,15 +9,39 @@
 #include <signal.h>
 #include <time.h>
 
-#include <sys/stat.h> //for umask
-#include <sys/types.h> //for umask
+#include <syslog.h>  ///for syslog
 
-#include <BUException/ExceptionBase.hh>
+#include <boost/program_options.hpp>
+#include <standalone/optionParsing.hh>
+#include <standalone/optionParsing_bool.hh>
+#include <standalone/daemon.hh>
 
 #include <fstream>
+#include <iostream>
 
-#define SEC_IN_USEC 10000000
-#define NSEC_IN_USEC 1000
+
+// ====================================================================================================
+// Constants
+#define SEC_IN_US  1000000
+#define NS_IN_US 1000
+
+// ====================================================================================================
+// Set up for boost program_options
+#define DEFAULT_CONFIG_FILE "/etc/SM_boot"
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_RUN_DIR     "/opt/address_table/"
+#define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
+#define DEFAULT_POWERUP_TIME 5
+#define DEFAULT_SENSORS_THROUGH_ZYNQ false // This means: by default, read the sensors through the zynq
+#define DEFAULT_CM_POWERUP false
+namespace po = boost::program_options; //Making life easier for boost
+// ====================================================================================================
+long us_difftime(struct timespec cur, struct timespec end){ 
+  return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
+	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
+}
+
+
 // ====================================================================================================
 // Definitions
 
@@ -30,19 +54,7 @@ struct temperatures {
   uint8_t REGTemp;
   bool    validData;
 };
-
 // ====================================================================================================
-// Kill program if it is in background
-bool static volatile loop;
-
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
-
-// ====================================================================================================
-
 temperatures sendAndParse(ApolloSM* SM) {
   temperatures temps {0,0,0,0,false};
   std::string recv;
@@ -137,112 +149,103 @@ void updateTemp(ApolloSM * SM, std::string const & base,uint8_t temp){
 }
 
 void sendTemps(ApolloSM* SM, temperatures temps) {
-  updateTemp(SM,"SLAVE_I2C.S2.0", temps.MCUTemp);
-  updateTemp(SM,"SLAVE_I2C.S3.0", temps.FIREFLYTemp);
-  updateTemp(SM,"SLAVE_I2C.S4.0", temps.FPGATemp);
-  updateTemp(SM,"SLAVE_I2C.S5.0", temps.REGTemp);
-}
-
-// ====================================================================================================
-
-
-long us_difftime(struct timespec cur, struct timespec end){ 
-  return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_USEC + 
-	   (end.tv_nsec - cur.tv_nsec)/NSEC_IN_USEC);
+  updateTemp(SM,"SLAVE_I2C.S2.VAL", temps.MCUTemp);
+  updateTemp(SM,"SLAVE_I2C.S3.VAL", temps.FIREFLYTemp);
+  updateTemp(SM,"SLAVE_I2C.S4.VAL", temps.FPGATemp);
+  updateTemp(SM,"SLAVE_I2C.S5.VAL", temps.REGTemp);
 }
 
 
+int main(int argc, char** argv) { 
 
+  // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
+  std::string runPath     = DEFAULT_RUN_DIR;
+  std::string pidFileName = DEFAULT_PID_FILE;
+  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+  bool powerupCMuC        = DEFAULT_CM_POWERUP;
+  int powerupTime         = DEFAULT_POWERUP_TIME;
+  bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
 
+  //Mikey - finish
+  po::options_description cli_options("SM_boot options");
+  cli_options.add_options()
+    ("help,h", "Help screen")
+    ("run_path,r",           po::value<std::string>(), "Path to run directory")
+    ("pid_file,f",           po::value<std::string>(), "pid file")
+    ("polltime,P",           po::value<int>(),         "Polltime in seconds")
+    ("cm_powerup,P",         po::value<bool>(),        "Powerup CM")
+    ("cm_powerup_time,t",    po::value<int>(),         "Powerup time in seconds")
+    ("sensorsThroughZynq,s", po::value<bool>(),        "Read sensors through the Zynq")
+    ("config_file",          po::value<std::string>(), "config file"); // This is the only option not also in the file option (obviously); 
+   
+  po::options_description cfg_options("SM_boot options");
+  cfg_options.add_options()
+    ("run_path",           po::value<std::string>(), "Path to run directory")
+    ("pid_file",           po::value<std::string>(), "pid file")
+    ("polltime",           po::value<int>(),         "Polltime in seconds")
+    ("cm_powerup",         po::value<bool>(),        "Powerup CM")
+    ("cm_powerup_time",    po::value<int>(),         "Powerup time in seconds")
+    ("sensorsThroughZynq", po::value<bool>(),        "Read sensors through the Zynq"); // This means: by default, read the sensors through the zynq
 
-int main(int, char**) { 
-
-  // ============================================================================
-  // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen("/var/run/sm_boot.pid","w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
+  std::map<std::string,std::vector<std::string> > allOptions;
+  
+  //Do a quick search of the command line only to look for a new config file.
+  //Get options from command line,
+  try { 
+    FillOptions(parse_command_line(argc, argv, cli_options),
+		allOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    return 0;
+  }
+  //Help option - ends program 
+  if(allOptions.find("help") != allOptions.end()){
+    std::cout << cli_options << '\n';
+    return 0;
+  }  
+  
+  std::string configFileName = GetFinalParameterValue(std::string("config_file"),allOptions,std::string(DEFAULT_CONFIG_FILE));
+  
+  //Get options from config file
+  std::ifstream configFile(configFileName.c_str());   
+  if(configFile){
+    try { 
+      FillOptions(parse_config_file(configFile,cfg_options,true),
+		  allOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+    }
+    configFile.close();
   }
   
-  //Change the file mode mask to allow read/write
-  umask(0);
-
-  //Create log file
-  FILE * logFile = fopen("/var/log/sm_boot.log","w");
-  if(logFile == NULL){
-    fprintf(stderr,"Failed to create log file\n");
-    exit(EXIT_FAILURE);
-  }
-  fprintf(logFile,"Opened log file\n");
-  fflush(logFile);
-
-  // create nbew SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    fprintf(logFile,"Failed to change SID\n");
-    fflush(logFile);
-    exit(EXIT_FAILURE);
-  }else{
-    fprintf(logFile,"Set SID to %d\n",sid);
-    fflush(logFile);    
-  }
-
-  //Move to "/tmp/bin"
-  if ((chdir("/tmp/bin")) < 0) {
-    fprintf(logFile,"Failed to change path to \"/tmp/bin\"\n");
-    fflush(logFile);
-    exit(EXIT_FAILURE);
-  }else{
-    fprintf(logFile,"Changed path to \"/tmp/bin\"\n");
-    fflush(logFile);
-  }
-
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-
-
-
-
+  runPath=             GetFinalParameterValue(std::string("run_path"),          allOptions,std::string(DEFAULT_RUN_DIR));
+  pidFileName=         GetFinalParameterValue(std::string("pid_file"),          allOptions,std::string(DEFAULT_PID_FILE));
+  polltime_in_seconds= GetFinalParameterValue(std::string("polltime"),          allOptions,DEFAULT_POLLTIME_IN_SECONDS);
+  powerupCMuC=         GetFinalParameterValue(std::string("cm_powerup"),        allOptions,DEFAULT_CM_POWERUP);
+  powerupTime=         GetFinalParameterValue(std::string("cm_powerup_time"),   allOptions,DEFAULT_POWERUP_TIME);
+  sensorsThroughZynq=  GetFinalParameterValue(std::string("sensorsThroughZynq"),allOptions,DEFAULT_SENSORS_THROUGH_ZYNQ);
+  
+  // ============================================================================
+  // Deamon book-keeping
+  Daemon daemon;
+  daemon.daemonizeThisProgram(pidFileName, runPath);
 
   // ============================================================================
-  // Daemon code setup
-
-  // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
+  daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  daemon.SetLoop(true);
+
+
+  //Update parameters
 
   // ====================================
   // for counting time
   struct timespec startTS;
   struct timespec stopTS;
 
-  long update_period_us = 1*SEC_IN_USEC; //sleep time in microseconds
-
-
+  long update_period_us = polltime_in_seconds*SEC_IN_US; //sleep time in microseconds
 
   bool inShutdown = false;
   ApolloSM * SM = NULL;
@@ -251,35 +254,45 @@ int main(int, char**) {
     // Initialize ApolloSM
     SM = new ApolloSM();
     if(NULL == SM){
-      fprintf(logFile,"Failed to create new ApolloSM\n");
-      fflush(logFile);
+      syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+      exit(EXIT_FAILURE);
     }else{
-      fprintf(logFile,"Created new ApolloSM\n");
-      fflush(logFile);
+      syslog(LOG_INFO,"Created new ApolloSM\n");      
     }
     std::vector<std::string> arg;
     arg.push_back("connections.xml");
     SM->Connect(arg);
     //Set the power-up done bit to 1 for the IPMC to read
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
-    fprintf(logFile,"Set STATUS.DONE to 1\n");
-    fflush(logFile);
+    syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
   
 
     // ====================================
     // Turn on CM uC      
-    SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",1);
-    fprintf(logFile,"Powering up CM uC\n");
-    sleep(1);
+    if (powerupCMuC){
+      SM->RegWriteRegister("CM.CM_1.CTRL.ENABLE_UC",1);
+      syslog(LOG_INFO,"Powering up CM uC\n");
+      sleep(powerupTime);
+    }
   
+    //Set uC temp sensors as disabled
+    if(!sensorsThroughZynq){
+      temperatures temps;  
+      temps = {0,0,0,0,false};
+      sendTemps(SM, temps);
+      syslog(LOG_INFO,"No reading out CM sensors via zynq\n");
+    }else{
+      syslog(LOG_INFO,"Reading out CM sensors via zynq\n");
+    }
+
 
     // ==================================
     // Main DAEMON loop
-    fprintf(logFile,"Starting Monitoring loop\n");
-    fflush(logFile);
+    syslog(LOG_INFO,"Starting Monitoring loop\n");
+    
 
     uint32_t CM_running = 0;
-    while(loop) {
+    while(daemon.GetLoop()) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 
@@ -288,36 +301,38 @@ int main(int, char**) {
       //=================================
 
       //Process CM temps
-      temperatures temps;  
-      if(SM->RegReadRegister("CM.CM1.CTRL.ENABLE_UC")){
-	try{
-	  temps = sendAndParse(SM);
-	}catch(std::exception & e){
-	  fprintf(logFile,e.what());
-	  //ignoring any exception here for now
+      if(sensorsThroughZynq) {
+	temperatures temps;  
+      	if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
+	  try{
+	    temps = sendAndParse(SM);
+	  }catch(std::exception & e){
+	    syslog(LOG_INFO,e.what());
+	    //ignoring any exception here for now
+	    temps = {0,0,0,0,false};
+	  }
+	  
+	  if(0 == CM_running ){
+	    //Drop the non uC temps
+	    temps.FIREFLYTemp = 0;
+	    temps.FPGATemp = 0;
+	    temps.REGTemp = 0;
+	  }
+	  CM_running = SM->RegReadRegister("CM.CM_1.CTRL.PWR_GOOD");
+	  
+	  sendTemps(SM, temps);
+	  if(!temps.validData){
+	    syslog(LOG_INFO,"Error in parsing data stream\n");
+	  }
+	}else{
 	  temps = {0,0,0,0,false};
+	  sendTemps(SM, temps);
 	}
-	
-	if(0 == CM_running ){
-	  //Drop the non uC temps
-	  temps.FIREFLYTemp = 0;
-	  temps.FPGATemp = 0;
-	  temps.REGTemp = 0;
-	}
-	CM_running = SM->RegReadRegister("CM.CM1.CTRL.PWR_GOOD");
-
-	sendTemps(SM, temps);
-	if(!temps.validData){
-	  fprintf(logFile,"Error in parsing data stream\n");
-	}
-      }else{
-	temps = {0,0,0,0,false};
-	sendTemps(SM, temps);
       }
 
       //Check if we are shutting down
       if((!inShutdown) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
-	fprintf(logFile,"Shutdown requested\n");
+	syslog(LOG_INFO,"Shutdown requested\n");
 	inShutdown = true;
 	//the IPMC requested a re-boot.
 	pid_t reboot_pid;
@@ -328,7 +343,7 @@ int main(int, char**) {
 	}
 	if(-1 == reboot_pid){
 	  inShutdown = false;
-	  fprintf(logFile,"Error! fork to shutdown failed!\n");
+	  syslog(LOG_INFO,"Error! fork to shutdown failed!\n");
 	}else{
 	  //Shutdown the command module (if up)
 	  SM->PowerDownCM(1,5);
@@ -346,23 +361,23 @@ int main(int, char**) {
       }
     }
   }catch(BUException::exBase const & e){
-    fprintf(logFile,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
-    fflush(logFile);      
+    syslog(LOG_INFO,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
+          
   }catch(std::exception const & e){
-    fprintf(logFile,"Caught std::exception: %s\n",e.what());
-    fflush(logFile);      
+    syslog(LOG_INFO,"Caught std::exception: %s\n",e.what());
+          
   }
 
 
   //make sure the CM is off
   //Shutdown the command module (if up)
   SM->PowerDownCM(1,5);
-  SM->RegWriteRegister("CM.CM1.CTRL.ENABLE_UC",0);
+  SM->RegWriteRegister("CM.CM_1.CTRL.ENABLE_UC",0);
 
   
   //If we are shutting down, do the handshanking.
   if(inShutdown){
-    fprintf(logFile,"Tell IPMC we have shut-down\n");
+    syslog(LOG_INFO,"Tell IPMC we have shut-down\n");
     //We are no longer booted
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
     //we are shut down
@@ -373,16 +388,32 @@ int main(int, char**) {
     SM->RegReadRegister("SLAVE_I2C.HB_SET2");
 
   }
+
+  //Dump registers on power down
+  std::stringstream outfileName;
+  outfileName << "/var/log/Apollo_debug_dump_";  
+
+  char buffer[128];
+  time_t unixTime=time(NULL);
+  struct tm * timeinfo = localtime(&unixTime);
+  strftime(buffer,128,"%F-%T-%Z",timeinfo);
+  outfileName << buffer;
+
+  outfileName << ".dat";
+  
+  std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);
+  outfile << outfileName.str() << std::endl;
+  SM->DebugDump(outfile);
+  outfile.close();  
+
   
   //Clean up
   if(NULL != SM) {
     delete SM;
   }
-  
+
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-  fprintf(logFile,"SM boot Daemon ended\n");
-  fclose(logFile);
-  
+  syslog(LOG_INFO,"eyescan Daemon ended\n");
   return 0;
 }

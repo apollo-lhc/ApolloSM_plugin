@@ -9,7 +9,7 @@
 #include <iostream>
 
 namespace BUException{
-  ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n");
+  ExceptionClassGenerator(APOLLO_SM_BAD_VALUE,"Bad value use in Apollo SM code\n")
 }
 
 #include <stdint.h>
@@ -24,8 +24,8 @@ public:
   void GenerateStatusDisplay(size_t level,
 			     std::ostream & stream,
 			     std::string const & singleTable);
-
   std::string GenerateHTMLStatus(std::string filename, size_t level, std::string);
+  std::string GenerateGraphiteStatus(size_t level, std::string);
   
   void UART_Terminal(std::string const & ttyDev);
 
@@ -37,6 +37,15 @@ public:
   bool PowerDownCM(int CM_ID,int wait = -1);
 
   void DebugDump(std::ostream & output = std::cout);
+
+  void unblockAXI();
+  void restartCMuC(std::string CM_ID);
+
+  int GetSerialNumber();
+  int GetRevNumber();
+  int GetShelfID();
+  uint32_t GetZynqIP();
+  uint32_t GetIPMCIP();
 
 private:  
   IPBusStatus * statusDisplay;

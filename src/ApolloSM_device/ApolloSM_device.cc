@@ -65,6 +65,12 @@ void ApolloSMDevice::LoadCommandList(){
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("ro","readoffset");
 
+    AddCommand("readstring",&ApolloSMDevice::ReadString,
+	       "Read and print a block as a string\n" \
+	       "Usage: \n"                           \
+	       "  readstring reg\n",
+	       &ApolloSMDevice::RegisterAutoComplete);
+
 
 
     AddCommand("write",&ApolloSMDevice::Write,
@@ -97,7 +103,12 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Display tables of Apollo Status\n"  \
 	       "Usage: \n"                          \
 	       "  status level <table name>\n");
-    
+
+    AddCommand("graphite",&ApolloSMDevice::DumpGraphite,
+	       "Display Graphite write for Apollo Status\n"  \
+	       "Usage: \n"                          \
+	       "  graphite level <table name>\n");
+
     AddCommand("cmpwrup",&ApolloSMDevice::CMPowerUP,
 	       "Power up a command module\n"\
 	       "Usage: \n" \
@@ -133,6 +144,15 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Send to D. Gastler\n"\
 	       "Usage: \n"\
 	       "  dump_debug\n");
+
+    AddCommand("unblockAXI",&ApolloSMDevice::unblockAXI,
+	       "Unblocks all four C2CX AXI and AXILITE bits\n"\
+	       "Usage: \n"\
+	       "  unblockAXI\n");
+    AddCommand("restartCMuC",&ApolloSMDevice::restartCMuC,
+	       "Restart micro controller on CM\n"	\
+	       "Usage: \n"\
+	       "  restartCMuC <CM number>\n");
 
 }
 
@@ -183,6 +203,28 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
   return CommandReturn::OK;
 }
 
+CommandReturn::status ApolloSMDevice::DumpGraphite(std::vector<std::string> strArg,std::vector<uint64_t> intArg){
+  std::string table("");
+  int statusLevel = 1;
+  switch (strArg.size()) {
+    case 0:
+      break;
+    default: //fallthrough
+    case 2:
+      table = strArg[1];
+      //fallthrough
+    case 1:
+      if(!isdigit(strArg[0][0])){
+	return CommandReturn::BAD_ARGS;
+      }else if ((intArg[0] < 1) || (intArg[0] > 9)) {
+	return CommandReturn::BAD_ARGS;
+      }      
+      statusLevel = intArg[0];
+      break;
+    }
+  std::cout << SM->GenerateGraphiteStatus(statusLevel,table);
+  return CommandReturn::OK;  
+}
 
 CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strArg*/,std::vector<uint64_t> intArg){
 
@@ -242,9 +284,9 @@ CommandReturn::status ApolloSMDevice::UART_Term(std::vector<std::string> strArg,
     return CommandReturn::BAD_ARGS;
   }
 
-  if(boost::algorithm::iequals(strArg[0],"CM1")) {
+  if(boost::algorithm::iequals(strArg[0],"CM_1")) {
     SM->UART_Terminal("/dev/ttyUL1");    
-  } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
+  } else if(boost::algorithm::iequals(strArg[0],"CM_2")) {
     SM->UART_Terminal("/dev/ttyUL2");
   } else if(boost::algorithm::iequals(strArg[0],"ESM")) {
     SM->UART_Terminal("/dev/ttyUL3");
@@ -263,10 +305,10 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
 
   std::string ttyDev;
   char promptChar;
-  if(boost::algorithm::iequals(strArg[0],"CM1")) {
+  if(boost::algorithm::iequals(strArg[0],"CM_1")) {
     ttyDev.append("/dev/ttyUL1");    
     promptChar = '%';
-  } else if(boost::algorithm::iequals(strArg[0],"CM2")) {
+  } else if(boost::algorithm::iequals(strArg[0],"CM_2")) {
     ttyDev.append("/dev/ttyUL2");
     promptChar = '%';
   } else if(boost::algorithm::iequals(strArg[0],"ESM")) {
@@ -333,13 +375,36 @@ CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strAr
 						std::vector<uint64_t> /*intArg*/){
   std::stringstream outfileName;
   outfileName << "Apollo_debug_dump_";  
-  std::time_t time = std::time(NULL);
-  outfileName << std::put_time(std::gmtime(&time),"%F-%T-%Z");
+
+  char buffer[128];
+  time_t unixTime=time(NULL);
+  struct tm * timeinfo = localtime(&unixTime);
+  strftime(buffer,128,"%F-%T-%Z",timeinfo);
+  outfileName << buffer;
+
   outfileName << ".dat";
   
   std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);
   outfile << outfileName.str() << std::endl;
   SM->DebugDump(outfile);
   outfile.close();  
+  return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strArg*/,
+						std::vector<uint64_t> /*intArg*/){
+
+  SM->unblockAXI();  
+
+  return CommandReturn::OK;						   
+}
+						 
+CommandReturn::status ApolloSMDevice::restartCMuC(std::vector<std::string> strArg,
+						  std::vector<uint64_t> /*intArg*/){
+  if (strArg.size() != 1) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  SM->restartCMuC(strArg[0]);
   return CommandReturn::OK;
 }

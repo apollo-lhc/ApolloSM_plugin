@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
@@ -8,136 +9,140 @@
 #include <signal.h>
 #include <time.h>
 
-#include <sys/stat.h> //for umask
-#include <sys/types.h> //for umask
+#include <syslog.h>  ///for syslog
 
-#include <BUException/ExceptionBase.hh>
+#include <boost/program_options.hpp>
+#include <standalone/optionParsing.hh>
+#include <standalone/optionParsing_bool.hh>
+#include <standalone/daemon.hh>
 
-#define SEC_IN_USEC 10000000
-#define NSEC_IN_USEC 1000
+#include <fstream>
+#include <iostream>
+
+
+#define SEC_IN_US  1000000
+#define NS_IN_US 1000
+
+// ================================================================================
+// Setup for boost program_options
+#define DEFAULT_CONFIG_FILE "/etc/heartbeat"
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
+#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_PID_FILE "/var/run/heartbeat.pid"
+namespace po = boost::program_options;
+
 
 // ====================================================================================================
-// Kill program if it is in background
-bool static volatile loop;
-
-void static signal_handler(int const signum) {
-  if(SIGINT == signum || SIGTERM == signum) {
-    loop = false;
-  }
-}
-
-
-// ====================================================================================================
-
-
 long us_difftime(struct timespec cur, struct timespec end){ 
-  return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_USEC + 
-	   (end.tv_nsec - cur.tv_nsec)/NSEC_IN_USEC);
+  return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
+	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
 }
 
+// ====================================================================================================
+int main(int argc, char** argv) { 
+
+  //Set polltime
+  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
+
+  //Set connection file
+  std::string connectionFile = DEFAULT_CONN_FILE;
+
+  //Set run dir
+  std::string runPath = DEFAULT_RUN_DIR;
+
+  //set pidFileName
+  std::string pidFileName = DEFAULT_PID_FILE;
 
 
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("heartbeat options");
+  cli_options.add_options()
+    ("help,h",    "Help screen")
+    ("POLLTIME_IN_SECONDS,s", po::value<int>(),         "Default polltime in seconds")
+    ("CONN_FILE,c",           po::value<std::string>(), "Path to the default connections file")
+    ("RUN_DIR,r",             po::value<std::string>(), "run path")
+    ("PID_FILE,p",            po::value<std::string>(), "pid file");
 
+  //Config File options
+  po::options_description cfg_options("heartbeat options");
+  cfg_options.add_options()
+    ("POLLTIME_IN_SECONDS", po::value<int>(),         "default polltime in seconds")
+    ("CONN_FILE",           po::value<std::string>(), "Path to the default connections file")
+    ("RUN_DIR",             po::value<std::string>(), "run path")
+    ("PID_FILE",            po::value<std::string>(), "pid file");
 
-int main(int, char**) { 
+  std::map<std::string,std::vector<std::string> > allOptions;  
+  //Do a quick search of the command line only to look for a new config file.
+  //Get options from command line,
+  try { 
+    FillOptions(parse_command_line(argc, argv, cli_options),
+		allOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    return 0;
+  }
+  //Help option - ends program 
+  if(allOptions.find("help") != allOptions.end()){
+    std::cout << cli_options << '\n';
+    return 0;
+  }  
+  
+  std::string configFileName = GetFinalParameterValue(std::string("config_file"),allOptions,std::string(DEFAULT_CONFIG_FILE));
+  
+  //Get options from config file
+  std::ifstream configFile(configFileName.c_str());   
+  if(configFile){
+    try { 
+      FillOptions(parse_config_file(configFile,cfg_options,true),
+		  allOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+    }
+    configFile.close();
+  }
+
+  polltime_in_seconds = GetFinalParameterValue(std::string("POLLTIME_IN_SECONDS"),allOptions,DEFAULT_POLLTIME_IN_SECONDS);  
+  connectionFile      = GetFinalParameterValue(std::string("CONN_FILE")          ,allOptions,std::string(DEFAULT_CONN_FILE));
+  runPath             = GetFinalParameterValue(std::string("RUN_DIR")            ,allOptions,std::string(DEFAULT_RUN_DIR));
+  pidFileName         = GetFinalParameterValue(std::string("PID_FILE")           ,allOptions,std::string(DEFAULT_PID_FILE));
+
 
   // ============================================================================
   // Deamon book-keeping
-  pid_t pid, sid;
-  pid = fork();
-  if(pid < 0){
-    //Something went wrong.
-    //log something
-    exit(EXIT_FAILURE);
-  }else if(pid > 0){
-    //We are the parent and created a child with pid pid
-    FILE * pidFile = fopen("/var/run/heartbeat.pid","w");
-    fprintf(pidFile,"%d\n",pid);
-    fclose(pidFile);
-    exit(EXIT_SUCCESS);
-  }else{
-    // I'm the child!
-  }
-  
-  //Change the file mode mask to allow read/write
-  umask(0);
-
-  //Create log file
-  FILE * logFile = fopen("/var/log/heartbeat.log","w");
-  if(logFile == NULL){
-    fprintf(stderr,"Failed to create log file\n");
-    exit(EXIT_FAILURE);
-  }
-  fprintf(logFile,"Opened log file\n");
-  fflush(logFile);
-
-  // create nbew SID for the daemon.
-  sid = setsid();
-  if (sid < 0) {
-    fprintf(logFile,"Failed to change SID\n");
-    fflush(logFile);
-    exit(EXIT_FAILURE);
-  }else{
-    fprintf(logFile,"Set SID to %d\n",sid);
-    fflush(logFile);    
-  }
-
-  //Move to "/tmp/bin"
-  if ((chdir("/tmp/bin")) < 0) {
-    fprintf(logFile,"Failed to change path to \"/tmp/bin\"\n");
-    fflush(logFile);
-    exit(EXIT_FAILURE);
-  }else{
-    fprintf(logFile,"Changed path to \"/tmp/bin\"\n");
-    fflush(logFile);
-  }
-
-
-  //Everything looks good, close the standard file fds.
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-
-
-
-
+  Daemon daemon;
+  daemon.daemonizeThisProgram(pidFileName, runPath);
 
   // ============================================================================
-  // Daemon code setup
-
-  // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  memset(&sa_INT ,0,sizeof(sa_INT)); //Clear struct
-  memset(&sa_TERM,0,sizeof(sa_TERM)); //Clear struct
-  //setup SA
-  sa_INT.sa_handler  = signal_handler;
-  sa_TERM.sa_handler = signal_handler;
-  sigemptyset(&sa_INT.sa_mask);
-  sigemptyset(&sa_TERM.sa_mask);
-  sigaction(SIGINT,  &sa_INT , &old_sa);
-  sigaction(SIGTERM, &sa_TERM, NULL);
-  loop = true;
+  daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  daemon.SetLoop(true);
 
   // ====================================
   // for counting time
   struct timespec startTS;
   struct timespec stopTS;
 
-  long update_period_us = 1*SEC_IN_USEC; //sleep time in microseconds
+  long update_period_us = polltime_in_seconds*SEC_IN_US; //sleep time in microseconds
 
-
+  //=======================================================================
+  // Set up heartbeat
+  //=======================================================================
   ApolloSM * SM = NULL;
   try{
     // ==================================
     // Initialize ApolloSM
     SM = new ApolloSM();
     if(NULL == SM){
-      fprintf(logFile,"Failed to create new ApolloSM\n");
-      fflush(logFile);
+      syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+      exit(EXIT_FAILURE);
     }else{
-      fprintf(logFile,"Created new ApolloSM\n");
-      fflush(logFile);
+      syslog(LOG_INFO,"Created new ApolloSM\n");      
     }
     std::vector<std::string> arg;
     arg.push_back("connections.xml");
@@ -145,9 +150,9 @@ int main(int, char**) {
 
     // ==================================
     // Main DAEMON loop
-    fprintf(logFile,"Starting heartbeat\n");
-    fflush(logFile);
-    while(loop) {
+    syslog(LOG_INFO,"Starting heartbeat\n");
+    
+    while(daemon.GetLoop()) {
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 
@@ -170,11 +175,9 @@ int main(int, char**) {
       }
     }
   }catch(BUException::exBase const & e){
-    fprintf(logFile,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
-    fflush(logFile);      
+    syslog(LOG_ERR,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());          
   }catch(std::exception const & e){
-    fprintf(logFile,"Caught std::exception: %s\n",e.what());
-    fflush(logFile);      
+    syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
   }
   
   //PS heartbeat
@@ -188,8 +191,7 @@ int main(int, char**) {
   
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-  fprintf(logFile,"heartbeat Daemon ended\n");
-  fclose(logFile);
+  syslog(LOG_INFO,"heartbeat Daemon ended\n");
   
   return 0;
 }

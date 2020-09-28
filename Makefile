@@ -42,20 +42,22 @@ LIBRARIES =    	-lcurses \
 		-lBUTool_IPBusIO \
 		-lBUTool_IPBusStatus \
 		-lboost_regex \
-		-lboost_filesystem
+		-lboost_filesystem \
+		-lboost_program_options
 
-
+INSTALL_PATH ?= ./install
 
 
 CXX_FLAGS = -std=c++11 -g -O3 -rdynamic -Wall -MMD -MP -fPIC ${INCLUDE_PATH} -Werror -Wno-literal-suffix
 
 CXX_FLAGS +=-fno-omit-frame-pointer -Wno-ignored-qualifiers -Werror=return-type -Wextra -Wno-long-long -Winit-self -Wno-unused-local-typedefs  -Woverloaded-virtual ${COMPILETIME_ROOT} ${FALLTHROUGH_FLAGS}
 
-LINK_LIBRARY_FLAGS = -shared -fPIC -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} -Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT}
+LINK_LIBRARY_FLAGS = -shared -fPIC -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
+			-Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT}
 
-LINK_EXE_FLAGS = -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
-	         -L${COMPILETIME_ROOT}/lib/ -lBUTool_Helpers \
-		 -Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT} 
+LINK_EXE_FLAGS     = -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
+			-lBUTool_Helpers \
+			-Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT} 
 
 
 
@@ -71,18 +73,22 @@ ifdef IPBUS_PATH
 UHAL_INCLUDE_PATH = \
 	         					-isystem$(IPBUS_PATH)/uhal/uhal/include \
 	         					-isystem$(IPBUS_PATH)/uhal/log/include \
-	         					-isystem$(IPBUS_PATH)/uhal/grammars/include 
+	         					-isystem$(IPBUS_PATH)/uhal/grammars/include \
+							-isystem$(IPBUS_PATH)/../UIOuHAL/include
 UHAL_LIBRARY_PATH = \
-								-L$(IPBUS_PATH)/uhal/uhal/lib \
+							-L$(IPBUS_PATH)/uhal/uhal/lib \
 	         					-L$(IPBUS_PATH)/uhal/log/lib \
 	         					-L$(IPBUS_PATH)/uhal/grammars/lib \
-							-L$(IPBUS_PATH)/extern/pugixml/pugixml-1.2/ 
+							-L$(IPBUS_PATH)/extern/pugixml/pugixml-1.2/ \
+							-L$(IPBUS_PATH)/../UIOuHAL/lib
 else
 UHAL_INCLUDE_PATH = \
-	         					-isystem$(CACTUS_ROOT)/include 
+	         					-isystem$(CACTUS_ROOT)/include \
+							-isystem$(CACTUS_ROOT)/../UIOuHAL/include
 
 UHAL_LIBRARY_PATH = \
-							-L$(CACTUS_ROOT)/lib 
+							-L$(CACTUS_ROOT)/lib -Wl,-rpath=$(CACTUS_ROOT)/lib \
+							-L$(CACTUS_ROOT)/../UIOuHAL/lib  -Wl,-rpath=$(CACTUS_ROOT)/../UIOuHAL/lib
 endif
 
 UHAL_CXX_FLAGHS = ${UHAL_INCLUDE_PATH}
@@ -127,6 +133,19 @@ ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}
 	${CXX} ${LINK_LIBRARY_FLAGS}  ${LIBRARY_APOLLO_SM_OBJECT_FILES} -o $@
 
 
+# -----------------------
+# install
+# -----------------------
+install: all
+	 install -m 775 -d ${INSTALL_PATH}/lib
+	 install -b -m 775 ./lib/* ${INSTALL_PATH}/lib
+	 install -m 775 -d ${INSTALL_PATH}/bin
+	 install -b -m 775 ./bin/* ${INSTALL_PATH}/bin
+	 install -m 775 -d ${INSTALL_PATH}/include
+	 cp -r include/* ${INSTALL_PATH}/include
+
+
+
 obj/%.o : src/%.cc
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
@@ -137,9 +156,38 @@ obj/%.o : src/%.cxx
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
 
-bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES}
+#specific rule for peek and pokeUIO since we want them free of dynamic linking
+bin/peekUIO : src/standalone/peekUIO.cxx
 	mkdir -p bin
-	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml $^ -o $@
+	${CXX} ${CXX_FLAGS} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system $^ -o $@
+bin/pokeUIO : src/standalone/pokeUIO.cxx
+	mkdir -p bin
+	${CXX} ${CXX_FLAGS} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system $^ -o $@
+
+
+bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $< ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} -o $@
+
+bin/SM_boot : obj/standalone/SM_boot.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
+bin/heartbeat : obj/standalone/heartbeat.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
+bin/xvc_server : obj/standalone/xvc_server.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
+bin/ps_monitor : obj/standalone/ps_monitor.o obj/standalone/optionParsing.o obj/standalone/daemon.o obj/standalone/userCount.o obj/standalone/lnxSysMon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
+
+bin/htmlStatus : obj/standalone/htmlStatus.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
 
 
 -include $(LIBRARY_OBJECT_FILES:.o=.d)

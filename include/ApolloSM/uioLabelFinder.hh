@@ -25,6 +25,49 @@ static size_t ReadFileToBuffer(std::string const & fileName,char * buffer,size_t
   return 1;
 }
 
+uint64_t SearchDeviceTree(std::string const & dvtPath,std::string const & name){
+  uint64_t address = 0;
+  FILE *labelfile=0;
+  char label[128];
+  // traverse through the device-tree   
+  for (directory_iterator x(dvtPath); x!=directory_iterator(); ++x){
+    if (!is_directory(x->path()) ||
+	!exists(x->path()/"label")) {
+      continue;
+    }
+    labelfile = fopen((x->path().native()+"/label").c_str(),"r");
+    fgets(label,128,labelfile);
+    fclose(labelfile);
+
+    if(!strcmp(label, name.c_str())){
+      //Get endpoint AXI address from path           
+      // looks something like LABEL@DEADBEEFXX       
+      std::string stringAddr=x->path().filename().native();
+
+      //Check if we find the @          
+      size_t addrStart = stringAddr.find("@");
+      if(addrStart == std::string::npos){
+	fprintf(stderr,"directory name %s has incorrect format. Missing \"@\" ",x->path().filename().native().c_str() );
+	break; //expect the name to be in x@xxxxxxxx format for example myReg@0x41200000    
+      }
+      //Convert the found string into binary         
+      if(addrStart+1 > stringAddr.size()){
+	fprintf(stderr,"directory name %s has incorrect format. Missing size ", x->path().filename().native().c_str() );
+	break; //expect the name to be in x@xxxxxxxx format for example myReg@0x41200000    
+
+      }
+      stringAddr.substr(addrStart+1);
+
+      //Get the names's address from the path (in hex)            
+      address = std::strtoull(stringAddr.c_str() , 0, 16);
+      break;
+    }
+  }
+  return address;
+}
+
+
+
 // A function that takes a uio label and returns the uio number
 int label2uio(std::string ilabel)
 {
@@ -33,50 +76,27 @@ int label2uio(std::string ilabel)
   memset(buffer,0x0,bufferSize);
 
   bool foundValidMatch = false;
-  uint32_t dtEntryAddr=0, uioEntryAddr=0;
+  uint64_t dtEntryAddr=0, uioEntryAddr=0;
   // search through the file system to see if there is a uio that matches the name
   std::string const uiopath = "/sys/class/uio/";
-  std::string const dvtpath = "/proc/device-tree/amba_pl/";
+  std::string       dvtpath = "/proc/device-tree/amba_pl/";
 
 
-  // traverse through the device-tree
-  for (directory_iterator itDir(dvtpath); itDir!=directory_iterator(); ++itDir){
-    //We only want to open label files, so we search for "/path/to/"+"label", not the file itself
-    if (!is_directory(itDir->path())) {
-      //This is a file, so not what we want in our search
-      continue;
-    }
-    
-    if (!exists(itDir->path()/"label")) {
-      //This directory does not contain a file named "label"
-      continue;
-    }
-
-    //path has a file named label in it.
-    //open file and read its contents into buffer;
-    if(!ReadFileToBuffer(itDir->path().native()+"/label",buffer,bufferSize)){
-      //bad read
-      continue;
-    }
-
-    if(!strcmp(buffer, ilabel.c_str())){
-      //get dtEntryAddr from the file name
-      int namesize=itDir->path().filename().native().size();
-      if(namesize<10) {
-	std::cout<< "directory name "<< itDir->path().filename().native().c_str() <<" has incorrect format." <<std::endl;
-	continue; //expect the name to be in x@xxxxxxxx format for example myReg@0x41200000
-      }
-      dtEntryAddr = std::strtoul( itDir->path().filename().native().substr(namesize-8,8).c_str() , 0, 16);
-      break;
-    }
+  //Try the default amba_pl path   
+  dtEntryAddr=SearchDeviceTree(dvtpath,ilabel);
+  if(dtEntryAddr==0){
+    //try an alternate dir 
+    dvtpath = "/proc/device-tree/amba_pl@0/";
+    dtEntryAddr=SearchDeviceTree(dvtpath,ilabel);
   }
-
+  //check if we found anything  
   //Check if we found a device with the correct name
   if(dtEntryAddr==0) {
     std::cout<<"Cannot find a device that matches label "<<(ilabel).c_str()<<" device not opened!" << std::endl;
     return -1;
   }
-  
+
+
   // Traverse through the /sys/class/uio directory
   for (directory_iterator itDir(uiopath); itDir!=directory_iterator(); ++itDir){
     //same kind of search as above, just looking for a uio dir with maps/map0/addr and maps/map0/size

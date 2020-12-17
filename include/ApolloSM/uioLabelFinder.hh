@@ -56,7 +56,7 @@ uint64_t SearchDeviceTree(std::string const & dvtPath,std::string const & name){
 	break; //expect the name to be in x@xxxxxxxx format for example myReg@0x41200000    
 
       }
-      stringAddr.substr(addrStart+1);
+      stringAddr = stringAddr.substr(addrStart+1);
 
       //Get the names's address from the path (in hex)            
       address = std::strtoull(stringAddr.c_str() , 0, 16);

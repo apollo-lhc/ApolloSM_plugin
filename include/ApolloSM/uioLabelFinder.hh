@@ -79,16 +79,25 @@ int label2uio(std::string ilabel)
   uint64_t dtEntryAddr=0, uioEntryAddr=0;
   // search through the file system to see if there is a uio that matches the name
   std::string const uiopath = "/sys/class/uio/";
-  std::string       dvtpath = "/proc/device-tree/amba_pl/";
+  std::string       dvtpath = "/proc/device-tree/";
 
-
-  //Try the default amba_pl path   
-  dtEntryAddr=SearchDeviceTree(dvtpath,ilabel);
-  if(dtEntryAddr==0){
-    //try an alternate dir 
-    dvtpath = "/proc/device-tree/amba_pl@0/";
-    dtEntryAddr=SearchDeviceTree(dvtpath,ilabel);
+  //Search through all amba paths
+  for (directory_iterator itDVTPath(dvtpath); 
+       itDVTPath!=directory_iterator();
+       ++itDVTPath){
+    //Check that this is a path with amba in its name
+    if ((!is_directory(itDVTPath->path())) || 
+	(itDVTPath->path().string().find("amba")==std::string::npos) ) {
+      continue;
+    }else{
+      dtEntryAddr=SearchDeviceTree(itDVTPath->path().string(),ilabel);
+      if(dtEntryAddr != 0){
+	//we found the correct entry
+	break;
+      }
+    }
   }
+
   //check if we found anything  
   //Check if we found a device with the correct name
   if(dtEntryAddr==0) {

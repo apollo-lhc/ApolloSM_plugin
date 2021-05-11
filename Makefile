@@ -52,6 +52,10 @@ CXX_FLAGS = -std=c++11 -g -O3 -rdynamic -Wall -MMD -MP -fPIC ${INCLUDE_PATH} -We
 
 CXX_FLAGS +=-fno-omit-frame-pointer -Wno-ignored-qualifiers -Werror=return-type -Wextra -Wno-long-long -Winit-self -Wno-unused-local-typedefs  -Woverloaded-virtual ${COMPILETIME_ROOT} ${FALLTHROUGH_FLAGS}
 
+ifdef MAP_TYPE
+CXX_FLAGS += ${MAP_TYPE}
+endif
+
 LINK_LIBRARY_FLAGS = -shared -fPIC -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
 			-Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT}
 

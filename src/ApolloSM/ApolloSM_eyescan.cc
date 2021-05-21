@@ -251,16 +251,16 @@ float GetEyeScanPhase() {
   return i;
 }
 
-void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset) {//, uint32_t /*sign*/) {
+void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
 
   // change int to hex
   //  uint16_t horz_offset = 
 
   // write the hex
-  //  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
-  //  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
+    RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
+    RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
   // Only the last twelve bits are allowed. 
-  RegWriteRegister(baseNode + "HORZ_OFFSET", (horzOffset + 4096)&0x0FFF);
+  //RegWriteRegister(baseNode + "HORZ_OFFSET", (horzOffset + 4096)&0x0FFF);
 }
  
 void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint16_t /*horzOffset*/) {
@@ -300,7 +300,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPres
   uint32_t const dfe = 0;
   uint32_t const lpm = 1;
 
-  uint32_t const rxlpmen = RegReadRegister("CM.CM1.C2C.RX.LPM_EN");
+  uint32_t const rxlpmen = RegReadRegister("CM.CM_1.C2C.RX.LPM_EN");
   //RegReadRegister(0x1900003B);
   //  uint32_t const rxlpmenmasked = RegReadRegister(0x1900003B) & 0x00000100; 
 
@@ -549,14 +549,17 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
     for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
       
       int phaseInt;
+      uint32_t sign;
 
       if(phase < 0) {
 	phaseInt = ceil(phase*phaseMultiplier);
+	sign = NEGATIVE;
       } else {
 	phaseInt = floor(phase*phaseMultiplier);
+      	sign = POSITIVE;
       }
       
-      SetEyeScanPhase(baseNode, phaseInt);
+      SetEyeScanPhase(baseNode, phaseInt, sign);
       esCoords.resize(resizeCount);
 
       // record voltage and phase coordinates

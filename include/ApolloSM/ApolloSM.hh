@@ -53,7 +53,7 @@ private:
   void confirmNode(std::string node, uint32_t correctVal);
 
   void SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign);
-  void SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset);//, uint32_t sign);
+  void SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset , uint32_t sign);
 };
 
 

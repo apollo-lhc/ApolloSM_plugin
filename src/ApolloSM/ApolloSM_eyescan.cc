@@ -2,7 +2,7 @@
 #include <ApolloSM/eyescan.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh> // EYESCAN_ERROR
 #include <vector>
-
+#include <stdlib.h>
 //#include <math.h> // pow
 #include <map>
 #include <syslog.h>
@@ -119,7 +119,7 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
 //  if(0 == getFPGA_ID()) {
 //    throwException("invalid fpga id");
 //  }
-
+  printf("ens start\n");
   syslog(LOG_INFO, "appending\n");
   // check for a '.' at the end of baseNode and add it if it isn't there 
   if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
@@ -251,16 +251,20 @@ float GetEyeScanPhase() {
   return i;
 }
 
-void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset) {//, uint32_t /*sign*/) {
-
+void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign ) {
+  printf("SESP start\n");
+  printf("hoffset mag %d\n",horzOffset);
+  printf("hoffset sign %d\n",sign);
   // change int to hex
   //  uint16_t horz_offset = 
 
   // write the hex
-  //  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
-  //  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
+  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
+  printf("SESP stop 1\n");  
+  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
   // Only the last twelve bits are allowed. 
-  RegWriteRegister(baseNode + "HORZ_OFFSET", (horzOffset + 4096)&0x0FFF);
+  //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
+  printf("SESP end\n");
 }
  
 void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint16_t /*horzOffset*/) {
@@ -287,7 +291,14 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 
 // Performs a single eye scan and returns the BER
 float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPrescale) {
-
+  //------------------------------------------
+  printf("SES start\n");
+  FILE * pFile;
+  
+  pFile = fopen ("debug.txt","w");
+  fprintf(pFile,"SES start");
+  fclose(pFile);
+  //----------------------
   float BER;
   float errorCount;
   float sampleCount;
@@ -300,7 +311,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPres
   uint32_t const dfe = 0;
   uint32_t const lpm = 1;
 
-  uint32_t const rxlpmen = RegReadRegister("CM.CM1.C2C.RX.LPM_EN");
+  uint32_t const rxlpmen = RegReadRegister("CM.CM_1.C2C.RX.LPM_EN");
   //RegReadRegister(0x1900003B);
   //  uint32_t const rxlpmenmasked = RegReadRegister(0x1900003B) & 0x00000100; 
 
@@ -545,19 +556,22 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
     } else {
       SetEyeScanVoltage(baseNode, voltage, POSITIVE);
     }
-
+    printf("ES stop 1\n");
     for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
       
       int phaseInt;
-
+      uint32_t sign;
       if(phase < 0) {
-	phaseInt = ceil(phase*phaseMultiplier);
+	phaseInt = abs(ceil(phase*phaseMultiplier));
+	sign = NEGATIVE;
       } else {
-	phaseInt = floor(phase*phaseMultiplier);
+	phaseInt = abs(floor(phase*phaseMultiplier));
+	sign = POSITIVE;
       }
-      
-      SetEyeScanPhase(baseNode, phaseInt);
+      printf("ES stop 2\n");
+      SetEyeScanPhase(baseNode, phaseInt, sign);
       esCoords.resize(resizeCount);
+      printf("ES stop 3\n");
 
       // record voltage and phase coordinates
       esCoords[coordsIndex].voltage = voltage; 
@@ -568,7 +582,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
       
       // Vert sign mask is 0x80 so we need to shift right by 7
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
-      esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET") & 0x0FFF;
+      esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
 
       //      printf("%.9f\n", esCoords[coordsIndex].BER);
       //      printf("%d\n", esCoords[coordsIndex].voltage);

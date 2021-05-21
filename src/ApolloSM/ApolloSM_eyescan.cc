@@ -251,32 +251,16 @@ float GetEyeScanPhase() {
   return i;
 }
 
-<<<<<<< HEAD
-void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign ) {
-  printf("SESP start\n");
-  printf("hoffset mag %d\n",horzOffset);
-  printf("hoffset sign %d\n",sign);
-=======
-void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
 
->>>>>>> c4cb545fb2e7037059892fbe5fa8198515afcd26
+void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
   // change int to hex
   //  uint16_t horz_offset = 
 
   // write the hex
-<<<<<<< HEAD
-  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
-  printf("SESP stop 1\n");  
+  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset); 
   RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
   // Only the last twelve bits are allowed. 
   //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
-  printf("SESP end\n");
-=======
-    RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
-    RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
-  // Only the last twelve bits are allowed. 
-  //RegWriteRegister(baseNode + "HORZ_OFFSET", (horzOffset + 4096)&0x0FFF);
->>>>>>> c4cb545fb2e7037059892fbe5fa8198515afcd26
 }
  
 void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint16_t /*horzOffset*/) {

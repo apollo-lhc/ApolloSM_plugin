@@ -557,16 +557,6 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
       
       int phaseInt;
       uint32_t sign;
-<<<<<<< HEAD
-      if(phase < 0) {
-	phaseInt = abs(ceil(phase*phaseMultiplier));
-	sign = NEGATIVE;
-      } else {
-	phaseInt = abs(floor(phase*phaseMultiplier));
-	sign = POSITIVE;
-      }
-      printf("ES stop 2\n");
-=======
 
       if(phase < 0) {
 	phaseInt = ceil(phase*phaseMultiplier);
@@ -575,8 +565,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
 	phaseInt = floor(phase*phaseMultiplier);
       	sign = POSITIVE;
       }
-      
->>>>>>> c4cb545fb2e7037059892fbe5fa8198515afcd26
+   
       SetEyeScanPhase(baseNode, phaseInt, sign);
       esCoords.resize(resizeCount);
       printf("ES stop 3\n");

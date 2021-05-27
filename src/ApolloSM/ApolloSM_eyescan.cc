@@ -119,7 +119,7 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
 //  if(0 == getFPGA_ID()) {
 //    throwException("invalid fpga id");
 //  }
-  printf("ens start\n");
+  //printf("ens start\n");
   syslog(LOG_INFO, "appending\n");
   // check for a '.' at the end of baseNode and add it if it isn't there 
   if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
@@ -255,9 +255,10 @@ float GetEyeScanPhase() {
 void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
   // change int to hex
   //  uint16_t horz_offset = 
-
+  //printf("Set phase start\n");
   // write the hex
-  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset); 
+  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
+  //printf("Set phase stop 1 \n");
   RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
   // Only the last twelve bits are allowed. 
   //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
@@ -552,23 +553,23 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
     } else {
       SetEyeScanVoltage(baseNode, voltage, POSITIVE);
     }
-    printf("ES stop 1\n");
+    //printf("ES stop 1\n");
     for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
       
       int phaseInt;
       uint32_t sign;
 
       if(phase < 0) {
-	phaseInt = ceil(phase*phaseMultiplier);
+	phaseInt = abs(ceil(phase*phaseMultiplier));
 	sign = NEGATIVE;
       } else {
-	phaseInt = floor(phase*phaseMultiplier);
+	phaseInt = abs(floor(phase*phaseMultiplier));
       	sign = POSITIVE;
       }
    
       SetEyeScanPhase(baseNode, phaseInt, sign);
       esCoords.resize(resizeCount);
-      printf("ES stop 3\n");
+      //printf("ES stop 3\n");
 
       // record voltage and phase coordinates
       esCoords[coordsIndex].voltage = voltage; 

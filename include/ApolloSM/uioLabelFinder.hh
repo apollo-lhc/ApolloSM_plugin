@@ -148,14 +148,14 @@ int label2uio(std::string ilabel)
       // found /dev/uio_name, resolve symlink and get the UIO number
       if (is_symlink(itUIO->path())) {
         if (NULL != UIO_DEBUG) {
-          printf("resolved symlink: /dev/%s -> /dev/uioN", uioname.c_str());
+          printf("resolved symlink: /dev/%s -> /dev/uioN\n", uioname.c_str());
         }
         // deviceFile will be a string of form "uioN"
         deviceFile = read_symlink(itUIO->path()).string();
       }
       else {
         if (NULL != UIO_DEBUG) {
-          printf("unable to resolve symlink /dev/%s -> /dev/uioN, using legacy method", uioname.c_str());
+          printf("unable to resolve symlink /dev/%s -> /dev/uioN, using legacy method\n", uioname.c_str());
         }
         return -1;
       }

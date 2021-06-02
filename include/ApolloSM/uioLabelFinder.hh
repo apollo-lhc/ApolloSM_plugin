@@ -38,8 +38,11 @@ int label2uio_old(std::string ilabel)
   uint32_t dtEntryAddr=0, uioEntryAddr=0;
   // search through the file system to see if there is a uio that matches the name
   std::string const uiopath = "/sys/class/uio/";
-  std::string const dvtpath = "/proc/device-tree/amba_pl/";
+  std::string const dvtpath_7series = "/proc/device-tree/amba_pl/";
+  std::string const dvtpath_USP = "/proc/device-tree/amba_pl@0";
+  std::string dvtpath;
 
+  (exists(dvtpath_USP)) ? dvtpath=dvtpath_USP : dvtpath=dvtpath_7series;
 
   // traverse through the device-tree
   for (directory_iterator itDir(dvtpath); itDir!=directory_iterator(); ++itDir){

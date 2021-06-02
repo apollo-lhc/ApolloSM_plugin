@@ -544,6 +544,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   }
   
   std::string baseNode = strArg[0];
+  std::string lpmNode = strArg[1]; 
   // Add a dot to baseNode if it does not already have one
   if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
     baseNode.append(".");

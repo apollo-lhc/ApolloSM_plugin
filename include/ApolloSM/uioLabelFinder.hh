@@ -134,6 +134,7 @@ int label2uio(std::string ilabel)
   std::string uioname = "uio_" + ilabel;
   std::string deviceFile;
   int uionumber;
+  bool found = false;
 
   char* UIO_DEBUG = getenv("UIO_DEBUG");
   if (NULL != UIO_DEBUG) {
@@ -147,11 +148,12 @@ int label2uio(std::string ilabel)
     else {
       // found /dev/uio_name, resolve symlink and get the UIO number
       if (is_symlink(itUIO->path())) {
-        if (NULL != UIO_DEBUG) {
-          printf("resolved symlink: /dev/%s -> /dev/uioN\n", uioname.c_str());
-        }
         // deviceFile will be a string of form "uioN"
         deviceFile = read_symlink(itUIO->path()).string();
+        if (NULL != UIO_DEBUG) {
+          printf("resolved symlink: /dev/%s -> /dev/%s\n", uioname.c_str(), deviceFile.c_str());
+        }
+        found = true;
       }
       else {
         if (NULL != UIO_DEBUG) {
@@ -160,6 +162,12 @@ int label2uio(std::string ilabel)
         return -1;
       }
     }
+  }
+  if (!found) {
+    if (NULL != UIO_DEBUG) {
+      printf("unable find /dev/%s, using legacy method\n", uioname.c_str());
+    }
+    return -1;
   }
 
   // get the number from any digits after "uio"

@@ -521,7 +521,8 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
     return CommandReturn::BAD_ARGS;
   }
 
-  std::string baseNode = strArg[0]; 
+  std::string baseNode = strArg[0];
+  std::string lpmNode = strArg[1];  
   uint32_t maxPrescale = strtoul(strArg[2].c_str(), NULL, 0);
   // Add a dot to baseNode if it does not already have one
   if(0 != baseNode.compare(baseNode.size()-1,1,".")) {

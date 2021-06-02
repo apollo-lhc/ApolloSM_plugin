@@ -530,7 +530,7 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
 
   printf("The base node is %s\n", baseNode.c_str());
 
-  printf("The BER is: %f\n", SM->SingleEyeScan(baseNode, maxPrescale));
+  printf("The BER is: %f\n", SM->SingleEyeScan(baseNode, lpmNode, maxPrescale));
 
   return CommandReturn::OK;
 }
@@ -563,7 +563,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 
   uint32_t maxPrescale = strtoul(strArg[4].c_str(), NULL, 0);
   printf("The max prescale is: %d\n", maxPrescale);
-  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement, maxPrescale);
+  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, lmpNode, horzIncrement, vertIncrement, maxPrescale);
 
 //  int fd = open(fileName, O_CREAT | O_RDWR, 0644);
 //

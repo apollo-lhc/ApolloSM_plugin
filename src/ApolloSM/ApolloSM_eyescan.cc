@@ -289,12 +289,11 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 // Performs a single eye scan and returns the BER
 float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPrescale) {
   //------------------------------------------
-  printf("SES start\n");
-  FILE * pFile;
-  
-  pFile = fopen ("debug.txt","w");
-  fprintf(pFile,"SES start");
-  fclose(pFile);
+  //printf("SES start\n");
+  //FILE * pFile;
+  //pFile = fopen ("debug.txt","w");
+  //fprintf(pFile,"SES start");
+  //fclose(pFile);
   //----------------------
   float BER;
   float errorCount;
@@ -313,9 +312,9 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPres
   //  uint32_t const rxlpmenmasked = RegReadRegister(0x1900003B) & 0x00000100; 
 
   if(lpm == rxlpmen) {
-    printf("Looks like we have LPM. The register is %u\n", rxlpmen);
+    //printf("Looks like we have LPM. The register is %u\n", rxlpmen);
   } else if(dfe == rxlpmen) {
-    printf("Looks like we have DFE. The register is %u\n", rxlpmen);
+    //printf("Looks like we have DFE. The register is %u\n", rxlpmen);
   } else {
     printf("Something is wrong. We don't have lpm or dfe\n");
   }
@@ -409,7 +408,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, uint32_t const maxPres
   assertNode(baseNode + "PRESCALE", 0x0);
 
   if(dfe == rxlpmen) {
-    printf("Alright dfe = rxlpmen: %u = %u. Calculating again\n", dfe, rxlpmen);
+    //printf("Alright dfe = rxlpmen: %u = %u. Calculating again\n", dfe, rxlpmen);
     // whatever the UT sign was, change it 
     if(1 == (RegReadRegister(baseNode + "UT_SIGN"))) {
       RegWriteRegister(baseNode + "UT_SIGN", 0);
@@ -545,7 +544,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
     uint32_t POSITIVE = 0;
     uint32_t NEGATIVE = 1;
 
-    printf("%d\n", voltage);
+    printf("Voltage= %d\n", voltage);
     syslog(LOG_INFO, "%d\n", voltage);
  
     if(voltage < 0) {
@@ -566,7 +565,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
 	phaseInt = abs(floor(phase*phaseMultiplier));
       	sign = POSITIVE;
       }
-   
+      printf("phase is %f\n", phase);
       SetEyeScanPhase(baseNode, phaseInt, sign);
       esCoords.resize(resizeCount);
       //printf("ES stop 3\n");
@@ -575,9 +574,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, double horzIn
       esCoords[coordsIndex].voltage = voltage; 
       esCoords[coordsIndex].phase = phase;
       //      printf("%d %d\n", voltage, phaseInt);      
-
+      printf("Start scan\n");
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode, maxPrescale);
-      
+      printf("Scan done\n");
       // Vert sign mask is 0x80 so we need to shift right by 7
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
       esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;

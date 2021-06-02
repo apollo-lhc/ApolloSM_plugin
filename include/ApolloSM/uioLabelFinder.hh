@@ -26,7 +26,9 @@ static size_t ReadFileToBuffer(std::string const & fileName,char * buffer,size_t
 }
 
 // A function that takes a uio label and returns the uio number
-int label2uio(std::string ilabel)
+// DEPRECATED - with the kernel patch the uio name is set by the "linux,uio-name" device-tree property -> ex: "uio_K_C2C_PHY"
+// /dev/uio_NAME is a symlink that points to the actual uioN device file:  /dev/uio_NAME -> /dev/uioN
+int label2uio_old(std::string ilabel)
 {
   size_t const bufferSize = 1024;
   char * buffer = new char[bufferSize];
@@ -124,4 +126,49 @@ int label2uio(std::string ilabel)
   }
   return uionumber;
 }
+
+// new, simple uionumber finder based on kernel patch
+int label2uio(std::string ilabel)
+{
+  std::string prefix = "/dev/";
+  std::string uioname = "uio_" + ilabel;
+  std::string deviceFile;
+  int uionumber;
+
+  char* UIO_DEBUG = getenv("UIO_DEBUG");
+  if (NULL != UIO_DEBUG) {
+    printf("searching for /dev/uio_%s symlink\n", ilabel.c_str());
+  }
+
+  for (directory_iterator itUIO(prefix); itUIO != directory_iterator(); ++itUIO) {
+    if ((is_directory(itUIO->path())) || (itUIO->path().string().find(uioname)==std::string::npos)) {
+      continue;
+    }
+    else {
+      // found /dev/uio_name, resolve symlink and get the UIO number
+      if (is_symlink(itUIO->path())) {
+        if (NULL != UIO_DEBUG) {
+          printf("resolved symlink: /dev/%s -> /dev/uioN", uioname.c_str());
+        }
+        // deviceFile will be a string of form "uioN"
+        deviceFile = read_symlink(itUIO->path()).string();
+      }
+      else {
+        if (NULL != UIO_DEBUG) {
+          printf("unable to resolve symlink /dev/%s -> /dev/uioN, using legacy method", uioname.c_str());
+        }
+        return -1;
+      }
+    }
+  }
+
+  // get the number from any digits after "uio"
+  char* endptr;
+  uionumber = strtol(deviceFile.substr(3,std::string::npos).c_str(), &endptr, 10);
+  if (uionumber < 0) {
+    return uionumber;
+  }
+  return uionumber;
+}
+
 #endif

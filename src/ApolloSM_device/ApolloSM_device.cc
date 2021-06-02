@@ -550,7 +550,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     baseNode.append(".");
   }
 
-  std::string fileName = strArg[1];
+  std::string fileName = strArg[2];
   if(0 != fileName.compare(fileName.size()-4,4,".txt")) {
     return CommandReturn::BAD_ARGS;
   }

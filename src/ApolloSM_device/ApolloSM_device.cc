@@ -166,13 +166,13 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
 	       "Perform a single eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  SingleEyeScan <base node> <max prescale>\n");
+	       "  SingleEyeScan <base node> <lpmNode> <max prescale>\n");
     AddCommandAlias("singlees","SingleEyeScan");
 
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
 	       "Perform an eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  EyeScan <base node> <file> <horizontal increment double> <vertical increment integer> <max prescale>\n", 
+	       "  EyeScan <base node> <lpmNode> <file> <horizontal increment double> <vertical increment integer> <max prescale>\n", 
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
     AddCommand("restartCMuC",&ApolloSMDevice::restartCMuC,
@@ -517,7 +517,7 @@ CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg
 // Performs a single eye scan
 CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
-  if(2 != strArg.size()) {
+  if(4 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
 
@@ -539,7 +539,7 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
 CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
 
   // base node, text file, horizontal increment double, vertical increment integer, maximum prescale
-  if(5 != strArg.size()) {
+  if(6 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
   

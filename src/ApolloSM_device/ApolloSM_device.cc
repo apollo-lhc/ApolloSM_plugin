@@ -517,7 +517,7 @@ CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg
 // Performs a single eye scan
 CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
-  if(4 != strArg.size()) {
+  if(3 != strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
 
@@ -558,12 +558,12 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   printf("The base node is %s\n", baseNode.c_str());
   printf("The file to write to is %s\n", fileName.c_str());
   
-  double horzIncrement = atof(strArg[2].c_str());
-  int vertIncrement = atoi(strArg[3].c_str());
+  double horzIncrement = atof(strArg[3].c_str());
+  int vertIncrement = atoi(strArg[4].c_str());
 
   printf("We have horz increment %f and vert increment %d\n", horzIncrement, vertIncrement);
 
-  uint32_t maxPrescale = strtoul(strArg[4].c_str(), NULL, 0);
+  uint32_t maxPrescale = strtoul(strArg[5].c_str(), NULL, 0);
   printf("The max prescale is: %d\n", maxPrescale);
   std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, lpmNode, horzIncrement, vertIncrement, maxPrescale);
 

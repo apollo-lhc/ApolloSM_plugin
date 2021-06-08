@@ -21,7 +21,7 @@
 #define ES_QUALIFIER 0x0000
 #define ES_QUAL_MASK 0xFFFF
 
-#define RX_DATA_WIDTH_SEVEN 0x4 // We use 32 bit
+#define RX_DATA_WIDTH_SEVEN 0x6 // We use 64 bit
 #define RX_INT_DATAWIDTH_SEVEN 0x1 // We use 32 bit
 
 #define RX_DATA_WIDTH_USP 0x4 // We use 32 bit
@@ -207,9 +207,9 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // ** RX_DATA_WIDTH confirm 0x4
   // Both 7 series and USP are 0x4 (32 bit bus width) 
   if(SEVEN_BUS_SIZE == count) {
-    //confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_SEVEN);
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_SEVEN);
   } else {
-    //confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_USP);
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_USP);
   }  
 
   // ** RX_INT_DATAWIDTH confirm
@@ -218,9 +218,9 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf pg 317 gives only a little more info
   // look for "internal data width"
   if(SEVEN_BUS_SIZE == count) {
-    //confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_SEVEN);
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_SEVEN);
   } else {
-    //confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_USP);
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_USP);
   }
 }
 

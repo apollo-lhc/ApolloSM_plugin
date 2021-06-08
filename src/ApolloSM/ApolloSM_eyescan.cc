@@ -207,9 +207,9 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // ** RX_DATA_WIDTH confirm 0x4
   // Both 7 series and USP are 0x4 (32 bit bus width) 
   if(SEVEN_BUS_SIZE == count) {
-    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_SEVEN);
+    //confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_SEVEN);
   } else {
-    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_USP);
+    //confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_USP);
   }  
 
   // ** RX_INT_DATAWIDTH confirm

@@ -218,9 +218,9 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf pg 317 gives only a little more info
   // look for "internal data width"
   if(SEVEN_BUS_SIZE == count) {
-    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_SEVEN);
+    //confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_SEVEN);
   } else {
-    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_USP);
+    //confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_USP);
   }
 }
 

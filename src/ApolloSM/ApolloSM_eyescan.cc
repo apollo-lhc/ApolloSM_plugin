@@ -21,11 +21,11 @@
 #define ES_QUALIFIER 0x0000
 #define ES_QUAL_MASK 0xFFFF
 
-#define RX_DATA_WIDTH_SEVEN 0x6 // We use 64 bit
+#define RX_DATA_WIDTH_SEVEN 0x4 // We use 64 bit
 #define RX_INT_DATAWIDTH_SEVEN 0x1 // We use 32 bit
 
-#define RX_DATA_WIDTH_USP 0x4 // We use 32 bit
-#define RX_INT_DATAWIDTH_USP 0x0 // We use 32 bit
+#define RX_DATA_WIDTH_USP 0x6 // We use 32 bit
+#define RX_INT_DATAWIDTH_USP 0x1 // We use 32 bit
 
 #define SEVEN_FPGA 1
 #define SEVEN_BUS_SIZE 3

@@ -41,6 +41,7 @@ LIBRARIES =    	-lcurses \
 		-lToolException	\
 		-lBUTool_IPBusIO \
 		-lBUTool_IPBusStatus \
+		-lBUTool_BUTextIO \
 		-lboost_regex \
 		-lboost_filesystem \
 		-lboost_program_options

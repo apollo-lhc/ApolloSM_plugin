@@ -28,6 +28,9 @@ ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   SM->Connect(arg);
   SetHWInterface(SM->GetHWInterface()); //Pass the inherited version of IPBusIO inside of IPBusREgHelper a pointer to the real hw interface
   
+  // setup RegisterHelper's BUTextIO pointer
+  SetupTextIO();
+
   //setup commands
   LoadCommandList();
 }

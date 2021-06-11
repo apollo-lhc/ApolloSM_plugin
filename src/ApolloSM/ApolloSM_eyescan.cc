@@ -21,11 +21,14 @@
 #define ES_QUALIFIER 0x0000
 #define ES_QUAL_MASK 0xFFFF
 
-#define RX_DATA_WIDTH_SEVEN 0x4 // We use 64 bit
-#define RX_INT_DATAWIDTH_SEVEN 0x1 // We use 32 bit
+#define RX_DATA_WIDTH_GTX 0x4 // zynq
+#define RX_INT_DATAWIDTH_GTX 0x1 // We use 32 bit
 
-#define RX_DATA_WIDTH_USP 0x6 // We use 32 bit
-#define RX_INT_DATAWIDTH_USP 0x1 // We use 32 bit
+#define RX_DATA_WIDTH_GTH 0x4 // We use 64 bit
+#define RX_INT_DATAWIDTH_GTH 0x0 // We use 32 bit
+
+#define RX_DATA_WIDTH_GTY 0x6 // We use 32 bit
+#define RX_INT_DATAWIDTH_GTY 0x1 // We use 32 bit
 
 #define SEVEN_FPGA 1
 #define SEVEN_BUS_SIZE 3
@@ -207,9 +210,11 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // ** RX_DATA_WIDTH confirm 0x4
   // Both 7 series and USP are 0x4 (32 bit bus width) 
   if(SEVEN_BUS_SIZE == count) {
-    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_SEVEN);
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTX);
+  } else if {
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTH);
   } else {
-    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_USP);
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTY);
   }  
 
   // ** RX_INT_DATAWIDTH confirm
@@ -218,9 +223,11 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf pg 317 gives only a little more info
   // look for "internal data width"
   if(SEVEN_BUS_SIZE == count) {
-    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_SEVEN);
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTX);
+  } else if {
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTH);
   } else {
-    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_USP);
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
   }
 }
 

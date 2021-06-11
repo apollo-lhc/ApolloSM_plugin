@@ -207,28 +207,28 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
     assertNode(baseNode + "OFFSET_DATA_MASK_9", 0xFFFF);
   }
 
-  // ** RX_DATA_WIDTH confirm 0x4
-  // Both 7 series and USP are 0x4 (32 bit bus width) 
-  if(SEVEN_BUS_SIZE == count) {
-    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTX);
-  } else if {
-    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTH);
-  } else {
-    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTY);
-  }  
+  // // ** RX_DATA_WIDTH confirm 0x4
+  // // Both 7 series and USP are 0x4 (32 bit bus width) 
+  // if(SEVEN_BUS_SIZE == count) {
+  //   confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTX);
+  // } else if {
+  //   confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTH);
+  // } else {
+  //   confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTY);
+  // }  
 
-  // ** RX_INT_DATAWIDTH confirm
-  // 7 series is 1
-  // usp is either 0 or 1 but the default (when powered up) seems to be 0. 
-  // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf pg 317 gives only a little more info
-  // look for "internal data width"
-  if(SEVEN_BUS_SIZE == count) {
-    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTX);
-  } else if {
-    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTH);
-  } else {
-    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
-  }
+  // // ** RX_INT_DATAWIDTH confirm
+  // // 7 series is 1
+  // // usp is either 0 or 1 but the default (when powered up) seems to be 0. 
+  // // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf pg 317 gives only a little more info
+  // // look for "internal data width"
+  // if(SEVEN_BUS_SIZE == count) {
+  //   confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTX);
+  // } else if {
+  //   confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTH);
+  // } else {
+  //   confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
+  // }
 }
 
 // ==================================================

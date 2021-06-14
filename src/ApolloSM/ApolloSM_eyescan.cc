@@ -34,6 +34,8 @@
 #define SEVEN_BUS_SIZE 3
 #define USP_FPGA 2
 #define USP_BUS_SIZE 4
+#define GTH_CHECK_COUNT 16
+#define GTY_CHECK_COUNT 10
 // ==================================================
 // identifies what FPGA to scan
 
@@ -129,12 +131,19 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
     baseNode.append(".");
   }
 
-  uint32_t mask = GetRegMask(baseNode + "RX_DATA_WIDTH");
+  uint32_t data_width_mask = GetRegMask(baseNode + "RX_DATA_WIDTH");
   int count;
-  for(count = 0; mask; mask >>= 1) {
-    count += mask&1;
+  for(count = 0; data_width_mask; data_width_mask >>= 1) {
+    count += data_width_mask&1;
   }
-  printf("count is %d\n", count);
+  printf("data_width count is %d\n", count);
+
+  uint32_t check_mask = GetRegMask(baseNode + "GTY_GTH_CHECK");
+  int count2;
+  for(count2 = 0; check_mask; check_mask >>= 1) {
+    count2 += check_mask&1;
+  }
+  printf("transceiver check count is %d\n", count);
 
 //  FPGA_ID = 0;
 //  uint32_t busSize = GetRegSize(baseNode+"RX_DATA_WIDTH");
@@ -207,28 +216,28 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
     assertNode(baseNode + "OFFSET_DATA_MASK_9", 0xFFFF);
   }
 
-  // // ** RX_DATA_WIDTH confirm 0x4
-  // // Both 7 series and USP are 0x4 (32 bit bus width) 
-  // if(SEVEN_BUS_SIZE == count) {
-  //   confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTX);
-  // } else if {
-  //   confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTH);
-  // } else {
-  //   confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTY);
-  // }  
+  // ** RX_DATA_WIDTH confirm 0x4
+  // Both 7 series and USP are 0x4 (32 bit bus width) 
+  if(SEVEN_BUS_SIZE == count) {
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTX);
+  } else if(GTH_CHECK_COUNT == count2) {
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTH);
+  } else {
+    confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTY);
+  }  
 
-  // // ** RX_INT_DATAWIDTH confirm
-  // // 7 series is 1
-  // // usp is either 0 or 1 but the default (when powered up) seems to be 0. 
-  // // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf pg 317 gives only a little more info
-  // // look for "internal data width"
-  // if(SEVEN_BUS_SIZE == count) {
-  //   confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTX);
-  // } else if {
-  //   confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTH);
-  // } else {
-  //   confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
-  // }
+  // ** RX_INT_DATAWIDTH confirm
+  // 7 series is 1
+  // usp is either 0 or 1 but the default (when powered up) seems to be 0. 
+  // https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf pg 317 gives only a little more info
+  // look for "internal data width"
+  if(SEVEN_BUS_SIZE == count) {
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTX);
+  } else if(GTH_CHECK_COUNT == count2) {
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTH);
+  } else {
+    confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
+  }
 }
 
 // ==================================================

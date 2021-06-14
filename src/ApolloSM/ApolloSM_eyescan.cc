@@ -143,7 +143,7 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   for(count2 = 0; check_mask; check_mask >>= 1) {
     count2 += check_mask&1;
   }
-  printf("transceiver check count is %d\n", count);
+  printf("transceiver check count is %d\n", count2);
 
 //  FPGA_ID = 0;
 //  uint32_t busSize = GetRegSize(baseNode+"RX_DATA_WIDTH");

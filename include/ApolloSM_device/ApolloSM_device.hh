@@ -19,7 +19,7 @@
 
 namespace BUTool{
   
-  class ApolloSMDevice: public CommandList<ApolloSMDevice>, private IPBusRegHelper{
+  class ApolloSMDevice: public CommandList<ApolloSMDevice>, public IPBusRegHelper{
   public:
     ApolloSMDevice(std::vector<std::string> arg); 
     ~ApolloSMDevice();

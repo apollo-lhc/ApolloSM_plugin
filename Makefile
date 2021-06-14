@@ -78,23 +78,27 @@ ifdef IPBUS_PATH
 UHAL_INCLUDE_PATH = \
 	         					-isystem$(IPBUS_PATH)/uhal/uhal/include \
 	         					-isystem$(IPBUS_PATH)/uhal/log/include \
-	         					-isystem$(IPBUS_PATH)/uhal/grammars/include \
-							-isystem$(IPBUS_PATH)/../UIOuHAL/include
+	         					-isystem$(IPBUS_PATH)/uhal/grammars/include 
 UHAL_LIBRARY_PATH = \
 							-L$(IPBUS_PATH)/uhal/uhal/lib \
 	         					-L$(IPBUS_PATH)/uhal/log/lib \
 	         					-L$(IPBUS_PATH)/uhal/grammars/lib \
-							-L$(IPBUS_PATH)/extern/pugixml/pugixml-1.2/ \
-							-L$(IPBUS_PATH)/../UIOuHAL/lib
+							-L$(IPBUS_PATH)/extern/pugixml/pugixml-1.2/ 
 else
 UHAL_INCLUDE_PATH = \
-	         					-isystem$(CACTUS_ROOT)/include \
-							-isystem$(CACTUS_ROOT)/../UIOuHAL/include
+	         					-isystem$(CACTUS_ROOT)/include 
 
 UHAL_LIBRARY_PATH = \
-							-L$(CACTUS_ROOT)/lib -Wl,-rpath=$(CACTUS_ROOT)/lib \
-							-L$(CACTUS_ROOT)/../UIOuHAL/lib  -Wl,-rpath=$(CACTUS_ROOT)/../UIOuHAL/lib
+							-L$(CACTUS_ROOT)/lib -Wl,-rpath=$(CACTUS_ROOT)/lib 
 endif
+
+ifdef UIO_UHAL_PATH
+UHAL_INCLUDE_PATH += -isystem$(UIO_UHAL_PATH)/include
+UHAL_LIBRARY_PATH += -Wl,-rpath=$(UIO_UHAL_PATH)/lib
+else
+$(error UIO_UHAL_PATH is not set!)
+endif
+
 
 UHAL_CXX_FLAGHS = ${UHAL_INCLUDE_PATH}
 

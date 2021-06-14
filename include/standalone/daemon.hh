@@ -3,7 +3,6 @@
 
 #include <string>
 #include <signal.h>
-//#include <ApolloSM/ApolloSM.hh>
 
 // This class performs all functions that a daemon is suppose to perform (ie. fork, change sigactions, etc.). Later on, any functions that are deemed necessary for all daemons to perform, should be put in here. Each daemon will have ane Daemon object.
 

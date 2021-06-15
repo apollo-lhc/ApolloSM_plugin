@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
+#include <standalone/CM.hh>
+//#include <standalone/FPGA.hh>
 #include <uhal/uhal.hpp>
 #include <vector>
 #include <string>
@@ -16,6 +18,7 @@
 #include <standalone/optionParsing_bool.hh>
 #include <standalone/daemon.hh>
 
+
 #include <fstream>
 #include <iostream>
 
@@ -27,20 +30,22 @@
 
 // ====================================================================================================
 // Set up for boost program_options
+
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_RUN_DIR     "/opt/address_table/"
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
+
 #define DEFAULT_SENSORS_THROUGH_ZYNQ false // This means: by default, read the sensors through the zynq
 #define DEFAULT_CM_POWERUP false
 namespace po = boost::program_options; //Making life easier for boost
+
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
   return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
 	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
 }
-
 
 // ====================================================================================================
 // Definitions
@@ -155,7 +160,7 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
   updateTemp(SM,"SLAVE_I2C.S5.VAL", temps.REGTemp);
 }
 
-
+// ====================================================================================================
 int main(int argc, char** argv) { 
 
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
@@ -165,6 +170,7 @@ int main(int argc, char** argv) {
   bool powerupCMuC        = DEFAULT_CM_POWERUP;
   int powerupTime         = DEFAULT_POWERUP_TIME;
   bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
+
 
   //Mikey - finish
   po::options_description cli_options("SM_boot options");
@@ -230,15 +236,18 @@ int main(int argc, char** argv) {
   Daemon daemon;
   daemon.daemonizeThisProgram(pidFileName, runPath);
 
+
   // ============================================================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
+
   daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
   daemon.SetLoop(true);
 
 
   //Update parameters
+
 
   // ====================================
   // for counting time
@@ -266,7 +275,6 @@ int main(int argc, char** argv) {
     SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
     syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
   
-
     // ====================================
     // Turn on CM uC      
     if (powerupCMuC){
@@ -285,14 +293,23 @@ int main(int argc, char** argv) {
       syslog(LOG_INFO,"Reading out CM sensors via zynq\n");
     }
 
+    // ==================================
+    // Power up CM(s) and program, initialize, and unblock FPGA(s), if required
+
+    syslog(LOG_INFO, "Attempting to power up CMs and program FPGAs...\n");
+    // Power up CMs and program FPGAs
+    for(int i = 0; i < (int)allCMs.size(); i++) {
+      allCMs[i].SetUp(SM);
+    }
 
     // ==================================
     // Main DAEMON loop
-    syslog(LOG_INFO,"Starting Monitoring loop\n");
+    syslog(LOG_INFO,"Starting Monitoring loop\n");    
     
-
     uint32_t CM_running = 0;
+
     while(daemon.GetLoop()) {
+
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 
@@ -350,8 +367,7 @@ int main(int argc, char** argv) {
 	}
       }
       //=================================
-
-
+      
       // monitoring sleep
       clock_gettime(CLOCK_REALTIME, &stopTS);
       // sleep for 10 seconds minus how long it took to read and send temperature    
@@ -367,7 +383,6 @@ int main(int argc, char** argv) {
     syslog(LOG_INFO,"Caught std::exception: %s\n",e.what());
           
   }
-
 
   //make sure the CM is off
   //Shutdown the command module (if up)
@@ -406,7 +421,6 @@ int main(int argc, char** argv) {
   SM->DebugDump(outfile);
   outfile.close();  
 
-  
   //Clean up
   if(NULL != SM) {
     delete SM;
@@ -414,6 +428,8 @@ int main(int argc, char** argv) {
 
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
+
   syslog(LOG_INFO,"eyescan Daemon ended\n");
+
   return 0;
 }

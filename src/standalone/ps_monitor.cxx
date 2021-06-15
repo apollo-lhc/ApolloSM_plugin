@@ -28,6 +28,7 @@
 #include <standalone/optionParsing_bool.hh>
 #include <standalone/daemon.hh>
 
+
 #include <fstream>
 #include <iostream>
 
@@ -37,10 +38,12 @@
 
 // ================================================================================
 #define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
+
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_RUN_DIR "/opt/address_table"
 #define DEFAULT_PID_FILE "/var/run/ps_monitor.pid"
 namespace po = boost::program_options;
+
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -51,6 +54,7 @@ long us_difftime(struct timespec cur, struct timespec end){
 // ==================================================
 
 int main(int argc, char ** argv) {
+
 
   //=======================================================================
   // Set up program options
@@ -120,9 +124,11 @@ int main(int argc, char ** argv) {
   // ============================================================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
+
   daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
   daemon.SetLoop(true);
+
 
   // ==================================================
   // If /var/run/utmp does not exist we are done
@@ -249,7 +255,7 @@ int main(int argc, char ** argv) {
 
   // ==================================================
   // Clean up. Close and delete everything.
-    
+
   // Delete SM
   if(NULL != SM) {
     delete SM;

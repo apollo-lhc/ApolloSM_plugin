@@ -18,6 +18,9 @@ public:
   void SetLoop(bool b);
   bool GetLoop();
 
+
+  //bool checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal);
+
 private:
   //  void signal_handler(int const signum);
   // to prevent more than a single instance, we make assingment and copy constructors private

@@ -45,6 +45,13 @@ static void SetupTermIOS(int fd){
   tcgetattr(fd,&term_opts); //get existing options
   cfsetispeed(&term_opts,B115200); //set baudrate
   cfsetospeed(&term_opts,B115200); //set baudrate
+  // Pyserial (not comprehensive) lines 385-394
+  // https://github.com/pyserial/pyserial/blob/master/serial/serialposix.py#L386
+  // April 28 2020
+  // cflag: |= (CLOCAL, CREAD)
+  // iflag: &= ~(INLCR, IGNCR, ICRNL, IGNBRK)
+  // lflag: &= ~(ICANON, ECHO, ECHOE, ECHOK, ECHONL, ISIG, IEXTEN)
+  // oflag: &= ~(OPOST, ONLCR, OCRNL)
   term_opts.c_cflag |= CLOCAL;  //Do not change owner of port
   term_opts.c_cflag |= CREAD;   // enable receiver
 
@@ -52,7 +59,8 @@ static void SetupTermIOS(int fd){
   term_opts.c_cflag &= ~CSIZE;
   term_opts.c_cflag |= CS8;
 
-  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL);
+  //  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL); // ignbrk
+  term_opts.c_iflag &= ~(INLCR | IGNCR | ICRNL | IGNBRK);
 
   //set parity
   term_opts.c_cflag &= ~PARENB;
@@ -63,8 +71,11 @@ static void SetupTermIOS(int fd){
   term_opts.c_iflag &= ~(IXON | IXOFF | IXANY);
 
   //set raw mode
-  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-  term_opts.c_oflag &= ~OPOST;
+  //  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  term_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ISIG | IEXTEN);
+  //printf("using pyserial\n");
+  //  term_opts.c_oflag &= ~OPOST; // onlcr ocrnl
+  term_opts.c_oflag &= ~(OPOST | ONLCR | OCRNL);
 
 
   tcsetattr(fd,TCSANOW,&term_opts); 
@@ -110,7 +121,7 @@ void ApolloSM::UART_Terminal(std::string const & ttyDev) {
 
 
   //maxfdp1 is the max fd plus 1
-  int maxfdp1 = std::max(fd,std::max(STDIN_FILENO,STDIN_FILENO));
+  int maxfdp1 = std::max(fd,std::max(STDIN_FILENO,STDOUT_FILENO));
   maxfdp1++;
   fd_set readSet;
   fd_set writeSet; 
@@ -315,12 +326,15 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
 	  throw e;
 	}
       }
-      
-      //if(sendline[i] != readChar){
-      //	printf("Error: mismatched character %c %c\n",sendline[i],readChar);
-      //	printf("Error: mismatched character %c %d\n",sendline[i],readChar);
-      //	return "Mismatched character\n";
-      //}
+
+      // This is for error checking but Peter updated the code to send a bunch of control sequences.
+      // Since we don't know how to deal with them yet we cannot error check.
+//      if(sendline[i] != readChar){
+//	printf("Error: mismatched character %c %c\n",sendline[i],readChar);
+//	printf("Error: mismatched character %c %d\n",sendline[i],readChar);
+//	return "Mismatched character\n";
+//      }
+
 
     }
     

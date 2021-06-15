@@ -20,17 +20,20 @@
 #include <iostream>
 
 
+
 #define SEC_IN_US  1000000
 #define NS_IN_US 1000
 
 // ================================================================================
 // Setup for boost program_options
 #define DEFAULT_CONFIG_FILE "/etc/heartbeat"
+
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
 #define DEFAULT_RUN_DIR "/opt/address_table/"
 #define DEFAULT_PID_FILE "/var/run/heartbeat.pid"
 namespace po = boost::program_options;
+
 
 
 // ====================================================================================================
@@ -41,6 +44,7 @@ long us_difftime(struct timespec cur, struct timespec end){
 
 // ====================================================================================================
 int main(int argc, char** argv) { 
+
 
   //Set polltime
   int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
@@ -111,17 +115,22 @@ int main(int argc, char** argv) {
   pidFileName         = GetFinalParameterValue(std::string("PID_FILE")           ,allOptions,std::string(DEFAULT_PID_FILE));
 
 
+
   // ============================================================================
+
   // Deamon book-keeping
   Daemon daemon;
   daemon.daemonizeThisProgram(pidFileName, runPath);
 
+
   // ============================================================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
+
   daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
   daemon.SetLoop(true);
+
 
   // ====================================
   // for counting time
@@ -152,7 +161,9 @@ int main(int argc, char** argv) {
     // Main DAEMON loop
     syslog(LOG_INFO,"Starting heartbeat\n");
     
+
     while(daemon.GetLoop()) {
+
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 
@@ -183,7 +194,7 @@ int main(int argc, char** argv) {
   //PS heartbeat
   SM->RegReadRegister("SLAVE_I2C.HB_SET1");
   SM->RegReadRegister("SLAVE_I2C.HB_SET2");
-  
+
   //Clean up
   if(NULL != SM) {
     delete SM;

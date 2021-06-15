@@ -1,0 +1,157 @@
+// 3-28-2020 Felex
+#include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/ApolloSM_Exceptions.hh>
+#include <BUException/ExceptionBase.hh>
+#include <string>
+#include <signal.h>
+#include <syslog.h>  
+#include <boost/program_options.hpp>
+#include <standalone/daemon.hh>
+#include <standalone/parseOptions.hh>
+
+// ====================================================================================================
+// Define all your defaults here
+#define DEFAULT_CONFIG_FILE "..."
+#define DEFAULT_RUN_DIR     "..." 
+#define DEFAULT_PID_FILE    "..."
+#define DEFAULT_A           ...
+#define DEFAULT_B           ...
+#define DEFAULT_C           ...
+etc ...
+
+// ====================================================================================================
+// Define any functions you need here
+
+// ====================================================================================================
+int main(int argc, char** argv) { 
+
+  // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
+  std::string configFile  = DEFAULT_CONFIG_FILE;
+  std::string runPath     = DEFAULT_RUN_DIR;
+  std::string pidFileName = DEFAULT_PID_FILE;
+  someTypeA A             = DEFAULT_A;     
+  someTypeB B             = DEFAULT_B;     
+  someTypeC C             = DEFAULT_C;    
+  etc ...
+  
+  // parse command line and config file to set parameters
+  boost::program_options::options_description fileOptions{"File"}; // for parsing config file
+  boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
+  commandLineOptions.add_options()
+    ("config_file",
+     boost::program_options::value<std::string>(),
+     "config file"); // This is the only option not also in the file option (obviously)
+  setOption(&fileOptions, &commandLineOptions, "run_path" , "run path" , runPath);
+  setOption(&fileOptions, &commandLineOptions, "pid_file" , "pid file" , pidFileName);
+  setOption(&fileOptions, &commandLineOptions, "name of A", "desc of A", A);
+  setOption(&fileOptions, &commandLineOptions, "name of B", "desc of B", B);
+  setOption(&fileOptions, &commandLineOptions, "name of C", "desc of C", C);
+  etc ...
+
+  boost::program_options::variables_map configFileVM; // for parsing config file
+  boost::program_options::variables_map commandLineVM; // for parsing command line
+
+  // The command line must be parsed before the config file so that we know if there is a command line specified config file 
+  fprintf(stdout, "Parsing command line now\n");
+  try {
+    // parse command line
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
+  } catch(const boost::program_options::error &ex) {
+    fprintf(stderr, "Caught exception while parsing command line: %s \nTerminating <daemon name here>\n", ex.what());       
+    return -1;
+  }
+
+  // Check for non default config file
+  if(commandLineVM.count("config_file")) {
+    configFile = commandLineVM["config_file"].as<std::string>();
+  }  
+  fprintf(stdout, "config file path: %s\n", configFile.c_str());
+
+  // Now the config file may be loaded
+  fprintf(stdout, "Reading from config file now\n");
+  try {
+    // parse config file
+    configFileVM = loadConfig(configFile, fileOptions);
+  } catch(const boost::program_options::error &ex) {
+    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating <daemon name here>\n", ex.what());        
+    return -1;
+  }
+
+  // Look at the config file and command line and see if we should change the parameters from their default values
+  // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
+  setParamValue(&runPath            , "run_path"          , configFileVM, commandLineVM, false);
+  setParamValue(&pidFileName        , "pid_file"          , configFileVM, commandLineVM, false);
+
+  // ============================================================================
+  // Deamon book-keeping
+  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
+  Daemon <daemon name here>Daemon;
+  <daemon name here>Daemon.daemonizeThisProgram(pidFileName, runPath);
+
+  // ============================================================================
+  // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
+  setParamValue(&A, "name of A", configFileVM, commandLineVM, true);
+  setParamValue(&B, "name of B", configFileVM, commandLineVM, true);
+  setParamValue(&C, "name of C", configFileVM, commandLineVM, true);
+  etc ...
+  
+  // ============================================================================
+  // Signal handling
+  struct sigaction sa_INT,sa_TERM,old_sa;
+  // struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
+  <daemon name here>tDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  <daemon name here>tDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  <daemon name here>tDaemon.loop = true;
+
+  // ============================================================================
+  // More set up if needed.
+
+  // ============================================================================
+  ApolloSM * SM = NULL;
+  try{
+    // Initialize ApolloSM
+    SM = new ApolloSM();
+    if(NULL == SM){
+      syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+      exit(EXIT_FAILURE);
+    }else{
+      syslog(LOG_INFO,"Created new ApolloSM\n");      
+    }
+    std::vector<std::string> arg;
+    arg.push_back("connections.xml");
+    SM->Connect(arg);    
+    // ==================================
+    // More set up if needed.
+
+    // ==================================
+
+    syslog(LOG_INFO, <Say you're starting the loop or something>);
+
+    while(<daemon name here>Daemon.loop) {
+      // The main purpose/work of the daemon goes here.
+    }
+  }catch(BUException::exBase const & e){
+    syslog(LOG_INFO,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
+          
+  }catch(std::exception const & e){
+    syslog(LOG_INFO,"Caught std::exception: %s\n",e.what());
+          
+  }
+  
+  // ============================================================================
+  // Clean up	
+  
+  // Pre-delete SM clean up stuff if nedeed.
+  
+  // ==================================
+  if(NULL != SM) {
+    delete SM;
+  }
+
+  // Restore old action of receiving SIGINT (which is to kill program) before returning 
+  sigaction(SIGINT, &old_sa, NULL);
+  syslog(LOG_INFO,"<daemon name here> Daemon ended\n");
+
+  // ============================================================================  
+  return 0;
+}

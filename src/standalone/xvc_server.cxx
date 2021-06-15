@@ -34,13 +34,17 @@
 #include <vector>
 #include <string>
 
+
 #include <ApolloSM/uioLabelFinder.hh>
+#include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
+#include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 #include <ApolloSM/ApolloSM.hh>
 
 #include <boost/program_options.hpp>
 #include <standalone/optionParsing.hh>
 #include <standalone/optionParsing_bool.hh>
 #include <standalone/daemon.hh>
+
 
 #include <fstream>
 #include <iostream>
@@ -53,6 +57,7 @@
 #define DEFAULT_XVCPREFIX " "
 #define DEFAULT_XVCPORT -1
 namespace po = boost::program_options;
+
 
 
 #define MAP_SIZE      0x10000
@@ -209,7 +214,9 @@ int handle_data(int fd) {
       return 1;
     }
 
+
   } while (daemonInst.GetLoop());
+
   /* Note: Need to fix JTAG state updates, until then no exit is allowed */
   return 0;
 }
@@ -222,6 +229,17 @@ int main(int argc, char **argv) {
   struct sockaddr_in address;
 
   int uioN = -1;
+
+
+  // Look at the config file and command line and determine if we should change the parameters from their default values
+  setParamValue(&runPath    , "run_path", configFileVM, commandLineVM, false);
+  setParamValue(&pidFileName, "pid_file", configFileVM, commandLineVM, false);
+  setParamValue(&xvcPort    , "port"    , configFileVM, commandLineVM, false);
+  setParamValue(&xvcPreFix  , "xvc"     , configFileVM, commandLineVM, false);
+
+  port     = xvcPort;
+  xvcName  = xvcPreFix;
+  uioLabel = xvcPreFix;
 
 
   //=======================================================================
@@ -296,6 +314,7 @@ int main(int argc, char **argv) {
   // Deamon book-keeping
   daemonInst.daemonizeThisProgram(pidFileName, RUN_DIR);
 
+
   // ============================================================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
@@ -305,9 +324,9 @@ int main(int argc, char **argv) {
 
   //Find UIO number
   std::string parentLabel = uioLabel.substr(0,uioLabel.find('.'));
-  uioN = label2uio(parentLabel.c_str());//uioLabel.c_str().);
+  uioN = label2uio(parentLabel.c_str());
   if(uioN < 0){
-    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",parentLabel.c_str());//uioLabel.c_str());
+    syslog(LOG_ERR,"Failed to find UIO device with label %s.\n",parentLabel.c_str());
     return 1;      
   }
   size_t const uioFileNameLength = 1024;
@@ -441,6 +460,7 @@ int main(int argc, char **argv) {
 
   int maxFD = 0;
 
+
   //setup the listen FDset for select
   fd_set listenFDSet;
   FD_ZERO(&listenFDSet);
@@ -458,6 +478,7 @@ int main(int argc, char **argv) {
     fd_set read = activeFDSet, except = listenFDSet;
 
     if (select(maxFD + 1, &read, 0, &except, 0) < 0) {
+
       syslog(LOG_ERR,"select: %s",strerror(errno));
       break;
     }
@@ -513,6 +534,7 @@ int main(int argc, char **argv) {
       }
     }
   }  
+
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
   syslog(LOG_INFO,"%s Daemon ended\n",daemonName);

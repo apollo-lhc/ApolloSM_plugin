@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/ApolloSM_Exceptions.hh>
+
 #include <standalone/userCount.hh>
 #include <standalone/lnxSysMon.hh>
 
@@ -18,28 +20,29 @@
 //signals
 #include <signal.h>
 
-//umask
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include <BUException/ExceptionBase.hh>
-
-#include <boost/program_options.hpp>  //for configfile parsing
-#include <fstream>
-
 #include <syslog.h>  ///for syslog
-#include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
-#include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 
-#define SEC_IN_US  1000000
+
+#include <boost/program_options.hpp>
+#include <standalone/optionParsing.hh>
+#include <standalone/optionParsing_bool.hh>
+#include <standalone/daemon.hh>
+
+
+#include <fstream>
+#include <iostream>
+
+
+#define SEC_IN_US 1000000
 #define NS_IN_US 1000
 
-#define DEFAULT_POLLTIME_IN_SECONDS 10
+// ================================================================================
 #define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
-#define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_PID_FILE    "/var/run/ps_monitor.pid"
 
-
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_RUN_DIR "/opt/address_table"
+#define DEFAULT_PID_FILE "/var/run/ps_monitor.pid"
+namespace po = boost::program_options;
 
 
 // ====================================================================================================
@@ -52,77 +55,80 @@ long us_difftime(struct timespec cur, struct timespec end){
 
 int main(int argc, char ** argv) {
 
-  // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
-  std::string configFile  = DEFAULT_CONFIG_FILE;
-  std::string runPath     = DEFAULT_RUN_DIR;
-  std::string pidFileName = DEFAULT_PID_FILE;
-  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
 
-  // parse command line and config file to set parameters
-  boost::program_options::options_description fileOptions{"File"}; // for parsing config file
-  boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
-  commandLineOptions.add_options()
-    ("config_file",
-     boost::program_options::value<std::string>(),
-     "config_file"); // This is the only option not also in the file option (obviously)
-  setOption(&fileOptions, &commandLineOptions, "run_path", "run path"         , runPath);
-  setOption(&fileOptions, &commandLineOptions, "pid_file", "pid file"         , pidFileName);
-  setOption(&fileOptions, &commandLineOptions, "polltime", "polling interval" , polltime_in_seconds);
-  boost::program_options::variables_map configFileVM; // for parsing config file
-  boost::program_options::variables_map commandLineVM; // for parsing command line
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("ps_monitor options");
+  cli_options.add_options()
+    ("help,h",    "Help screen")
+    ("POLLTIME_IN_SECONDS,s", po::value<int>(),         "polltime in seconds")
+    ("RUN_DIR,r",             po::value<std::string>(), "run path")
+    ("PID_FILE,d",            po::value<std::string>(), "pid file")
+    ("config_file",           po::value<std::string>(), "config file");
 
-  // The command line must be parsed before the config file so that we know if there is a command line specified config file
-  fprintf(stdout, "Parsing command line now\n");
-  try {
-    // parse command line
-    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
-  } catch(const boost::program_options::error &ex) {
-    fprintf(stderr, "Caught exception while parsing command line: %s. Try (--). ex: --polltime \nTerminating ps_monitor\n", ex.what());       
-    return -1;
+
+  //Config File options
+  po::options_description cfg_options("ps_monitor options");
+  cfg_options.add_options()
+    ("POLLTIME_IN_SECONDS", po::value<int>(),         "polltime in seconds")
+    ("RUN_DIR",             po::value<std::string>(), "run path")
+    ("PID_FILE",            po::value<std::string>(), "pid file");
+
+
+  std::map<std::string,std::vector<std::string> > allOptions;
+  
+  //Do a quick search of the command line only to look for a new config file.
+  //Get options from command line,
+  try { 
+    FillOptions(parse_command_line(argc, argv, cli_options),
+		allOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    return 0;
   }
-
-  // Check for non default config file
-  if(commandLineVM.count("config_file")) {
-    configFile = commandLineVM["config_file"].as<std::string>();
+  //Help option - ends program 
+  if(allOptions.find("help") != allOptions.end()){
+    std::cout << cli_options << '\n';
+    return 0;
   }  
-  fprintf(stdout, "config file path: %s\n", configFile.c_str());
-
-  // Now the config file may be loaded
-  fprintf(stdout, "Reading from config file now\n");
-  try {
-    // parse config file
-    configFileVM = loadConfig(configFile, fileOptions);
-  } catch(const boost::program_options::error &ex) {
-    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating ps_monitor\n", ex.what());        
-    return -1;
+  
+  std::string configFileName = GetFinalParameterValue(std::string("config_file"),allOptions,std::string(DEFAULT_CONFIG_FILE));
+  
+  //Get options from config file
+  std::ifstream configFile(configFileName.c_str());   
+  if(configFile){
+    try { 
+      FillOptions(parse_config_file(configFile,cfg_options,true),
+		  allOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+    }
+    configFile.close();
   }
- 
-  // Look at the config file and command line and determine if we should change the parameters from their default values
-  // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
-  setParamValue(&runPath    , "run_path", configFileVM, commandLineVM, false);
-  setParamValue(&pidFileName, "pid_file", configFileVM, commandLineVM, false);
-//  setParamValue(&polltime_in_seconds, "polltime"   , configFileVM, commandLineVM, true);
+
+
+  //Set polltime_in_seconds
+  int polltime_in_seconds = GetFinalParameterValue(std::string("POLLTIME_IN_SECONDS"), allOptions, DEFAULT_POLLTIME_IN_SECONDS);
+  //Set runPath
+  std::string runPath     = GetFinalParameterValue(std::string("RUN_DIR"),             allOptions, std::string(DEFAULT_RUN_DIR));
+  //set pidFileName
+  std::string pidFileName = GetFinalParameterValue(std::string("PID_FILE"),            allOptions, std::string(DEFAULT_PID_FILE));
 
   // ============================================================================
   // Deamon book-keeping
-  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
-  Daemon ps_monitorDaemon;
-  ps_monitorDaemon.daemonizeThisProgram(pidFileName, runPath);
-
-  
-  // ============================================================================
-  // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
-  setParamValue(&polltime_in_seconds, "polltime", configFileVM, commandLineVM, true);
+  Daemon daemon;
+  daemon.daemonizeThisProgram(pidFileName, runPath);
 
   // ============================================================================
-  // Daemon code setup
-
-  // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  ps_monitorDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
-  ps_monitorDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
-  ps_monitorDaemon.SetLoop(true);
+
+  daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  daemon.SetLoop(true);
+
 
   // ==================================================
   // If /var/run/utmp does not exist we are done
@@ -134,6 +140,9 @@ int main(int argc, char ** argv) {
     }
   }
 
+  //=======================================================================
+  // Start ps monitor
+  //=======================================================================
   ApolloSM * SM = NULL;
   try{
     // ==================================
@@ -183,7 +192,7 @@ int main(int argc, char ** argv) {
     }catch(std::exception const & e){
       syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
     }
-    while(loop){
+    while(daemon.GetLoop()){
       readSet_ret = readSet;
       int pselRet = pselect(maxFDp1,&readSet_ret,NULL,NULL,&timeout,NULL);
       if(0 == pselRet){

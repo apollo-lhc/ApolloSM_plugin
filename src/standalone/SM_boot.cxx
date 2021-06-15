@@ -11,31 +11,35 @@
 #include <signal.h>
 #include <time.h>
 
-#include <sys/stat.h> //for umask
-#include <sys/types.h> //for umask
-
-#include <BUException/ExceptionBase.hh>
+#include <syslog.h>  ///for syslog
 
 #include <boost/program_options.hpp>
-#include <fstream>
+#include <standalone/optionParsing.hh>
+#include <standalone/optionParsing_bool.hh>
+#include <standalone/daemon.hh>
 
-#include <syslog.h> ///for syslog
-#include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
-#include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
+
+#include <fstream>
+#include <iostream>
+
 
 // ====================================================================================================
-#define SEC_IN_US 1000000
-#define NS_IN_US  1000
+// Constants
+#define SEC_IN_US  1000000
+#define NS_IN_US 1000
 
-// value doesn't matter, as long as it is defined
-//#define SAY_STATUS_DONE_ANYWAY 1
+// ====================================================================================================
+// Set up for boost program_options
 
-#define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
-#define DEFAULT_RUN_DIR     "/opt/address_tables/"
+#define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_RUN_DIR     "/opt/address_table/"
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
-#define DEFAULT_SENSORS_THROUGH_ZYNQ true // This means: by default, read the sensors through the zynq
+
+#define DEFAULT_SENSORS_THROUGH_ZYNQ false // This means: by default, read the sensors through the zynq
+#define DEFAULT_CM_POWERUP false
+namespace po = boost::program_options; //Making life easier for boost
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -160,150 +164,90 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
 int main(int argc, char** argv) { 
 
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
-  std::string configFile  = DEFAULT_CONFIG_FILE;
   std::string runPath     = DEFAULT_RUN_DIR;
   std::string pidFileName = DEFAULT_PID_FILE;
   int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
-  bool powerupCMuC        = true;
+  bool powerupCMuC        = DEFAULT_CM_POWERUP;
   int powerupTime         = DEFAULT_POWERUP_TIME;
   bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
 
-  boost::program_options::options_description fileOptions{"File"}; // for parsing config file
-  boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
-  commandLineOptions.add_options()
-    ("config_file"        , boost::program_options::value<std::string>()              , "config file"                  ) // Not in fileOptions (obviously)
-    ("run_path"           , boost::program_options::value<std::string>()              , "run path"                     )
-    ("pid_file"           , boost::program_options::value<std::string>()              , "pid file"                     )
-    ("polltime"           , boost::program_options::value<int>()                      , "polling interval"             )
-    ("cm_powerup"         , boost::program_options::value<bool>()                     , "power up CM uC"               )
-    ("cm_powerup_time"    , boost::program_options::value<int>()                      , "uC power up wait time"        )
-    ("sensorsThroughZynq" , boost::program_options::value<bool>()                     , "read sensor data through Zynq");
-    //    ("CM"                 , boost::program_options::value<std::vector<std::string> >(), "power up command module"      )  // commented out for now
-    //    ("FPGA"               , boost::program_options::value<std::vector<std::string> >(), "FPGAs: program, init, unblock"); // commented out for now               
-  fileOptions.add_options()
-    ("run_path"           , boost::program_options::value<std::string>()              , "run path"                     )
-    ("pid_file"           , boost::program_options::value<std::string>()              , "pid file"                     )
-    ("polltime"           , boost::program_options::value<int>()                      , "polling interval"             )
-    ("cm_powerup"         , boost::program_options::value<bool>()                     , "power up CM uC"               )
-    ("cm_powerup_time"    , boost::program_options::value<int>()                      , "uC power up wait time"        )
-    ("sensorsThroughZynq" , boost::program_options::value<bool>()                     , "read sensor data through Zynq")
-    //("CM"                 , boost::program_options::value<std::vector<std::string> >(), "command module: power up"     )
-    //("FPGA"               , boost::program_options::value<std::vector<std::string> >(), "FPGAs: program, init, unblock")
-    /*
-      The following add_options lines would not be necessary if we weren't using variables map and store. 
-      Actually, if we don't use variables map and store as well as allow for unrecognized options, we don't need 
-      to add_options at all. However, since we are already relying heavily on variables maps for overriding
-      config file options with command line options, we will continue to use variables maps. With that being said, 
-      the problem with using store and variables maps is that store does not allow for any options to have more than one
-      value in the config file. This is most likely because it doesn't make sense to store key value pairs in maps
-      where the same key can have more than one value. The current "solution" to this is to add_options any options 
-      that we already know will have more than one value as vectors. This is clearly not desirable since, for example,
-      underneath we have CM1.FPGA as a option and it isn't very robust to be required to know ahead of time what 
-      options will definitely be specified more than once ahead of time. Since maps can't have the same key twice,
-      there probably is no boost::program_options solution to this. So for now we will use the vector "solution"
-      but later on we will most likely have to completely get rid of variables map and store and parse the fileOptions
-      and commandOptions ourselves (not to be confused with the command line and config file, we can still use the 
-      parse_config_file and parse_command_line functions for those). May 7, 2020: it looks to me like having a second command module and FPGAs in it in the config file actually does work! I am now totally confused. This is a good thing, but we should figure out what is allowing us to do it.
-    */
-    ("CM.NAME"            , boost::program_options::value<std::vector<std::string> >(), "command module names"         )
-    ("CM1.FPGA"           , boost::program_options::value<std::vector<std::string> >(), "CM1's FPGAs names"            );
-    
-  // The different options we will retrieve from the config file/command line. setOption is equivalent to calling commandLineOptions.add() and then fileOptions.add()
-  int totalNumConfigFileOptions = 0; 
-  boost::program_options::parsed_options configFilePO(&fileOptions); // compiler won't let me merely declare it configFilePO so I initialized it with fileOptions; would be nice to fix this
-  boost::program_options::variables_map configFileVM; // for parsing config file
-  boost::program_options::variables_map commandLineVM; // for parsing command line
-  bool caughtCommandLineException = false;
-  bool caughtConfigFileException  = false;
 
-  // The command line must be parsed before the config file so that we know if there is a command line specified config file 
-  fprintf(stdout, "Parsing command line now\n");
-  try {
-    // parse command line
-    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
-  } catch(const boost::program_options::error &ex) {
-    fprintf(stderr, "Caught exception while parsing command line: %s. Try (--). ex: --polltime\n Ignoring all command line arguments\n", ex.what());       
-    caughtCommandLineException = true;
-  }
+  //Mikey - finish
+  po::options_description cli_options("SM_boot options");
+  cli_options.add_options()
+    ("help,h", "Help screen")
+    ("run_path,r",           po::value<std::string>(), "Path to run directory")
+    ("pid_file,f",           po::value<std::string>(), "pid file")
+    ("polltime,P",           po::value<int>(),         "Polltime in seconds")
+    ("cm_powerup,P",         po::value<bool>(),        "Powerup CM")
+    ("cm_powerup_time,t",    po::value<int>(),         "Powerup time in seconds")
+    ("sensorsThroughZynq,s", po::value<bool>(),        "Read sensors through the Zynq")
+    ("config_file",          po::value<std::string>(), "config file"); // This is the only option not also in the file option (obviously); 
+   
+  po::options_description cfg_options("SM_boot options");
+  cfg_options.add_options()
+    ("run_path",           po::value<std::string>(), "Path to run directory")
+    ("pid_file",           po::value<std::string>(), "pid file")
+    ("polltime",           po::value<int>(),         "Polltime in seconds")
+    ("cm_powerup",         po::value<bool>(),        "Powerup CM")
+    ("cm_powerup_time",    po::value<int>(),         "Powerup time in seconds")
+    ("sensorsThroughZynq", po::value<bool>(),        "Read sensors through the Zynq"); // This means: by default, read the sensors through the zynq
 
-  // Check for non default config file
-  if((false == caughtCommandLineException) && commandLineVM.count("config_file")) {
-    configFile = commandLineVM["config_file"].as<std::string>();
-    fprintf(stdout, "config file path: %s (COMMAND LINE)\n", configFile.c_str());
-  } else {
-    fprintf(stdout, "config file path: %s (DEFAULT)\n"     , configFile.c_str());
-  }
+  std::map<std::string,std::vector<std::string> > allOptions;
   
-  // Now the config file may be loaded
-  fprintf(stdout, "Reading from config file now\n");
-  try {
-    // parse config file
-    // not using loadConfig() because I need more than just the variables map when looking for CMs and FPGAs
-    std::ifstream ifs{configFile};
-    fprintf(stderr, "Config file \"%s\" %s\n",configFile.c_str(), (!ifs.fail()) ? "exists" : "does not exist");
-    if(ifs) {
-      configFilePO = boost::program_options::parse_config_file(ifs, fileOptions, true); // true is great. It allows for unregistered options. ie. if it finds option "foo" in the config file but "foo" is not a registered option boost won't yell at you
-      boost::program_options::store(configFilePO, configFileVM);
-      totalNumConfigFileOptions = configFilePO.options.size();
+  //Do a quick search of the command line only to look for a new config file.
+  //Get options from command line,
+  try { 
+    FillOptions(parse_command_line(argc, argv, cli_options),
+		allOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    return 0;
+  }
+  //Help option - ends program 
+  if(allOptions.find("help") != allOptions.end()){
+    std::cout << cli_options << '\n';
+    return 0;
+  }  
+  
+  std::string configFileName = GetFinalParameterValue(std::string("config_file"),allOptions,std::string(DEFAULT_CONFIG_FILE));
+  
+  //Get options from config file
+  std::ifstream configFile(configFileName.c_str());   
+  if(configFile){
+    try { 
+      FillOptions(parse_config_file(configFile,cfg_options,true),
+		  allOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
     }
-  } catch(const boost::program_options::error &ex) {
-    fprintf(stdout, "Caught exception in function loadConfig(): %s \n Ignoring config file parameters\n", ex.what());        
-    caughtConfigFileException = true;
+    configFile.close();
   }
-
-  // Look at the config file and command line and determine if we should change the parameters from their default values
-  // Only run path and pid file are needed for the next bit of code. The other parameters can and should wait until syslog is available.
-  setParamValue(&runPath    , "run_path", configFileVM, commandLineVM, false, caughtCommandLineException, caughtConfigFileException); // false for no syslog
-  setParamValue(&pidFileName, "pid_file", configFileVM, commandLineVM, false, caughtCommandLineException, caughtConfigFileException);
   
-// ============================================================================
+  runPath=             GetFinalParameterValue(std::string("run_path"),          allOptions,std::string(DEFAULT_RUN_DIR));
+  pidFileName=         GetFinalParameterValue(std::string("pid_file"),          allOptions,std::string(DEFAULT_PID_FILE));
+  polltime_in_seconds= GetFinalParameterValue(std::string("polltime"),          allOptions,DEFAULT_POLLTIME_IN_SECONDS);
+  powerupCMuC=         GetFinalParameterValue(std::string("cm_powerup"),        allOptions,DEFAULT_CM_POWERUP);
+  powerupTime=         GetFinalParameterValue(std::string("cm_powerup_time"),   allOptions,DEFAULT_POWERUP_TIME);
+  sensorsThroughZynq=  GetFinalParameterValue(std::string("sensorsThroughZynq"),allOptions,DEFAULT_SENSORS_THROUGH_ZYNQ);
+  
+  // ============================================================================
   // Deamon book-keeping
-  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
-  Daemon SM_bootDaemon;
-  SM_bootDaemon.daemonizeThisProgram(pidFileName, runPath);
+  Daemon daemon;
+  daemon.daemonizeThisProgram(pidFileName, runPath);
+
 
   // ============================================================================
-  // Now that syslog is available, we can continue to look at the config file and command line and determine if we should change the parameters from their default values.
-  setParamValue(&polltime_in_seconds, "polltime"          , configFileVM, commandLineVM, true, caughtCommandLineException, caughtConfigFileException); // true for syslog
-  setParamValue(&powerupCMuC        , "cm_powerup"        , configFileVM, commandLineVM, true, caughtCommandLineException, caughtConfigFileException);
-  setParamValue(&powerupTime        , "cm_powerup_time"   , configFileVM, commandLineVM, true, caughtCommandLineException, caughtConfigFileException);
-  setParamValue(&sensorsThroughZynq , "sensorsThroughZynq", configFileVM, commandLineVM, true, caughtCommandLineException, caughtConfigFileException);
-
-  //  int numberCMs = 0;
-  //  int numberFPGAs = 0;
-  // find all command modules
-  std::vector<CM> allCMs;
-  if(false == caughtConfigFileException) {
-    for(int i = 0; i < totalNumConfigFileOptions; i++) {
-      std::string option = configFilePO.options[i].string_key;
-      if(option.compare("CM.NAME") == 0) {
-	// found a command module
-	std::string cmName = configFilePO.options[i].value[0].c_str();
-	CM newCM(cmName, configFilePO);
-	allCMs.push_back(newCM);
-      }
-    }
-  }
-//  printf("Listing %d command modules found:\n", (int)allCMs.size());
-//  for(int i = 0;l i < (int)allCMs.size(); i++) {
-//    printf("   %s\n", allCMs[i].name.c_str());
-//  }
-
-  // print all cm and fpga info
-  for(size_t c = 0; c < allCMs.size(); c++) {
-    allCMs[c].printInfo();
-  }
-  
-  // ============================================================================
-  // Daemon code setup
-
-  // ====================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-  // struct sigaction sa_INT,sa_TERM,oldINT_sa,oldTERM_sa;
-  SM_bootDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
-  SM_bootDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
-  SM_bootDaemon.SetLoop(true);
+
+  daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
+  daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  daemon.SetLoop(true);
+
+
+  //Update parameters
+
 
   // ====================================
   // for counting time
@@ -344,6 +288,9 @@ int main(int argc, char** argv) {
       temperatures temps;  
       temps = {0,0,0,0,false};
       sendTemps(SM, temps);
+      syslog(LOG_INFO,"No reading out CM sensors via zynq\n");
+    }else{
+      syslog(LOG_INFO,"Reading out CM sensors via zynq\n");
     }
 
     // ==================================
@@ -360,7 +307,9 @@ int main(int argc, char** argv) {
     syslog(LOG_INFO,"Starting Monitoring loop\n");    
     
     uint32_t CM_running = 0;
-    while(SM_bootDaemon.GetLoop()) {
+
+    while(daemon.GetLoop()) {
+
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 
@@ -369,7 +318,6 @@ int main(int argc, char** argv) {
       //=================================
 
       //Process CM temps
-      //      if(true == sensorsThroughZynq) {
       if(sensorsThroughZynq) {
 	temperatures temps;  
       	if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
@@ -480,7 +428,8 @@ int main(int argc, char** argv) {
 
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-  syslog(LOG_INFO,"SM boot Daemon ended\n");
+
+  syslog(LOG_INFO,"eyescan Daemon ended\n");
 
   return 0;
 }

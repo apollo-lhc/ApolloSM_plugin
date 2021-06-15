@@ -83,7 +83,7 @@ namespace BUTool{
 		 "file/SM_SN",
 		 "a",
 		 "ApolloSM",
-		 "\"connection file\"  or \"SM_SN\""
+		 "Connection file for creating an ApolloSM device"
 		 ); //Register ApolloSMDevice with the DeviceFactory  
 }
 

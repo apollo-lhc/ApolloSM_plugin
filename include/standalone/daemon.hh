@@ -18,6 +18,7 @@ public:
   void SetLoop(bool b);
   bool GetLoop();
 
+
   //bool checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal);
 
 private:

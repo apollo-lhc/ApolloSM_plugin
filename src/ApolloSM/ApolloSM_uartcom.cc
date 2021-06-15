@@ -326,6 +326,7 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
 	  throw e;
 	}
       }
+
       // This is for error checking but Peter updated the code to send a bunch of control sequences.
       // Since we don't know how to deal with them yet we cannot error check.
 //      if(sendline[i] != readChar){
@@ -334,10 +335,37 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
 //	return "Mismatched character\n";
 //      }
 
+
     }
     
 
     
+  }
+
+  // ==================================================
+  //make sure the buffer is clear  
+  readNotTimedOut = 1;
+  while(readNotTimedOut) {
+    // make copy of readSet everytime pselect is used because we don't want contents of readSet changed
+    fd_set readSetCopy = readSet;
+    int returnVal;
+    // Pselect returns 0 for time out, -1 for error, or number of ttyDev descriptors ready to be read
+    if(0 == (returnVal = pselect(maxfdp1, &readSetCopy, NULL, NULL, &t, NULL)))  {
+      // timed out
+      readNotTimedOut = 0;
+      continue;
+    } else if(-1 == returnVal) {
+      BUException::IO_ERROR e;
+      e.Append("read error: error from pselect while clearing buffer for " + ttyDev + "\n");
+      throw e;
+    } else {
+      // Do nothing with the character read
+      if(read(fd, &readChar, sizeof(readChar)) < 0) {
+	BUException::IO_ERROR e;
+	e.Append("read error: error reading from " + ttyDev + "\n");
+	throw e;
+      }
+    }
   }
 
   //Press enter

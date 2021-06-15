@@ -46,6 +46,12 @@ public:
   std::vector<eyescanCoords> EyeScan(std::string baseNode, std::string lpmNode, double horzIncrement, int vertIncrement, uint32_t maxPrescale);
   void restartCMuC(std::string CM_ID);
 
+  int GetSerialNumber();
+  int GetRevNumber();
+  int GetShelfID();
+  uint32_t GetZynqIP();
+  uint32_t GetIPMCIP();
+
 private:  
   IPBusStatus * statusDisplay;
 

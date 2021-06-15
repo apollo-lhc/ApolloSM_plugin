@@ -6,15 +6,14 @@
  *  Description : XAPP1251 Xilinx Virtual Cable Server for Linux
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
-
 #include <time.h>
 #include <stdint.h>
+
 
 #include <sys/mman.h>
 #include <fcntl.h>
@@ -23,35 +22,43 @@
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h> 
-#include <pthread.h>
+#include <arpa/inet.h>  //for inet_ntoa
+#include <pthread.h> // Why is this here?
 
 #include <sys/stat.h> //for umask
 #include <sys/types.h> //for umask
-                                                                                                                                                
+                                                                                                                                         
 #include <syslog.h>
 #include <errno.h>
 
 #include <vector>
 #include <string>
 
-#include <fstream>
 
 #include <ApolloSM/uioLabelFinder.hh>
 #include <standalone/daemon.hh>       // daemonizeThisProgram // changeSignal // loop
 #include <standalone/parseOptions.hh> // setOptions // setParamValues // loadConfig
 #include <ApolloSM/ApolloSM.hh>
 
-//extern int errno;
+#include <boost/program_options.hpp>
+#include <standalone/optionParsing.hh>
+#include <standalone/optionParsing_bool.hh>
+#include <standalone/daemon.hh>
 
+
+#include <fstream>
+#include <iostream>
+
+// ================================================================================
+// Setup for boost program_options
 #define DEFAULT_CONFIG_FILE "/etc/xvc_server"
-#define DEFAULT_RUN_DIR     "/opt/address_tables/"
-#define DEFAULT_PID_FILE    "/var/run/"
-#define DEFAULT_XVCPREFIX   ""
-#define DEFAULT_XVCPORT     -1
+#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_PID_DIR "/var/run/"
+#define DEFAULT_XVCPREFIX " "
+#define DEFAULT_XVCPORT -1
+namespace po = boost::program_options;
 
-// ====================================================================================================
-// signal handling
-Daemon xvc_serverDaemon;
+
 
 #define MAP_SIZE      0x10000
 
@@ -62,6 +69,8 @@ typedef struct  {
   uint32_t tdo_offset;
   uint32_t ctrl_offset; //bit 1 is a go signal, bit 2 is a busy signal
   uint32_t lock_offset;
+  uint32_t IP;
+  uint32_t port;
 } sXVC;
 
 sXVC volatile * pXVC = NULL;
@@ -74,6 +83,8 @@ uint32_t volatile * XVCLock = NULL;
     return -1;					\
   }						\
 
+//Daemon class;
+Daemon daemonInst;
 
 static int sread(int fd, void *target, int len) {
   unsigned char *t = (unsigned char *) target;
@@ -88,12 +99,12 @@ static int sread(int fd, void *target, int len) {
 }
 
 int handle_data(int fd) {
-
+  
   const char xvcInfo[] = "xvcServer_v1.0:2048\n"; 
 
   do {    
     CHECK_LOCK
-    char cmd[16];
+      char cmd[16];
     unsigned char buffer[2048], result[1024];
     memset(cmd, 0, 16);
 
@@ -154,7 +165,7 @@ int handle_data(int fd) {
 
     while (bytesLeft > 0) {      
       CHECK_LOCK
-      tms = 0;
+	tms = 0;
       tdi = 0;
       tdo = 0;
       if (bytesLeft >= 4) {
@@ -203,71 +214,22 @@ int handle_data(int fd) {
       return 1;
     }
 
-  } while (xvc_serverDaemon.GetLoop());
+
+  } while (daemonInst.GetLoop());
+
   /* Note: Need to fix JTAG state updates, until then no exit is allowed */
   return 0;
 }
 
 int main(int argc, char **argv) {
   int i;
-  int s;
+  int listenFD;
 
   int fdUIO = -1;
   struct sockaddr_in address;
 
   int uioN = -1;
-  std::string uioLabel;
- 
-  int port;
-  std::string xvcName;
 
-  // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
-  std::string configFile  = DEFAULT_CONFIG_FILE;
-  std::string runPath     = DEFAULT_RUN_DIR;
-  std::string pidFileName = DEFAULT_PID_FILE;
-  std::string xvcPreFix   = DEFAULT_XVCPREFIX;
-  int xvcPort             = DEFAULT_XVCPORT;
-
-  // parse command line and config file to set parameters
-  boost::program_options::options_description fileOptions{"File"}; // for parsing config file
-  boost::program_options::options_description commandLineOptions{"Options"}; // for parsing command line
-  commandLineOptions.add_options()
-    ("config_file",
-     boost::program_options::value<std::string>(),
-     "config_file"); // This is the only option not also in the file option (obviously)
-  setOption(&fileOptions, &commandLineOptions, "run_path", "run path"         , runPath);
-  setOption(&fileOptions, &commandLineOptions, "pid_file", "pid file"         , pidFileName);
-  setOption(&fileOptions, &commandLineOptions, "xvc"     , "xvc prefix"       , xvcPreFix);
-  setOption(&fileOptions, &commandLineOptions, "port"    , "xvc port number"  , xvcPort);
-  boost::program_options::variables_map configFileVM; // for parsing config file
-  boost::program_options::variables_map commandLineVM; // for parsing command line
-
-  // The command line must be parsed before the config file so that we know if there is a command line specified config file
-  fprintf(stdout, "Parsing command line now\n");
-  try {
-    // parse command line
-    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, commandLineOptions), commandLineVM);
-  } catch(const boost::program_options::error &ex) {
-    fprintf(stderr, "Caught exception while parsing command line: %s. Try (--). ex: --polltime \nTerminating xvc_server\n", ex.what());       
-    return -1;
-  }
-
-  // Check for non default config file
-  if(commandLineVM.count("config_file")) {
-    configFile = commandLineVM["config_file"].as<std::string>();
-  }  
-  fprintf(stdout, "config file path: %s\n", configFile.c_str());
-
-  // Now the config file may be loaded
-  fprintf(stdout, "Reading from config file now\n");
-  try {
-    // parse config file
-    configFileVM = loadConfig(configFile, fileOptions);
-  } catch(const boost::program_options::error &ex) {
-    fprintf(stdout, "Caught exception in function loadConfig(): %s \nTerminating xvc_server\n", ex.what());        
-    return -1;
-  }
- 
 
   // Look at the config file and command line and determine if we should change the parameters from their default values
   setParamValue(&runPath    , "run_path", configFileVM, commandLineVM, false);
@@ -279,18 +241,86 @@ int main(int argc, char **argv) {
   xvcName  = xvcPreFix;
   uioLabel = xvcPreFix;
 
+
+  //=======================================================================
+  // Set up program options
+  //=======================================================================
+  //Command Line options
+  po::options_description cli_options("XVC options");
+  cli_options.add_options()
+    ("help,h",    "Help screen")
+    ("RUN_DIR,r",   po::value<std::string>(), "Path to default run directory")
+    ("PID_FILE,d",  po::value<std::string>(), "Path to default pid directory")
+    ("xvcPrefix,v", po::value<std::string>(), "xvc prefix")
+    ("xvcPort,p",   po::value<int>(),         "xvc_port number")
+    ("config_file", po::value<std::string>(), "config file");
+  //Config File options
+  po::options_description cfg_options("XVC options");
+  cfg_options.add_options()
+    ("RUN_DIR",   po::value<std::string>(), "Path to default run directory")
+    ("PID_DIR",   po::value<std::string>(), "Path to default pid directory")
+    ("xvcPrefix", po::value<std::string>(), "xvc prefix")
+    ("xvcPort",   po::value<int>(),         "xvc_port number");
+
+  std::map<std::string,std::vector<std::string> > allOptions;
+  
+  //Do a quick search of the command line only to look for a new config file.
+  //Get options from command line,
+  try { 
+    FillOptions(parse_command_line(argc, argv, cli_options),
+		allOptions);
+  } catch (std::exception &e) {
+    fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
+    return 0;
+  }
+  //Help option - ends program 
+  if(allOptions.find("help") != allOptions.end()){
+    std::cout << cli_options << '\n';
+    return 0;
+  }  
+  
+  std::string configFileName = GetFinalParameterValue(std::string("config_file"),allOptions,std::string(DEFAULT_CONFIG_FILE));
+  
+  //Get options from config file
+  std::ifstream configFile(configFileName.c_str());   
+  if(configFile){
+    try { 
+      FillOptions(parse_config_file(configFile,cfg_options,true),
+		  allOptions);
+    } catch (std::exception &e) {
+      fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
+    }
+    configFile.close();
+  }
+
+  //Set port
+  int port            = GetFinalParameterValue(std::string("xvcPort"),  allOptions,DEFAULT_XVCPORT);
+  //setxvcName
+  std::string xvcName = GetFinalParameterValue(std::string("xvcPrefix"),allOptions,std::string(DEFAULT_XVCPREFIX));
+  //set PID_DIR
+  std::string PID_DIR = GetFinalParameterValue(std::string("PID_DIR"),  allOptions,std::string(DEFAULT_PID_DIR));
+  //Set RUN_DIR
+  std::string RUN_DIR = GetFinalParameterValue(std::string("RUN_DIR"),  allOptions,std::string(DEFAULT_RUN_DIR));
+
+  //use xvcName to get uiLabel
+  std::string uioLabel = xvcName;
+
   //now that we know the port, setup the log
   char daemonName[] = "xvc_server.XXXXXY"; //The 'Y' is so strlen is properly padded
   snprintf(daemonName,strlen(daemonName),"xvc_server.%u",port);
-  pidFileName+=daemonName;
-  pidFileName+=".pid";
- 
+  std::string pidFileName = PID_DIR+std::string(daemonName)+std::string(".pid");
+
   // ============================================================================
   // Deamon book-keeping
-  // Every daemon program should have one Daemon object. Daemon class functions are functions that all daemons progams have to perform. That is why we made the class.
-  xvc_serverDaemon.daemonizeThisProgram(pidFileName, runPath);
-  // ============================================================================
+  daemonInst.daemonizeThisProgram(pidFileName, RUN_DIR);
 
+
+  // ============================================================================
+  // Signal handling
+  struct sigaction sa_INT,sa_TERM,old_sa;
+  daemonInst.changeSignal(&sa_INT , &old_sa, SIGINT);
+  daemonInst.changeSignal(&sa_TERM, NULL   , SIGTERM);
+  daemonInst.SetLoop(true);
 
   //Find UIO number
   std::string parentLabel = uioLabel.substr(0,uioLabel.find('.'));
@@ -397,98 +427,110 @@ int main(int argc, char **argv) {
 
 
   opterr = 0;
-  s = socket(AF_INET, SOCK_STREAM, 0);
+  listenFD = socket(AF_INET, SOCK_STREAM, 0);
                
-  if (s < 0) {
+  if (listenFD < 0) {
     syslog(LOG_ERR,"socket: %s",strerror(errno));
     return 1;
   }
    
   i = 1;
-  setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
+  setsockopt(listenFD, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
 
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
   address.sin_family = AF_INET;
 
-  if (bind(s, (struct sockaddr*) &address, sizeof(address)) < 0) {
+  if (bind(listenFD, (struct sockaddr*) &address, sizeof(address)) < 0) {
     syslog(LOG_ERR,"bind: %s",strerror(errno));
     return 1;
   }
 
-  if (listen(s, 5) < 0) {
+  if (listen(listenFD, 5) < 0) {
     syslog(LOG_ERR,"listen: %s",strerror(errno));
     return 1;
   }
 
-  fd_set conn;
-  int maxfd = 0;
-
-  FD_ZERO(&conn);
-  FD_SET(s, &conn);
-
-  maxfd = s;
 
 
-  // ============================================================================
-  // Daemon code setup
 
-  // ====================================
-  // Signal handling
-  struct sigaction sa_INT,sa_TERM,old_sa;
-  xvc_serverDaemon.changeSignal(&sa_INT , &old_sa, SIGINT);
-  xvc_serverDaemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
-  xvc_serverDaemon.SetLoop(true);
+  //zero remote info
+  pXVC->IP =0;
+  pXVC->port = 0;
 
-  while (xvc_serverDaemon.GetLoop()) {
-    fd_set read = conn, except = conn;
-    int fd;
+  int maxFD = 0;
 
-    if (select(maxfd + 1, &read, 0, &except, 0) < 0) {
+
+  //setup the listen FDset for select
+  fd_set listenFDSet;
+  FD_ZERO(&listenFDSet);
+  FD_SET(listenFD, &listenFDSet);
+
+  //setup the connection FD set for select
+  int connectionFD = -1;
+  fd_set connectionFDSet;
+  FD_ZERO(&connectionFDSet);
+
+  //start by waiting on the listen socket
+  fd_set activeFDSet = listenFDSet;
+  maxFD = listenFD;
+  while (daemonInst.GetLoop()) {
+    fd_set read = activeFDSet, except = listenFDSet;
+
+    if (select(maxFD + 1, &read, 0, &except, 0) < 0) {
+
       syslog(LOG_ERR,"select: %s",strerror(errno));
       break;
     }
     
-    for (fd = 0; fd <= maxfd; ++fd) {
-      if (FD_ISSET(fd, &read)) {
-	if (fd == s) {
-	  int newfd;
-	  socklen_t nsize = sizeof(address);
+    //---------------------------------------------------------------------------
+    if (FD_ISSET(listenFD,&except)){
+      syslog(LOG_ERR,"Exceptional condition on listen socket\n");
+      break;
+    //---------------------------------------------------------------------------
+    } else if (FD_ISSET(listenFD, &read)) {
+      socklen_t nsize = sizeof(address);
 
-	  newfd = accept(s, (struct sockaddr*) &address, &nsize);
+      connectionFD = accept(listenFD, (struct sockaddr*) &address, &nsize);
 
-	  syslog(LOG_INFO,"connection accepted - fd %d\n", newfd);
-	  if (newfd < 0) {
-	    syslog(LOG_ERR,"accept: %s",strerror(errno));
-	  } else {
-	    syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
-	    int flag = 1;
-	    int optResult = setsockopt(newfd,
-				       IPPROTO_TCP,
-				       TCP_NODELAY,
-				       (char *)&flag,
-				       sizeof(int));
-	    if (optResult < 0)
-	      syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
-	    if (newfd > maxfd) {
-	      maxfd = newfd;
-	    }
-	    FD_SET(newfd, &conn);
-	  }
-	}
-	else if (handle_data(fd)) {
+	  
+      syslog(LOG_INFO,"connection accepted - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
+      if (connectionFD < 0) {
+	syslog(LOG_ERR,"accept: %s",strerror(errno));	
+      } else {
+	syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
+	int flag = 1;
+	int optResult = setsockopt(connectionFD,
+				   IPPROTO_TCP,
+				   TCP_NODELAY,
+				   (char *)&flag,
+				   sizeof(int));
+	if (optResult < 0)
+	  syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
+	
+	
+	pXVC->IP =address.sin_addr.s_addr;
+	pXVC->port = address.sin_port;
 
-	  syslog(LOG_INFO,"connection closed - fd %d\n", fd);
-	  close(fd);
-	  FD_CLR(fd, &conn);
-	}
+	//set the activeFDSet for read to now be the connection
+	FD_ZERO(&connectionFDSet);
+	FD_SET(connectionFD,&connectionFDSet);
+	activeFDSet = connectionFDSet;
+	maxFD = connectionFD;
       }
-      else if (FD_ISSET(fd, &except)) {
-	syslog(LOG_INFO,"connection aborted - fd %d\n", fd);
-	close(fd);
-	FD_CLR(fd, &conn);
-	if (fd == s)
-	  break;
+    //---------------------------------------------------------------------------
+    }else if((connectionFD > 0) &&
+	     (FD_ISSET(connectionFD,&read))){
+      if(handle_data(connectionFD)){
+	//error happened
+	syslog(LOG_INFO,"connection closed - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
+	pXVC->IP =0;
+	pXVC->port = 0;
+	
+	close(connectionFD);
+	activeFDSet = listenFDSet;
+	maxFD = listenFD;	
+	connectionFD = -1;
       }
     }
   }  

@@ -1,3 +1,4 @@
+
 #ifndef __DAEMON_HH__
 #define __DAEMON_HH__
 
@@ -17,9 +18,6 @@ public:
   void changeSignal(struct sigaction * newAction, struct sigaction * oldAction, int const signum);
   void SetLoop(bool b);
   bool GetLoop();
-
-
-  //bool checkNode(ApolloSM * SM, std::string const node, uint32_t const correctVal);
 
 private:
   //  void signal_handler(int const signum);

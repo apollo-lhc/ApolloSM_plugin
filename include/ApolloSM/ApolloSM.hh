@@ -22,8 +22,8 @@ public:
   //The IPBus connection and read/write functions come from the IPBusConnection class.
   //Look there for the details. 
   void GenerateStatusDisplay(size_t level,
-			     std::ostream & stream,
-			     std::string const & singleTable);
+           std::ostream & stream,
+           std::string const & singleTable);
   std::string GenerateHTMLStatus(std::string filename, size_t level, std::string);
   std::string GenerateGraphiteStatus(size_t level, std::string);
   

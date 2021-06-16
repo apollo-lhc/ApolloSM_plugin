@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     if(currentOption.compare("LINK.NAME") == 0) {
       // Found a link. Get its name, make a link object, add it to the vector.
       std::string linkName = configFilePO.options[i].value[0].c_str();
-      EyeScanLink esl(linkName, linklpm, configFilePO);
+      EyeScanLink esl(linkName, configFilePO);
       allLinks.push_back(esl);
     }
   }
@@ -165,38 +165,38 @@ int main(int argc, char** argv) {
       // start timer
       
       for(size_t i = 0; i < allLinks.size(); i++) {
-	
-	// 1. Eye scan and write to file.
-	// // enable eye scan
-	allLinks[i].enableEyeScan(SM);
-	allLinks[i].scan(SM);
+  
+  // 1. Eye scan and write to file.
+  // // enable eye scan
+  allLinks[i].enableEyeScan(SM);
+  allLinks[i].scan(SM);
 
-	// 2. Graph it with Python.
-	//std::string runPython = "python eyescan.py ";
-	//runPython.append(links[i][OUTFILE]);
-	//system(runPython.c_str());
-	// python ./root/felex/eyescan.py .txt
-	
-	allLinks[i].plot();
+  // 2. Graph it with Python.
+  //std::string runPython = "python eyescan.py ";
+  //runPython.append(links[i][OUTFILE]);
+  //system(runPython.c_str());
+  // python ./root/felex/eyescan.py .txt
+  
+  allLinks[i].plot();
 
-	// 3. Upload plot.
-//	std::string png = links[i][OUTFILE];
-//	png.pop_back();
-//	png.pop_back();
-//	png.pop_back();
-//	png.append("png");
-//	
-//	std::string copy = "cp ";
-//	copy.append(png);
-//	copy.append("/var/www/lighttpd");
-//	system(copy.c_str());
+  // 3. Upload plot.
+//  std::string png = links[i][OUTFILE];
+//  png.pop_back();
+//  png.pop_back();
+//  png.pop_back();
+//  png.append("png");
+//  
+//  std::string copy = "cp ";
+//  copy.append(png);
+//  copy.append("/var/www/lighttpd");
+//  system(copy.c_str());
       }
       // cp basenode.png /var/www/lighttpd
       
       // 4. Sleep
       syslog(LOG_INFO, "now sleeping\n");
       for(int i = 0; i < polltime_in_minutes; i++) {
-	usleep(60*1000*1000); // 1 minute
+  usleep(60*1000*1000); // 1 minute
       }
     }
   }catch(BUException::exBase const & e){

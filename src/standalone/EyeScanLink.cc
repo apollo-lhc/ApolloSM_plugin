@@ -33,11 +33,10 @@ std::map<uint32_t, double> static const precisionMap =
   };
 
 // ==================================================
-EyeScanLink::EyeScanLink(std::string linkName, std::string linklpm, boost::program_options::parsed_options PO) {
+EyeScanLink::EyeScanLink(std::string linkName, boost::program_options::parsed_options PO) {
 
   // initialize variables to defaults
   this->name        = linkName;
-  this->lpmname     = linklpm;
   this->phase       = 0.02;
   this->voltage     = 2;
   this->outfile     = linkName + ".txt";
@@ -52,30 +51,30 @@ EyeScanLink::EyeScanLink(std::string linkName, std::string linklpm, boost::progr
     std::string nextOption = PO.options[i].string_key;
 
     if(0 == nextOption.compare(linkName + ".PHASE"))            // ex: C2C1_PHY.PHASE
-      {							        
-	// found value for phase			        
-	this->phase = atof(PO.options[i].value[0].c_str());		        
-      }							        
+      {                     
+  // found value for phase              
+  this->phase = atof(PO.options[i].value[0].c_str());           
+      }                     
     else if(0 == nextOption.compare(linkName + ".VOLTAGE"))     // ex: C2C1_PHY.VOLTAGE
-      {							        
-	// found value for voltage			        
-	this->voltage = atoi(PO.options[i].value[0].c_str());		        
-      }							        
+      {                     
+  // found value for voltage              
+  this->voltage = atoi(PO.options[i].value[0].c_str());           
+      }                     
     else if(0 == nextOption.compare(linkName + ".OUTFILE"))     // ex: C2C1_PHY.OUTFILE
       {
-	// found data file name
-	this->outfile = PO.options[i].value[0].c_str();
+  // found data file name
+  this->outfile = PO.options[i].value[0].c_str();
       } // the python code currently dictates the name of the png so I won't attempt to get it from the config file. This can be changed 
     else if(0 == nextOption.compare(linkName + ".MAXPRESCALE")) // ex: C2C1_PHY.PRESCALE
       {
-	// found max prescale 
-	// use strtoul
-	this->maxPrescale = atoi(PO.options[i].value[0].c_str());
-	// Don't go pass the max allowed prescale
-	if(this->maxPrescale > MAXALLOWEDPRESCALE) {
-	  syslog(LOG_INFO, "Specified max prescale is greater than 31, the max allowed prescale. Using 31\n");
-	  this->maxPrescale = MAXALLOWEDPRESCALE;
-	}
+  // found max prescale 
+  // use strtoul
+  this->maxPrescale = atoi(PO.options[i].value[0].c_str());
+  // Don't go pass the max allowed prescale
+  if(this->maxPrescale > MAXALLOWEDPRESCALE) {
+    syslog(LOG_INFO, "Specified max prescale is greater than 31, the max allowed prescale. Using 31\n");
+    this->maxPrescale = MAXALLOWEDPRESCALE;
+  }
       }
   }
 }
@@ -109,7 +108,7 @@ void EyeScanLink::scan(ApolloSM * SM) {
   // empty the vector
   (this->esCoords).clear();
   // perform scan  
-  this->esCoords = SM->EyeScan(this->name, this->lpmname, this->phase, this->voltage, this->maxPrescale);
+  this->esCoords = SM->EyeScan(this->name, this->phase, this->voltage, this->maxPrescale);
   
 }
 

@@ -9,7 +9,7 @@
 #include <fstream>
 #include <boost/program_options.hpp>
 #include <standalone/daemon.hh>
-#include <standalone/parseOptions.hh>
+#include <standalone/optionParsing.hh>
 
 // ====================================================================================================
 // Define all your defaults here

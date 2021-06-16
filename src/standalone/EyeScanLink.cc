@@ -37,7 +37,7 @@ EyeScanLink::EyeScanLink(std::string linkName, std::string linklpm, boost::progr
 
   // initialize variables to defaults
   this->name        = linkName;
-  this->lpmname     = linklpm
+  this->lpmname     = linklpm;
   this->phase       = 0.02;
   this->voltage     = 2;
   this->outfile     = linkName + ".txt";

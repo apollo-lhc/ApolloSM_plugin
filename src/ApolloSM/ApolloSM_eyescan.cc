@@ -594,7 +594,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
       esCoords[coordsIndex].phase = phase;
       //      printf("%d %d\n", voltage, phaseInt);      
       printf("Start scan\n");
-      esCoords[coordsIndex].BER = SingleEyeScan(baseNode,lpmNode, maxPrescale);
+      esCoords[coordsIndex].BER = SingleEyeScan(baseNode,/*lpmNode,*/ maxPrescale);
       printf("Scan done\n");
       // Vert sign mask is 0x80 so we need to shift right by 7
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 

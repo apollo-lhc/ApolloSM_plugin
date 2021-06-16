@@ -517,7 +517,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
 #define MAXUI 0.5
 #define MINUI -0.5
  
-std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string lpmNode, double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
+std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string lpmNode,*/ double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
   
 //  if(1/horzIncrement != 0) {
 //    throwException("Please enter a horizontal increment divisible into 1\n");

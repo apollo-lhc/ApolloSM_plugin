@@ -303,7 +303,7 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 //#define MAX_PRESCALE 3
 
 // Performs a single eye scan and returns the BER
-float ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmNode, uint32_t const maxPrescale) {
+float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lpmNode,*/ uint32_t const maxPrescale) {
   //------------------------------------------
   //printf("SES start\n");
   //FILE * pFile;
@@ -323,8 +323,10 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmN
   uint32_t const dfe = 0;
   uint32_t const lpm = 1;
 
-  //uint32_t const rxlpmen = RegReadRegister("CM.CM_1.C2C.RX.LPM_EN");
-  uint32_t const rxlpmen = RegReadRegister(lpmNode);
+  uint32_t const rxlpmen = RegReadRegister("CM.CM_1.C2C.RX.LPM_EN");
+  //uint32_t const rxlpmen = RegReadRegister(lpmNode);
+  
+
   //RegReadRegister(0x1900003B);
   //  uint32_t const rxlpmenmasked = RegReadRegister(0x1900003B) & 0x00000100; 
 

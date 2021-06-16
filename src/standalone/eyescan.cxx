@@ -9,7 +9,7 @@
 #include <fstream>
 #include <boost/program_options.hpp>
 #include <standalone/daemon.hh>
-#include <standalone/optionParsing.hh>
+#include <standalone/parseOptions.hh>
 
 // ====================================================================================================
 // Define all your defaults here
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     if(currentOption.compare("LINK.NAME") == 0) {
       // Found a link. Get its name, make a link object, add it to the vector.
       std::string linkName = configFilePO.options[i].value[0].c_str();
-      EyeScanLink esl(linkName, configFilePO);
+      EyeScanLink esl(linkName, linklpm, configFilePO);
       allLinks.push_back(esl);
     }
   }

@@ -512,7 +512,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
     }
   }
   printf("Sample count is %.6f \n", sampleCount);
-  printf("Prescale is %d\n", prescale)
+  printf("Prescale is %d\n", prescale);
   return BER + firstBER;
 }
 

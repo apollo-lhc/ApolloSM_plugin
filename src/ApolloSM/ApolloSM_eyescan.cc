@@ -511,7 +511,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
       }
     }
   }
-  printf("Sample count is %.6f \n", sampleCount)
+  printf("Sample count is %.6f \n", sampleCount);
   return BER + firstBER;
 }
 
@@ -619,7 +619,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
   }
   //clock end
   duration = (std::clock()-start)/(double) CLOCKS_PER_SEC;
-  printf("Time for scan = %f\n", duration)
+  printf("Time for scan = %f\n", duration);
 
 
 //  // reset FPGA_ID

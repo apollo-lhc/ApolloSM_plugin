@@ -6,9 +6,7 @@
 //#include <math.h> // pow
 #include <map>
 #include <syslog.h>
-#include <iostream>
-#include <cstdio>
-#include <ctime>
+#include <time.h>
 
 // ================================================================================
 // Definitions
@@ -526,7 +524,8 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
  
 std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string lpmNode,*/ double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
   //clock for timing
-  std::clock_t startTime = clock();
+  time_t start, end; // used to time execution
+  time(&start);      // recording start time
   
   
 
@@ -621,14 +620,12 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
     }
   }
   //clock end
-  std::clock_t endTime = clock();
-  std::clock_t clockTicksTaken = endTime - startTime;
-  
-  double timeInSeconds = clockTicksTaken / (double) CLOCKS_PER_SEC;
-  std::cout<<"time in sec"<<std::endl;
-  std::cout<<timeInSeconds<<std::endl;
-  printf("ticks %ld\n", clockTicksTaken);
-  printf("ticks per sec %ld\n", CLOCKS_PER_SEC);
+    // Recording end time.
+    time(&end);                                                                                 //end simulation time 
+
+    // Calculating total time taken by the program.
+    double time_taken = double(end - start);
+    printf("Time taken by program is %.6f seconds.\n",time_taken);
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();

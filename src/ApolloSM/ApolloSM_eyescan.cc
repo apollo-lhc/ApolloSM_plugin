@@ -527,7 +527,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
 std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string lpmNode,*/ double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
   //clock for timing
   std::clock_t startTime = clock();
-  double duration;
+  
   
 
 //  if(1/horzIncrement != 0) {

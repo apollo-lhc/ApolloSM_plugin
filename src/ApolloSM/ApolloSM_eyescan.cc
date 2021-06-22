@@ -523,10 +523,9 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
  
 std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string lpmNode,*/ double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
   //clock for timing
-  std::clock_t start;
+  std::clock_t startTime = clock();
   double duration;
-  start = std:: clock();
-
+  
 
 //  if(1/horzIncrement != 0) {
 //    throwException("Please enter a horizontal increment divisible into 1\n");
@@ -619,9 +618,14 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
     }
   }
   //clock end
-  duration = (std::clock()-start)/(double) CLOCKS_PER_SEC;
-  //printf("Time for scan = %f\n", duration);
-  std::cout<<"printf: "<< duration <<'\n';
+  std::clock_t endTime = clock();
+  std::clock_t clockTicksTaken = endTime - startTime;
+  
+  double timeInSeconds = clockTicksTaken / (double) CLOCKS_PER_SEC;
+  std::cout<<"time in sec"<<endl;
+  std::cout<<timeInSeconds<<endl;
+  printf("ticks %d\n", clockTicksTaken);
+  printf("ticks per sec %f\n", CLOCKS_PER_SEC);
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();

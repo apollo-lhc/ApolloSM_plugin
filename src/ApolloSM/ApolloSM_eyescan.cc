@@ -515,7 +515,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
   printf("Prescale is %d\n", prescale);
   printf("regDataWidth is %d\n", regDataWidth);
   printf("regDataWidthInt is %d\n", regDataWidthInt);
-  rintf("actualDataWidth is %d\n", actualDataWidth);
+  printf("actualDataWidth is %d\n", actualDataWidth);
   return BER + firstBER;
 }
 

@@ -6,6 +6,9 @@
 //#include <math.h> // pow
 #include <map>
 #include <syslog.h>
+#include <iostream>
+#include <cstdio>
+#include <ctime>
 
 // ================================================================================
 // Definitions
@@ -25,7 +28,7 @@
 #define RX_INT_DATAWIDTH_GTX 0x1 // We use 32 bit
 
 #define RX_DATA_WIDTH_GTH 0x4 // We use 64 bit
-#define RX_INT_DATAWIDTH_GTH 0x0 // We use 32 bit
+#define RX_INT_DATAWIDTH_GTH 0x0 // We use 16 bit
 
 #define RX_DATA_WIDTH_GTY 0x6 // We use 32 bit
 #define RX_INT_DATAWIDTH_GTY 0x1 // We use 32 bit
@@ -508,7 +511,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
       }
     }
   }
-
+  printf("Sample count is %.6f \n", sampleCount)
   return BER + firstBER;
 }
 
@@ -518,7 +521,12 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
 #define MINUI -0.5
  
 std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string lpmNode,*/ double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
-  
+  //clock for timing
+  std::clock_t start;
+  double duration;
+  start = std:: clock();
+
+
 //  if(1/horzIncrement != 0) {
 //    throwException("Please enter a horizontal increment divisible into 1\n");
 //  }
@@ -592,10 +600,11 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
       // record voltage and phase coordinates
       esCoords[coordsIndex].voltage = voltage; 
       esCoords[coordsIndex].phase = phase;
-      //      printf("%d %d\n", voltage, phaseInt);      
-      printf("Start scan\n");
+      //      printf("%d %d\n", voltage, phaseInt);
+
+      printf("Start pixel scan\n");
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode,/*lpmNode,*/ maxPrescale);
-      printf("Scan done\n");
+      printf("Pixel scan done\n");
       // Vert sign mask is 0x80 so we need to shift right by 7
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
       esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
@@ -608,6 +617,10 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
       resizeCount++;
     }
   }
+  //clock end
+  duration = (std::clock()-start)/(double) CLOCKS_PER_SEC;
+  printf("Time for scan = %f\n", duration)
+
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();

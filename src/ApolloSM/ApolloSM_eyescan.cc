@@ -625,8 +625,8 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
   std::clock_t clockTicksTaken = endTime - startTime;
   
   double timeInSeconds = clockTicksTaken / (double) CLOCKS_PER_SEC;
-  std::cout<<"time in sec"<<endl;
-  std::cout<<timeInSeconds<<endl;
+  std::cout<<"time in sec"<<std::endl;
+  std::cout<<timeInSeconds<<std::endl;
   printf("ticks %ld\n", clockTicksTaken);
   printf("ticks per sec %ld\n", CLOCKS_PER_SEC);
 

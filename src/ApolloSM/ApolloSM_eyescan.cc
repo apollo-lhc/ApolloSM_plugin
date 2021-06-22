@@ -513,6 +513,9 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
   }
   printf("Sample count is %.6f \n", sampleCount);
   printf("Prescale is %d\n", prescale);
+  printf("regDataWidth is %d\n", regDataWidth);
+  printf("regDataWidthInt is %d\n", regDataWidthInt);
+  rintf("actualDataWidth is %d\n", actualDataWidth);
   return BER + firstBER;
 }
 
@@ -624,8 +627,8 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
   double timeInSeconds = clockTicksTaken / (double) CLOCKS_PER_SEC;
   std::cout<<"time in sec"<<endl;
   std::cout<<timeInSeconds<<endl;
-  printf("ticks %d\n", clockTicksTaken);
-  printf("ticks per sec %f\n", CLOCKS_PER_SEC);
+  printf("ticks %ld\n", clockTicksTaken);
+  printf("ticks per sec %ld\n", CLOCKS_PER_SEC);
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();

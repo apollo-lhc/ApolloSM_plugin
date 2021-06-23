@@ -1,3 +1,4 @@
+
 #ifndef __EXCEPTIONHANDLER_HPP__
 #define __EXCEPTIONHANDLER_HPP__
 
@@ -7,6 +8,7 @@ namespace BUException {
   ExceptionClassGenerator(IO_ERROR, "Read/write error,\n");
   ExceptionClassGenerator(FILE_ERROR, "File error.\n")
   ExceptionClassGenerator(JTAG_ERROR, "JTAG error.\n");
+  ExceptionClassGenerator(EYESCAN_ERROR, "Eyescan error.\n");
 }
 
 #endif

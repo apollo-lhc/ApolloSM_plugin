@@ -18,4 +18,3 @@ CM::~CM() {
 // std::string powerGood;
 // bool powerUp;
 
-

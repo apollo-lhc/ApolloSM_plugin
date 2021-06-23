@@ -304,7 +304,7 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 //#define MAX_PRESCALE 3
 
 // Performs a single eye scan and returns the BER
-float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lpmNode,*/ uint32_t const maxPrescale) {
+float ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmNode, uint32_t const maxPrescale) {
   //------------------------------------------
   //printf("SES start\n");
   //FILE * pFile;
@@ -324,8 +324,8 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
   uint32_t const dfe = 0;
   uint32_t const lpm = 1;
 
-  uint32_t const rxlpmen = RegReadRegister("CM.CM_1.C2C.RX.LPM_EN");
-  //uint32_t const rxlpmen = RegReadRegister(lpmNode);
+  //uint32_t const rxlpmen = RegReadRegister("CM.CM_1.C2C.RX.LPM_EN");
+  uint32_t const rxlpmen = RegReadRegister(lpmNode);
   
 
   //RegReadRegister(0x1900003B);
@@ -522,7 +522,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, /*std::string const lp
 #define MAXUI 0.5
 #define MINUI -0.5
  
-std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string lpmNode,*/ double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
+std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string lpmNode, double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
   //clock for timing
   time_t start, end; // used to time execution
   time(&start);      // recording start time
@@ -605,7 +605,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, /*std::string
       //      printf("%d %d\n", voltage, phaseInt);
 
       printf("Start pixel scan\n");
-      esCoords[coordsIndex].BER = SingleEyeScan(baseNode,/*lpmNode,*/ maxPrescale);
+      esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
       printf("Pixel scan done\n");
       // Vert sign mask is 0x80 so we need to shift right by 7
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 

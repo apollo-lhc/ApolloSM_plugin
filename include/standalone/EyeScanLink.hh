@@ -9,7 +9,7 @@
 
 class EyeScanLink {
 public:
-  EyeScanLink(std::string linkName, boost::program_options::parsed_options PO);
+  EyeScanLink(std::string linkName, std::string lpmName, boost::program_options::parsed_options PO);
   ~EyeScanLink();
   
   void printInfo();
@@ -20,6 +20,7 @@ public:
     
 private:
   std::string name;
+  std::string lpmnode;
   double      phase;
   int         voltage;
   std::string outfile;

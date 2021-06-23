@@ -33,10 +33,11 @@ std::map<uint32_t, double> static const precisionMap =
   };
 
 // ==================================================
-EyeScanLink::EyeScanLink(std::string linkName, boost::program_options::parsed_options PO) {
+EyeScanLink::EyeScanLink(std::string linkName, std::lpmName, boost::program_options::parsed_options PO) {
 
   // initialize variables to defaults
   this->name        = linkName;
+  this->lpmnode     = lpmName;
   this->phase       = 0.02;
   this->voltage     = 2;
   this->outfile     = linkName + ".txt";
@@ -108,7 +109,7 @@ void EyeScanLink::scan(ApolloSM * SM) {
   // empty the vector
   (this->esCoords).clear();
   // perform scan  
-  this->esCoords = SM->EyeScan(this->name, this->phase, this->voltage, this->maxPrescale);
+  this->esCoords = SM->EyeScan(this->name, this->lpmnode, this->phase, this->voltage, this->maxPrescale);
   
 }
 

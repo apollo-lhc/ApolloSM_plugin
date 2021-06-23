@@ -25,11 +25,11 @@
 #define RX_DATA_WIDTH_GTX 0x4 // zynq
 #define RX_INT_DATAWIDTH_GTX 0x1 // We use 32 bit
 
-#define RX_DATA_WIDTH_GTH 0x4 // We use 64 bit
-#define RX_INT_DATAWIDTH_GTH 0x0 // We use 16 bit
+#define RX_DATA_WIDTH_GTH 0x4 // kintex
+#define RX_INT_DATAWIDTH_GTH 0x0 //16 bit
 
-#define RX_DATA_WIDTH_GTY 0x6 // We use 32 bit
-#define RX_INT_DATAWIDTH_GTY 0x1 // We use 32 bit
+#define RX_DATA_WIDTH_GTY 0x6 // virtex
+#define RX_INT_DATAWIDTH_GTY 0x1 //32 bit
 
 #define SEVEN_FPGA 1
 #define SEVEN_BUS_SIZE 3

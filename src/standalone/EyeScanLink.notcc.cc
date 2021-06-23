@@ -33,7 +33,7 @@ std::map<uint32_t, double> static const precisionMap =
   };
 
 // ==================================================
-EyeScanLink::EyeScanLink(std::string linkName, std::lpmName, boost::program_options::parsed_options PO) {
+EyeScanLink::EyeScanLink(std::string linkName, std::string lpmName, boost::program_options::parsed_options PO) {
 
   // initialize variables to defaults
   this->name        = linkName;

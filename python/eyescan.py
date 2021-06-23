@@ -51,7 +51,7 @@ z_min, z_max = abs(Z).min(), abs(Z).max()
 # print(Z)
 # print(z_min)
 # print(z_max)
- print("meshgrid and reshape done")
+print("meshgrid and reshape done")
 
 #########################
 # plotting

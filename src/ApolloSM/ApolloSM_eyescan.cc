@@ -515,6 +515,7 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmN
   printf("regDataWidthInt is %d\n", regDataWidthInt);
   printf("actualDataWidth is %d\n", actualDataWidth);
   return BER + firstBER;
+
 }
 
 // ==================================================
@@ -606,7 +607,10 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       //Get BER for this point
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
       //sample count and error count for this point
-      esCoords[coordsIndex].sample = RegReadRegister(baseNode + "SAMPLE_COUNT");
+      sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
+      prescale = RegReadRegister(baseNode + "PRESCALE");
+      int es_sample_count=((1 << (1+prescale))*sampleCount*(float)actualDataWidth)
+      esCoords[coordsIndex].sample = es_sample_count;
       esCoords[coordsIndex].error = RegReadRegister(baseNode + "ERROR_COUNT");
       // Vert sign mask is 0x80 so we need to shift right by 7
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 

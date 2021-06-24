@@ -610,11 +610,11 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       //Get BER for this point
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
       //sample count and error count for this point
-      uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
-      int const regDataWidthInt = (int)regDataWidth;
-      int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
-      int sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
-      int prescale = RegReadRegister(baseNode + "PRESCALE");
+      // uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
+      // int const regDataWidthInt = (int)regDataWidth;
+      // int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+      // int sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
+      // int prescale = RegReadRegister(baseNode + "PRESCALE");
       //int es_sample_count=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       //esCoords[coordsIndex].sample = es_sample_count;
       //esCoords[coordsIndex].error = RegReadRegister(baseNode + "ERROR_COUNT");

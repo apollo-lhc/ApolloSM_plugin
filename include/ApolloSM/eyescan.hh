@@ -7,10 +7,15 @@ struct eyescanCoords {
   int voltage;
   double phase;
   double BER;
-  int sample;
-  int error;
+  //int sample;
+  //int error;
   uint8_t voltageReg;
   uint16_t phaseReg;
+};
+struct SESout{ //single eyescan output
+	double BER;
+	int sample;
+	int error;
 };
 
 #endif

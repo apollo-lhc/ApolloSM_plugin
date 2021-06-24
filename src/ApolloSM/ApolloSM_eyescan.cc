@@ -306,8 +306,6 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 // Performs a single eye scan and returns the BER
 float ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmNode, uint32_t const maxPrescale) {
 
-  
-
 
   float BER;
   float errorCount;
@@ -486,6 +484,10 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmN
       // calculate BER
       //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
       BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+      if (errorCount==0) //if scan found no errors default to BER floor
+    {
+      errorCount=1;
+    }
       
       // If BER is lower than precision we need to check with a higher prescale to ensure that
       // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
@@ -614,8 +616,8 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       int sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
       int prescale = RegReadRegister(baseNode + "PRESCALE");
       int es_sample_count=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-      esCoords[coordsIndex].sample = es_sample_count;
-      esCoords[coordsIndex].error = RegReadRegister(baseNode + "ERROR_COUNT");
+      //esCoords[coordsIndex].sample = es_sample_count;
+      //esCoords[coordsIndex].error = RegReadRegister(baseNode + "ERROR_COUNT");
       // Vert sign mask is 0x80 so we need to shift right by 7
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
       esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;

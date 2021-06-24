@@ -603,10 +603,11 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       esCoords[coordsIndex].voltage = voltage; 
       esCoords[coordsIndex].phase = phase;
       //      printf("%d %d\n", voltage, phaseInt);
-
-      printf("Start pixel scan\n");
+      //Get BER for this point
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
-      printf("Pixel scan done\n");
+      //sample count and error count for this point
+      esCoords[coordsIndex].sample = RegReadRegister(baseNode + "SAMPLE_COUNT");
+      esCoords[coordsIndex].error = RegReadRegister(baseNode + "ERROR_COUNT");
       // Vert sign mask is 0x80 so we need to shift right by 7
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
       esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;

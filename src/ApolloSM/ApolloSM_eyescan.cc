@@ -615,7 +615,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
       int sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
       int prescale = RegReadRegister(baseNode + "PRESCALE");
-      int es_sample_count=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+      //int es_sample_count=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       //esCoords[coordsIndex].sample = es_sample_count;
       //esCoords[coordsIndex].error = RegReadRegister(baseNode + "ERROR_COUNT");
       // Vert sign mask is 0x80 so we need to shift right by 7

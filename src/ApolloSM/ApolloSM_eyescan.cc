@@ -304,14 +304,11 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 //#define MAX_PRESCALE 3
 
 // Performs a single eye scan and returns the BER
-float ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmNode, uint32_t const maxPrescale) {
-  //------------------------------------------
-  //printf("SES start\n");
-  //FILE * pFile;
-  //pFile = fopen ("debug.txt","w");
-  //fprintf(pFile,"SES start");
-  //fclose(pFile);
-  //----------------------
+std::vector<SESout> ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmNode, uint32_t const maxPrescale) {
+
+  std::vector<SESout> singleScanOutput;
+
+
   float BER;
   float errorCount;
   float sampleCount;
@@ -390,6 +387,10 @@ float ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmN
     RegWriteRegister(baseNode + "RUN", STOP_RUN);
         
     // calculate BER
+    if (errorCount==0) //if scan found no errors default to BER floor
+    {
+      errorCount=1;
+    }
     //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
     

@@ -638,7 +638,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
     // Calculating total time taken by the program.
     double time_taken = double(end - start);
     printf("Time taken by program is %f seconds.\n",time_taken);
-    printf("Min BER is %.9f\n.", min_BER)
+    printf("Min BER is %.9f\n.", min_BER);
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();

@@ -588,7 +588,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   for(int i = 0; i < (int)esCoords.size(); i++) {
     fprintf(dataFile, "%.9f ", esCoords[i].phase);
     fprintf(dataFile, "%d ", esCoords[i].voltage);
-    fprintf(dataFile, "%f ", esCoords[i].BER);
+    fprintf(dataFile, "%.9f ", esCoords[i].BER);
     //fprintf(dataFile, "%d ", esCoords[i].sample);
     //fprintf(dataFile, "%d ", esCoords[i].error);
     fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);

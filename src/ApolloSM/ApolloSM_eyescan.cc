@@ -392,11 +392,11 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
     float actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-    printf("___________________________________");
+    printf("___________________________________\n");
     printf("ERROR COUNT0 = %f.\n",errorCount);
     printf("SAMPLE COUNT0 = %f.\n",actualsample0);
-    printf("BER0 = %f.\n",BER);
-    printf("..................");
+    printf("BER0 = %9f.\n",BER);
+    printf("..................\n");
     
     // If BER is lower than precision we need to check with a higher prescale to ensure that
     // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf

@@ -395,7 +395,7 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     printf("___________________________________\n");
     printf("ERROR COUNT0 = %f.\n",errorCount);
     printf("SAMPLE COUNT0 = %f.\n",actualsample0);
-    printf("BER0 = %9f.\n",BER);
+    printf("BER0 = %.9f.\n",BER);
     printf("..................\n");
     
     // If BER is lower than precision we need to check with a higher prescale to ensure that
@@ -497,7 +497,7 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       float actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       printf("ERROR COUNT1 = %f.\n",errorCount);
       printf("SAMPLE COUNT1 = %f,\n",actualsample1);
-      printf("BER1 = %f.\n",BER);
+      printf("BER1 = %.9f.\n",BER);
     
       
       
@@ -650,7 +650,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
     // Calculating total time taken by the program.
     double time_taken = double(end - start);
     printf("Time taken by program is %f seconds.\n",time_taken);
-    printf("Min BER is %.10f\n.", min_BER);
+    printf("Min BER is %.9f\n.", min_BER);
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();

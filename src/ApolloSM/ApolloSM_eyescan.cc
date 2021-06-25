@@ -514,9 +514,6 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   }
   printf("Sample count is %.6f \n", sampleCount);
   printf("Prescale is %d\n", prescale);
-  printf("regDataWidth is %d\n", regDataWidth);
-  printf("regDataWidthInt is %d\n", regDataWidthInt);
-  printf("actualDataWidth is %d\n", actualDataWidth);
   return BER + firstBER;
 
 }
@@ -568,7 +565,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
   double phaseMultiplier = maxPhase/MAXUI;
 
   // =========================
-
+  double min_BER=100.;
   // Set offsets and perform eyescan
   for(int voltage = minVoltage; voltage <= maxVoltage; voltage+=vertIncrement) {
 
@@ -609,6 +606,10 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       //      printf("%d %d\n", voltage, phaseInt);
       //Get BER for this point
       esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
+      if (esCoords[coordsIndex].BER<min_BER)
+      {
+        min_BER=esCoords[coordsIndex].BER;
+      }
       //sample count and error count for this point
       // uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
       // int const regDataWidthInt = (int)regDataWidth;
@@ -637,6 +638,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
     // Calculating total time taken by the program.
     double time_taken = double(end - start);
     printf("Time taken by program is %f seconds.\n",time_taken);
+    printf("Min BER is %.9f\n.", min_BER)
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();

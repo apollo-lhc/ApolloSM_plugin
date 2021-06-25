@@ -391,6 +391,12 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     }
     //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+    float actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+    printf("___________________________________")
+    printf("ERROR COUNT0 = %f.\n",errorCount);
+    printf("SAMPLE COUNT0 = %f.\n",actualsample0);
+    printf("BER0 = %f.\n",BER)
+    printf("..................")
     
     // If BER is lower than precision we need to check with a higher prescale to ensure that
     // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
@@ -483,11 +489,17 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       
       // calculate BER
       //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
-      BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       if (errorCount==0) //if scan found no errors default to BER floor
-    {
-      errorCount=1;
-    }
+      {
+        errorCount=1;
+      } 
+      BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+      float actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+      printf("ERROR COUNT1 = %f.\n",errorCount);
+      printf("SAMPLE COUNT1 = %f,\n",actualsample1);
+      printf("BER1 = %f.\n",BER)
+    
+      
       
       // If BER is lower than precision we need to check with a higher prescale to ensure that
       // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
@@ -638,7 +650,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
     // Calculating total time taken by the program.
     double time_taken = double(end - start);
     printf("Time taken by program is %f seconds.\n",time_taken);
-    printf("Min BER is %.9f\n.", min_BER);
+    printf("Min BER is %.10f\n.", min_BER);
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();

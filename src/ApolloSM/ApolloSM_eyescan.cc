@@ -385,10 +385,10 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     RegWriteRegister(baseNode + "RUN", STOP_RUN);
         
     // calculate BER
-    if (errorCount==0) //if scan found no errors default to BER floor
-    {
-      errorCount=1;
-    }
+    // if (errorCount==0) //if scan found no errors default to BER floor
+    // {
+    //   errorCount=1;
+    // }
     //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
     float actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
@@ -403,7 +403,7 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     if((BER < PRECISION) && (prescale != maxPrescale)) {
       prescale+=PRESCALE_STEP;
       if(prescale > maxPrescale) {
-	prescale = maxPrescale;
+	    prescale = maxPrescale;
 	//	printf("max prescale %d reached\n", maxPrescale);
       }
       assertNode(baseNode + "PRESCALE", prescale);
@@ -489,10 +489,10 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       
       // calculate BER
       //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
-      if (errorCount==0) //if scan found no errors default to BER floor
-      {
-        errorCount=1;
-      } 
+      // if (errorCount==0) //if scan found no errors default to BER floor
+      // {
+      //   errorCount=1;
+      // } 
       BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       float actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       printf("ERROR COUNT1 = %f.\n",errorCount);
@@ -504,23 +504,23 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       // If BER is lower than precision we need to check with a higher prescale to ensure that
       // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
       if((BER < PRECISION) && (prescale != maxPrescale)) {
-	prescale+=PRESCALE_STEP;
-	if(prescale > maxPrescale) {
-	  prescale = maxPrescale;
-	  //	printf("max prescale %d reached\n", maxPrescale);
-	}
-	assertNode(baseNode + "PRESCALE", prescale);
-	// useless but just to be paranoid
-	loop = true;
-      } else {
-	//      printf("Stopping single scan because: ");
-	//      if(!(BER < PRECISION)) {
-	//	printf("NOT BER < PRECISION\n");
-	//      }
-	//      if(!(prescale != maxPrescale)) {
-	//	printf("NOT prescale != maxPrescale\n");
-	//      }
-	loop = false;
+	     prescale+=PRESCALE_STEP;
+        	if(prescale > maxPrescale) {
+        	  prescale = maxPrescale;
+        	  //	printf("max prescale %d reached\n", maxPrescale);
+        	}
+        	assertNode(baseNode + "PRESCALE", prescale);
+        	// useless but just to be paranoid
+        	loop = true;
+              } else {
+        	//      printf("Stopping single scan because: ");
+        	//      if(!(BER < PRECISION)) {
+        	//	printf("NOT BER < PRECISION\n");
+        	//      }
+        	//      if(!(prescale != maxPrescale)) {
+        	//	printf("NOT prescale != maxPrescale\n");
+        	//      }
+        	loop = false;
       }
     }
   }

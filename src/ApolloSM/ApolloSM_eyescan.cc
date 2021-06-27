@@ -410,6 +410,16 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       // useless but just to be paranoid
       loop = true;
     } else {
+      if (errorCount==0) //if scan found no errors default to BER floor
+      {
+        errorCount=1;
+        BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+        
+      }
+        float actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+        printf("FINAL ERROR COUNT0 = %f.\n",errorCount);
+        printf("FINAL SAMPLE COUNT0 = %f.\n",actualsample0);
+        printf("FINAL BER0 = %.9f.\n",BER);
 //      printf("Stopping single scan because: ");
 //      if(!(BER < PRECISION)) {
 //	printf("NOT BER < PRECISION\n");
@@ -513,6 +523,16 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
         	// useless but just to be paranoid
         	loop = true;
               } else {
+                if (errorCount==0) //if scan found no errors default to BER floor
+                {
+                  errorCount=1;
+                  BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+                  
+                }
+                float actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+                printf("FINAL ERROR COUNT0 = %f.\n",errorCount);
+                printf("FINAL SAMPLE COUNT0 = %f.\n",actualsample0);
+                printf("FINAL BER0 = %.9f.\n",BER);
         	//      printf("Stopping single scan because: ");
         	//      if(!(BER < PRECISION)) {
         	//	printf("NOT BER < PRECISION\n");

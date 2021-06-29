@@ -304,12 +304,16 @@ void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint
 //#define MAX_PRESCALE 3
 
 // Performs a single eye scan and returns the BER
-double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmNode, uint32_t const maxPrescale) {
+SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmNode, uint32_t const maxPrescale) {
 
-
+  SESout singleScanOut;
   double BER;
   float errorCount;
   float sampleCount;
+  float errorCount0;
+  float errorCount1
+  float actualsample0;
+  float actualsample1;
   uint32_t prescale = 0;
   uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
@@ -416,7 +420,8 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
         BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
         
       }
-        float actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+        actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+        errorCount0=errorCount;
         printf("FINAL ERROR COUNT0 = %f.\n",errorCount);
         printf("FINAL SAMPLE COUNT0 = %f.\n",actualsample0);
         printf("FINAL BER0 = %.9f.\n",BER);
@@ -504,7 +509,7 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       //   errorCount=1;
       // } 
       BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-      float actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+      actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       printf("ERROR COUNT1 = %f.\n",errorCount);
       printf("SAMPLE COUNT1 = %f,\n",actualsample1);
       printf("BER1 = %.9f.\n",BER);
@@ -529,9 +534,10 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
                   BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
                   
                 }
-                float actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-                printf("FINAL ERROR COUNT0 = %f.\n",errorCount);
-                printf("FINAL SAMPLE COUNT0 = %f.\n",actualsample0);
+                actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+                errorCount1=errorCount;
+                printf("FINAL ERROR COUNT1 = %f.\n",errorCount);
+                printf("FINAL SAMPLE COUNT1 = %f.\n",actualsample1);
                 printf("FINAL BER0 = %.9f.\n",BER);
         	//      printf("Stopping single scan because: ");
         	//      if(!(BER < PRECISION)) {
@@ -546,7 +552,12 @@ double ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   }
   printf("Sample count is %.6f \n", sampleCount);
   printf("Prescale is %d\n", prescale);
-  return BER + firstBER;
+  singleScanOut.BER=BER+firstBER;
+  singleScanOut.sample0=(int)actualsample0;
+  singleScanOut.error0=(int)errorCount0;
+  singleScanOut.sample0=(int)actualsample1;
+  singleScanOut.error0=(int)errorCount1;
+  return singleScanOut;
 
 }
 
@@ -637,7 +648,12 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       esCoords[coordsIndex].phase = phase;
       //      printf("%d %d\n", voltage, phaseInt);
       //Get BER for this point
-      esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
+      //esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
+      SESout singleScanOut=SingleEyeScan(baseNode, lpmNode, maxPrescale);
+      esCoords[coordsIndex].error0=singleScanOut.error0;
+      esCoords[coordsIndex].sample0=singleScanOut.sample0;
+      esCoords[coordsIndex].error1=singleScanOut.error1;
+      esCoords[coordsIndex].sample1=singleScanOut.sample1;
       if (esCoords[coordsIndex].BER<min_BER)
       {
         min_BER=esCoords[coordsIndex].BER;

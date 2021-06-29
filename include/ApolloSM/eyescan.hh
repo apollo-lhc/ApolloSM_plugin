@@ -7,15 +7,19 @@ struct eyescanCoords {
   int voltage;
   double phase;
   double BER;
-  //int sample;
-  //int error;
+  unsigned long long int sample0;
+  unsigned long long int error0;
+  unsigned long long int sample1;
+  unsigned long long int error1;
   uint8_t voltageReg;
   uint16_t phaseReg;
 };
 struct SESout{ //single eyescan output
 	double BER;
-	int sample;
-	int error;
+	unsigned long long int sample0;
+	unsigned long long int error0;
+	unsigned long long int sample1;
+	unsigned long long int error1;
 };
 
 #endif

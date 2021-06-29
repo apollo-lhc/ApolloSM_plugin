@@ -30,14 +30,14 @@ z=data[:,2]
 print("parsing file done")
 
 #print(z)
-count=65535*2**(prescale+1)*bus_width
-precision=math.log(.005)/(-count)
-# For the zeros. Anything zero is registered as the lowest BER we currently support
-print(count)
-print(precision)
-for i in range(len(z)):
-   if(z[i] < precision):
-       z[i] = precision
+# count=65535*2**(prescale+1)*bus_width
+# precision=math.log(.005)/(-count)
+# # For the zeros. Anything zero is registered as the lowest BER we currently support
+# print(count)
+# print(precision)
+# for i in range(len(z)):
+#    if(z[i] < precision):
+#        z[i] = precision
 
 # get rid of copies (ie I don't want -127 V 20 differnet times)
 x=np.unique(x)

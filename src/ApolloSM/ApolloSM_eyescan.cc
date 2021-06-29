@@ -393,7 +393,7 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     // }
     //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-    float actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+    actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
     printf("___________________________________\n");
     printf("ERROR COUNT0 = %f.\n",errorCount);
     printf("SAMPLE COUNT0 = %f.\n",actualsample0);

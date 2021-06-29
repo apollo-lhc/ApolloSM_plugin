@@ -311,9 +311,7 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   float errorCount;
   float sampleCount;
   float errorCount0;
-  float errorCount1;
   float actualsample0;
-  float actualsample1;
   uint32_t prescale = 0;
   uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
@@ -440,6 +438,8 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   // ==================================================
   // If we have dfm, we need to do calculate the BER a second time and add it to the first
   double const firstBER = BER;
+  float errorCount1;
+  float actualsample1;
   // You have to set this to zero because if you don't have DFE, you would skip to 'return' and BER would be double counted
   BER = 0;
 

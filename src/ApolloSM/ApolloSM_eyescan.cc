@@ -311,7 +311,7 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   float errorCount;
   float sampleCount;
   float errorCount0;
-  float errorCount1
+  float errorCount1;
   float actualsample0;
   float actualsample1;
   uint32_t prescale = 0;

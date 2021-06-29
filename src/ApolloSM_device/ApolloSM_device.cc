@@ -533,9 +533,9 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
   }
 
   printf("The base node is %s\n", baseNode.c_str());
-  SESout = SM->SingleEyeScan(baseNode, lpmNode, maxPrescale);
+  SESout singleOut = SM->SingleEyeScan(baseNode, lpmNode, maxPrescale);
 
-  printf("The BER is: %f\n", SESout.BER); 
+  printf("The BER is: %f\n", singleOut.BER); 
 
   return CommandReturn::OK;
 }

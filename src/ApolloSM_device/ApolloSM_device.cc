@@ -534,7 +534,7 @@ CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> str
 
   printf("The base node is %s\n", baseNode.c_str());
 
-  printf("The BER is: %f\n", SM->SingleEyeScan(baseNode, lpmNode, maxPrescale));
+  //printf("The BER is: %f\n", SM->SingleEyeScan(baseNode, lpmNode, maxPrescale)); //need to fix this later!!!!!!
 
   return CommandReturn::OK;
 }
@@ -589,8 +589,10 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     fprintf(dataFile, "%.9f ", esCoords[i].phase);
     fprintf(dataFile, "%d ", esCoords[i].voltage);
     fprintf(dataFile, "%.15f ", esCoords[i].BER);
-    //fprintf(dataFile, "%d ", esCoords[i].sample);
-    //fprintf(dataFile, "%d ", esCoords[i].error);
+    fprintf(dataFile, "%d ", esCoords[i].sample0);
+    fprintf(dataFile, "%d ", esCoords[i].error0);
+    fprintf(dataFile, "%d ", esCoords[i].sample1);
+    fprintf(dataFile, "%d ", esCoords[i].error1);
     fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
     fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
   }

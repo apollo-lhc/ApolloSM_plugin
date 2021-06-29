@@ -438,8 +438,8 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   // ==================================================
   // If we have dfm, we need to do calculate the BER a second time and add it to the first
   double const firstBER = BER;
-  float errorCount1;
-  float actualsample1;
+  float errorCount1=0;
+  float actualsample1=0;
   // You have to set this to zero because if you don't have DFE, you would skip to 'return' and BER would be double counted
   BER = 0;
 
@@ -555,8 +555,8 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   singleScanOut.BER=BER+firstBER;
   singleScanOut.sample0=(int)actualsample0;
   singleScanOut.error0=(int)errorCount0;
-  singleScanOut.sample0=(int)actualsample1;
-  singleScanOut.error0=(int)errorCount1;
+  singleScanOut.sample1=(int)actualsample1;
+  singleScanOut.error1=(int)errorCount1;
   return singleScanOut;
 
 }

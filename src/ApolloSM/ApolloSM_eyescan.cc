@@ -558,8 +558,8 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   singleScanOut.sample1=(int)actualsample1;
   singleScanOut.error1=(int)errorCount1;
   printf("BER=.9%f\n",singleScanOut.BER);
-  printf("BER=.%u\n",singleScanOut.actualsample0);
-  printf("BER=%u\n",singleScanOut.errorCount0);
+  printf("BER=.%u\n",singleScanOut.sample0);
+  printf("BER=%u\n",singleScanOut.Count0);
   return singleScanOut;
 
 }

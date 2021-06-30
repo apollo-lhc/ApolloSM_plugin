@@ -394,11 +394,11 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
     actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-    printf("___________________________________\n");
-    printf("ERROR COUNT0 = %f.\n",errorCount);
-    printf("SAMPLE COUNT0 = %f.\n",actualsample0);
-    printf("BER0 = %.9f.\n",BER);
-    printf("..................\n");
+    //printf("___________________________________\n");
+    //printf("ERROR COUNT0 = %f.\n",errorCount);
+    //printf("SAMPLE COUNT0 = %f.\n",actualsample0);
+    //printf("BER0 = %.9f.\n",BER);
+    //printf("..................\n");
     
     // If BER is lower than precision we need to check with a higher prescale to ensure that
     // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
@@ -420,9 +420,9 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       }
         actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
         errorCount0=errorCount;
-        printf("FINAL ERROR COUNT0 = %f.\n",errorCount);
-        printf("FINAL SAMPLE COUNT0 = %f.\n",actualsample0);
-        printf("FINAL BER0 = %.9f.\n",BER);
+        //printf("FINAL ERROR COUNT0 = %f.\n",errorCount);
+        //printf("FINAL SAMPLE COUNT0 = %f.\n",actualsample0);
+        //printf("FINAL BER0 = %.9f.\n",BER);
 //      printf("Stopping single scan because: ");
 //      if(!(BER < PRECISION)) {
 //	printf("NOT BER < PRECISION\n");
@@ -510,9 +510,9 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       // } 
       BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-      printf("ERROR COUNT1 = %f.\n",errorCount);
-      printf("SAMPLE COUNT1 = %f,\n",actualsample1);
-      printf("BER1 = %.9f.\n",BER);
+      //printf("ERROR COUNT1 = %f.\n",errorCount);
+      //printf("SAMPLE COUNT1 = %f,\n",actualsample1);
+      //printf("BER1 = %.9f.\n",BER);
     
       
       
@@ -536,9 +536,9 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
                 }
                 actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
                 errorCount1=errorCount;
-                printf("FINAL ERROR COUNT1 = %f.\n",errorCount);
-                printf("FINAL SAMPLE COUNT1 = %f.\n",actualsample1);
-                printf("FINAL BER1 = %.9f.\n",BER);
+                //printf("FINAL ERROR COUNT1 = %f.\n",errorCount);
+                //printf("FINAL SAMPLE COUNT1 = %f.\n",actualsample1);
+                //printf("FINAL BER1 = %.9f.\n",BER);
         	//      printf("Stopping single scan because: ");
         	//      if(!(BER < PRECISION)) {
         	//	printf("NOT BER < PRECISION\n");
@@ -552,14 +552,19 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   }
   //printf("Sample count is %.6f \n", sampleCount);
   //printf("Prescale is %d\n", prescale);
+  //printf("BER0=%.15f\n",firstBER);
+  //printf("BER1=%.15f\n",BER);
   singleScanOut.BER=BER+firstBER;
-  singleScanOut.sample0=(int)actualsample0;
-  singleScanOut.error0=(int)errorCount0;
-  singleScanOut.sample1=(int)actualsample1;
-  singleScanOut.error1=(int)errorCount1;
-  printf("BER=.9%f\n",singleScanOut.BER);
-  printf("BER=.%u\n",singleScanOut.sample0);
-  printf("BER=%u\n",singleScanOut.Count0);
+  singleScanOut.sample0=(unsigned long int)actualsample0;
+  singleScanOut.error0=(unsigned long int)errorCount0;
+  singleScanOut.sample1=(unsigned long int)actualsample1;
+  singleScanOut.error1=(unsigned long int)errorCount1;
+  //printf("BER=%.15f\n",singleScanOut.BER);
+  //printf("sample0=%lu\n",singleScanOut.sample0);
+  //printf("error0=%lu\n",singleScanOut.error0);
+  //printf("sample1=%lu\n",singleScanOut.sample1);
+  // printf("error1=%lu\n",singleScanOut.error1);
+
   return singleScanOut;
 
 }
@@ -653,10 +658,12 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       //Get BER for this point
       //esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
       SESout singleScanOut=SingleEyeScan(baseNode, lpmNode, maxPrescale);
+      esCoords[coordsIndex].BER=singleScanOut.BER;
       esCoords[coordsIndex].error0=singleScanOut.error0;
       esCoords[coordsIndex].sample0=singleScanOut.sample0;
       esCoords[coordsIndex].error1=singleScanOut.error1;
       esCoords[coordsIndex].sample1=singleScanOut.sample1;
+      printf("BER=%.15f\n",singleScanOut.BER);
       if (esCoords[coordsIndex].BER<min_BER)
       {
         min_BER=esCoords[coordsIndex].BER;

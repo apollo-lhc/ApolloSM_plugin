@@ -252,10 +252,10 @@ CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strAr
   bool success = SM->PowerUpCM(CM_ID,wait_time);
   if(success){
     //printf("CM %d is powered up\n",CM_ID);
-    Print(level::INFO, "CM %d is powered up\n",CM_ID);
+    Print(Level::INFO, "CM %d is powered up\n",CM_ID);
   }else{
     //printf("CM %d failed to powered up in time\n",CM_ID);
-    Print(level::INFO, "CM %d failed to powered up in time\n",CM_ID);
+    Print(Level::INFO, "CM %d failed to powered up in time\n",CM_ID);
   }
   return CommandReturn::OK;
 }

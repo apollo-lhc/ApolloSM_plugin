@@ -202,7 +202,10 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
       statusLevel = intArg[0];
       break;
     }
-  SM->GenerateStatusDisplay(statusLevel,std::cout,table);
+
+  std::ostringstream oss;
+  SM->GenerateStatusDisplay(statusLevel,oss,table);
+  Print(Level::INFO, "%s", oss.str().c_str());
   return CommandReturn::OK;
 }
 

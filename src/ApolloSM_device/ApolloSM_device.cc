@@ -202,7 +202,10 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
       statusLevel = intArg[0];
       break;
     }
-  SM->GenerateStatusDisplay(statusLevel,std::cout,table);
+
+  std::ostringstream oss;
+  SM->GenerateStatusDisplay(statusLevel,oss,table);
+  Print(Level::INFO, "%s", oss.str().c_str());
   return CommandReturn::OK;
 }
 
@@ -248,9 +251,11 @@ CommandReturn::status ApolloSMDevice::CMPowerUP(std::vector<std::string> /*strAr
   }
   bool success = SM->PowerUpCM(CM_ID,wait_time);
   if(success){
-    printf("CM %d is powered up\n",CM_ID);
+    //printf("CM %d is powered up\n",CM_ID);
+    Print(Level::INFO, "CM %d is powered up\n",CM_ID);
   }else{
-    printf("CM %d failed to powered up in time\n",CM_ID);
+    //printf("CM %d failed to powered up in time\n",CM_ID);
+    Print(Level::INFO, "CM %d failed to powered up in time\n",CM_ID);
   }
   return CommandReturn::OK;
 }
@@ -274,9 +279,11 @@ CommandReturn::status ApolloSMDevice::CMPowerDown(std::vector<std::string> /*str
   }
   bool success = SM->PowerDownCM(CM_ID,wait_time);
   if(success){
-    printf("CM %d is powered down\n",CM_ID);
+    //printf("CM %d is powered down\n",CM_ID);
+    Print(Level::INFO, "CM %d is powered down\n", CM_ID);
   }else{
-    printf("CM %d failed to powered down in time (forced off)\n",CM_ID);
+    //printf("CM %d failed to powered down in time (forced off)\n",CM_ID);
+    Print(Level::INFO, "CM %d failed to powered down in time (forced off)\n", CM_ID);
   }
   return CommandReturn::OK;
 }
@@ -330,7 +337,8 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   //get rid of last space
   sendline.pop_back();
 
-  printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
+  //printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
+  Print(Level::INFO, "Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
 
   return CommandReturn::OK;
 } 

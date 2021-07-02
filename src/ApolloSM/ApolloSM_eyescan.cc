@@ -120,12 +120,12 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   // ** must do this
   // *** not quite sure 
 
-//  zeroFPGA_ID();
-//  setFPGA_ID(fpga_id);
-//  if(0 == getFPGA_ID()) {
-//    throwException("invalid fpga id");
-//  }
-  //printf("ens start\n");
+  //  zeroFPGA_ID();
+  //  setFPGA_ID(fpga_id);
+  //  if(0 == getFPGA_ID()) {
+  //    throwException("invalid fpga id");
+  //  }
+
   syslog(LOG_INFO, "appending\n");
   // check for a '.' at the end of baseNode and add it if it isn't there 
   if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
@@ -146,16 +146,16 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   }
   printf("transceiver check count is %d\n", count2);
 
-//  FPGA_ID = 0;
-//  uint32_t busSize = GetRegSize(baseNode+"RX_DATA_WIDTH");
-//  if(SEVEN_BUS_SIZE == busSize) {
-//    FPGA_ID = SEVEN_FPGA;
-//  } else if (USP_BUS_SIZE == busSize) {
-//    FPGA_ID = USP_FPGA;
-//  }
-//  if(0 == FPGA_ID) {
-//    throwException("bus size does not match any known FPGA bus size\n");
-//  }
+  //  FPGA_ID = 0;
+  //  uint32_t busSize = GetRegSize(baseNode+"RX_DATA_WIDTH");
+  //  if(SEVEN_BUS_SIZE == busSize) {
+  //    FPGA_ID = SEVEN_FPGA;
+  //  } else if (USP_BUS_SIZE == busSize) {
+  //    FPGA_ID = USP_FPGA;
+  //  }
+  //  if(0 == FPGA_ID) {
+  //    throwException("bus size does not match any known FPGA bus size\n");
+  //  }
 
   // For reading, so I use does not equal, !=, or mask, &? 
 
@@ -218,7 +218,7 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   }
 
   // ** RX_DATA_WIDTH confirm 0x4
-  // Both 7 series and USP are 0x4 (32 bit bus width) 
+  // Both 7 series and kintex USP are 0x4 (32 bit bus width) virtex USP is 0x6 
   if(SEVEN_BUS_SIZE == count) {
     confirmNode(baseNode + "RX_DATA_WIDTH", RX_DATA_WIDTH_GTX);
   } else if(GTH_CHECK_COUNT == count2) {
@@ -251,9 +251,6 @@ float GetEyeScanVoltage() {
 }
 
 void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign) {
-  // change int to hex
-  // write the hex
-
   // write the hex
   RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
   RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
@@ -263,21 +260,16 @@ void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint3
 float GetEyeScanPhase() {
   // change hex to int
   // return the int
-
   float i = 1;
   return i;
 }
 
 
 void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
-  // change int to hex
-  //  uint16_t horz_offset = 
-  //printf("Set phase start\n");
   // write the hex
   RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
   //printf("Set phase stop 1 \n");
-  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign);
-  // Only the last twelve bits are allowed. 
+  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign); 
   //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
 }
  
@@ -324,7 +316,6 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   //uint32_t const rxlpmen = RegReadRegister("CM.CM_1.C2C.RX.LPM_EN");
   uint32_t const rxlpmen = RegReadRegister(lpmNode);
   
-
   //RegReadRegister(0x1900003B);
   //  uint32_t const rxlpmenmasked = RegReadRegister(0x1900003B) & 0x00000100; 
 
@@ -387,18 +378,9 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     RegWriteRegister(baseNode + "RUN", STOP_RUN);
         
     // calculate BER
-    // if (errorCount==0) //if scan found no errors default to BER floor
-    // {
-    //   errorCount=1;
-    // }
     //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
     BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
     actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-    //printf("___________________________________\n");
-    //printf("ERROR COUNT0 = %f.\n",errorCount);
-    //printf("SAMPLE COUNT0 = %f.\n",actualsample0);
-    //printf("BER0 = %.9f.\n",BER);
-    //printf("..................\n");
     
     // If BER is lower than precision we need to check with a higher prescale to ensure that
     // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
@@ -420,9 +402,6 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       }
         actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
         errorCount0=errorCount;
-        //printf("FINAL ERROR COUNT0 = %f.\n",errorCount);
-        //printf("FINAL SAMPLE COUNT0 = %f.\n",actualsample0);
-        //printf("FINAL BER0 = %.9f.\n",BER);
 //      printf("Stopping single scan because: ");
 //      if(!(BER < PRECISION)) {
 //	printf("NOT BER < PRECISION\n");
@@ -433,7 +412,6 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       loop = false;
     }
   }
-
 
   // ==================================================
   // If we have dfm, we need to do calculate the BER a second time and add it to the first
@@ -504,17 +482,8 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       
       // calculate BER
       //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
-      // if (errorCount==0) //if scan found no errors default to BER floor
-      // {
-      //   errorCount=1;
-      // } 
       BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-      //printf("ERROR COUNT1 = %f.\n",errorCount);
-      //printf("SAMPLE COUNT1 = %f,\n",actualsample1);
-      //printf("BER1 = %.9f.\n",BER);
-    
-      
       
       // If BER is lower than precision we need to check with a higher prescale to ensure that
       // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
@@ -536,9 +505,6 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
                 }
                 actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
                 errorCount1=errorCount;
-                //printf("FINAL ERROR COUNT1 = %f.\n",errorCount);
-                //printf("FINAL SAMPLE COUNT1 = %f.\n",actualsample1);
-                //printf("FINAL BER1 = %.9f.\n",BER);
         	//      printf("Stopping single scan because: ");
         	//      if(!(BER < PRECISION)) {
         	//	printf("NOT BER < PRECISION\n");
@@ -550,20 +516,11 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       }
     }
   }
-  //printf("Sample count is %.6f \n", sampleCount);
-  //printf("Prescale is %d\n", prescale);
-  //printf("BER0=%.15f\n",firstBER);
-  //printf("BER1=%.15f\n",BER);
   singleScanOut.BER=BER+firstBER;
   singleScanOut.sample0=(unsigned long int)actualsample0;
   singleScanOut.error0=(unsigned long int)errorCount0;
   singleScanOut.sample1=(unsigned long int)actualsample1;
   singleScanOut.error1=(unsigned long int)errorCount1;
-  //printf("BER=%.15f\n",singleScanOut.BER);
-  //printf("sample0=%lu\n",singleScanOut.sample0);
-  //printf("error0=%lu\n",singleScanOut.error0);
-  //printf("sample1=%lu\n",singleScanOut.sample1);
-  // printf("error1=%lu\n",singleScanOut.error1);
 
   return singleScanOut;
 
@@ -579,8 +536,6 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
   time_t start, end; // used to time execution
   time(&start);      // recording start time
   
-  
-
 //  if(1/horzIncrement != 0) {
 //    throwException("Please enter a horizontal increment divisible into 1\n");
 //  }
@@ -633,7 +588,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
     } else {
       SetEyeScanVoltage(baseNode, voltage, POSITIVE);
     }
-    //printf("ES stop 1\n");
+    
     for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
       
       int phaseInt;
@@ -649,7 +604,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       printf("phase is %f\n", phase);
       SetEyeScanPhase(baseNode, phaseInt, sign);
       esCoords.resize(resizeCount);
-      //printf("ES stop 3\n");
+      
 
       // record voltage and phase coordinates
       esCoords[coordsIndex].voltage = voltage; 
@@ -663,7 +618,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       esCoords[coordsIndex].sample0=singleScanOut.sample0;
       esCoords[coordsIndex].error1=singleScanOut.error1;
       esCoords[coordsIndex].sample1=singleScanOut.sample1;
-      printf("BER=%.15f\n",singleScanOut.BER);
+      printf("BER=%.20f\n",singleScanOut.BER);
       if (esCoords[coordsIndex].BER<min_BER)
       {
         min_BER=esCoords[coordsIndex].BER;
@@ -700,7 +655,6 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
 
 //  // reset FPGA_ID
 //  zeroFPGA_ID();
-//  test
   return esCoords;
 }
 

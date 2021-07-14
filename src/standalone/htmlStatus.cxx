@@ -18,6 +18,7 @@
 #include <standalone/optionParsing_bool.hh>
 #include <standalone/daemon.hh>
 
+
 #include <fstream>
 #include <iostream>
 
@@ -33,8 +34,8 @@
 #define DEFAULT_OUTFILE "/var/www/lighttpd/index.html"
 #define DEFAULT_LOG_LEVEL 1
 #define DEFAULT_OUTPUT_TYPE "HTML"
-namespace po = boost::program_options;
 
+namespace po = boost::program_options;
 
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
@@ -46,6 +47,7 @@ long us_difftime(struct timespec cur, struct timespec end){
 // MAIN
 // ====================================================================================================
 int main(int argc, char** argv) {
+
 
   // ============================================================================
   // Read from configuration file and set up parameters
@@ -127,6 +129,7 @@ int main(int argc, char** argv) {
   syslog(LOG_INFO, "Sending output type to %s\n", outputType.c_str());
 
 
+
   // ============================================================================
   // Deamon book-keeping
   Daemon daemon;
@@ -135,6 +138,7 @@ int main(int argc, char** argv) {
   // ============================================================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
+
   daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
   daemon.SetLoop(true);
@@ -170,7 +174,9 @@ int main(int argc, char** argv) {
     // Main DAEMON loop
     syslog(LOG_INFO,"Starting htmlStatus\n");
 
+
     while(daemon.GetLoop()) {
+
       // loop start time
       clock_gettime(CLOCK_REALTIME, &startTS);
 

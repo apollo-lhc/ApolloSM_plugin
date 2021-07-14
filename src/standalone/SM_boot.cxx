@@ -38,7 +38,7 @@ namespace po = boost::program_options; //Making life easier for boost
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
   return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
-	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
+     (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
 }
 
 
@@ -86,7 +86,7 @@ temperatures sendAndParse(ApolloSM* SM) {
       allTokens.push_back(blankVec);
       // One vector per line
       for(tokenizer::iterator wordIt = wordTokens.begin(); wordIt != wordTokens.end(); ++wordIt) {
-	allTokens[vecCount].push_back(*wordIt);
+  allTokens[vecCount].push_back(*wordIt);
       }
       vecCount++;
     }
@@ -96,14 +96,14 @@ temperatures sendAndParse(ApolloSM* SM) {
     // Following lines follow the same concept
     std::vector<float> temp_values;
     for(size_t i = 0; 
-	i < allTokens.size() && i < 4;
-	i++){
+  i < allTokens.size() && i < 4;
+  i++){
       if(2 == allTokens[i].size()) {
-	float temp;
-	if( (temp = std::atof(allTokens[i][1].c_str())) < 0) {
-	  temp = 0;
-	}
-	temp_values.push_back(temp);
+  float temp;
+  if( (temp = std::atof(allTokens[i][1].c_str())) < 0) {
+    temp = 0;
+  }
+  temp_values.push_back(temp);
       }
     }
     switch (temp_values.size()){
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
   //Get options from command line,
   try { 
     FillOptions(parse_command_line(argc, argv, cli_options),
-		allOptions);
+    allOptions);
   } catch (std::exception &e) {
     fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
     return 0;
@@ -211,7 +211,7 @@ int main(int argc, char** argv) {
   if(configFile){
     try { 
       FillOptions(parse_config_file(configFile,cfg_options,true),
-		  allOptions);
+      allOptions);
     } catch (std::exception &e) {
       fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
     }
@@ -302,52 +302,52 @@ int main(int argc, char** argv) {
 
       //Process CM temps
       if(sensorsThroughZynq) {
-	temperatures temps;  
-      	if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
-	  try{
-	    temps = sendAndParse(SM);
-	  }catch(std::exception & e){
-	    syslog(LOG_INFO,e.what());
-	    //ignoring any exception here for now
-	    temps = {0,0,0,0,false};
-	  }
-	  
-	  if(0 == CM_running ){
-	    //Drop the non uC temps
-	    temps.FIREFLYTemp = 0;
-	    temps.FPGATemp = 0;
-	    temps.REGTemp = 0;
-	  }
-	  CM_running = SM->RegReadRegister("CM.CM_1.CTRL.PWR_GOOD");
-	  
-	  sendTemps(SM, temps);
-	  if(!temps.validData){
-	    syslog(LOG_INFO,"Error in parsing data stream\n");
-	  }
-	}else{
-	  temps = {0,0,0,0,false};
-	  sendTemps(SM, temps);
-	}
+  temperatures temps;  
+        if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
+    try{
+      temps = sendAndParse(SM);
+    }catch(std::exception & e){
+      syslog(LOG_INFO,e.what());
+      //ignoring any exception here for now
+      temps = {0,0,0,0,false};
+    }
+    
+    if(0 == CM_running ){
+      //Drop the non uC temps
+      temps.FIREFLYTemp = 0;
+      temps.FPGATemp = 0;
+      temps.REGTemp = 0;
+    }
+    CM_running = SM->RegReadRegister("CM.CM_1.CTRL.PWR_GOOD");
+    
+    sendTemps(SM, temps);
+    if(!temps.validData){
+      syslog(LOG_INFO,"Error in parsing data stream\n");
+    }
+  }else{
+    temps = {0,0,0,0,false};
+    sendTemps(SM, temps);
+  }
       }
 
       //Check if we are shutting down
       if((!inShutdown) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
-	syslog(LOG_INFO,"Shutdown requested\n");
-	inShutdown = true;
-	//the IPMC requested a re-boot.
-	pid_t reboot_pid;
-	if(0 == (reboot_pid = fork())){
-	  //Shutdown the system
-	  execlp("/sbin/shutdown","/sbin/shutdown","-h","now",NULL);
-	  exit(1);
-	}
-	if(-1 == reboot_pid){
-	  inShutdown = false;
-	  syslog(LOG_INFO,"Error! fork to shutdown failed!\n");
-	}else{
-	  //Shutdown the command module (if up)
-	  SM->PowerDownCM(1,5);
-	}
+  syslog(LOG_INFO,"Shutdown requested\n");
+  inShutdown = true;
+  //the IPMC requested a re-boot.
+  pid_t reboot_pid;
+  if(0 == (reboot_pid = fork())){
+    //Shutdown the system
+    execlp("/sbin/shutdown","/sbin/shutdown","-h","now",NULL);
+    exit(1);
+  }
+  if(-1 == reboot_pid){
+    inShutdown = false;
+    syslog(LOG_INFO,"Error! fork to shutdown failed!\n");
+  }else{
+    //Shutdown the command module (if up)
+    SM->PowerDownCM(1,5);
+  }
       }
       //=================================
 
@@ -357,7 +357,7 @@ int main(int argc, char** argv) {
       // sleep for 10 seconds minus how long it took to read and send temperature    
       useconds_t sleep_us = update_period_us - us_difftime(startTS, stopTS);
       if(sleep_us > 0){
-	usleep(sleep_us);
+  usleep(sleep_us);
       }
     }
   }catch(BUException::exBase const & e){

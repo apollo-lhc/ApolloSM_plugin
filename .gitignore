@@ -30,3 +30,6 @@ lib/*
 env.sh
 doc/html
 bin
+*.DS_Store
+python/test.png
+python/test.txt

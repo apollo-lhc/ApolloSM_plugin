@@ -72,11 +72,11 @@ sXVC volatile * pXVC = NULL;
 uint32_t volatile * XVCLock = NULL;
 
 
-#define CHECK_LOCK				\
-  if(XVCLock && *XVCLock){			\
+#define CHECK_LOCK        \
+  if(XVCLock && *XVCLock){      \
     syslog(LOG_INFO,"Breaking due to Lock\n");  \
-    return -1;					\
-  }						\
+    return -1;          \
+  }           \
 
 //Daemon class;
 Daemon daemonInst;
@@ -108,26 +108,26 @@ int handle_data(int fd) {
 
     if (memcmp(cmd, "ge", 2) == 0) {
       if (sread(fd, cmd, 6) != 1)
-	return 1;
+  return 1;
       memcpy(result, xvcInfo, strlen(xvcInfo));
       ssize_t writeRet = write(fd, result, strlen(xvcInfo));
       if ((writeRet < 0) || (((size_t)writeRet) != strlen(xvcInfo))) {
-	syslog(LOG_ERR,"write: %s",strerror(errno));
-	return 1;
+  syslog(LOG_ERR,"write: %s",strerror(errno));
+  return 1;
       }
       break;
     } else if (memcmp(cmd, "se", 2) == 0) {
       if (sread(fd, cmd, 9) != 1)
-	return 1;
+  return 1;
       memcpy(result, cmd + 5, 4);
       if (write(fd, result, 4) != 4) {
-	syslog(LOG_ERR,"write: %s",strerror(errno));
-	return 1;
+  syslog(LOG_ERR,"write: %s",strerror(errno));
+  return 1;
       }
       break;
     } else if (memcmp(cmd, "sh", 2) == 0) {
       if (sread(fd, cmd, 4) != 1)
-	return 1;
+  return 1;
     } else {
 
       syslog(LOG_ERR,"invalid cmd '%s'\n", cmd);
@@ -160,48 +160,48 @@ int handle_data(int fd) {
 
     while (bytesLeft > 0) {      
       CHECK_LOCK
-	tms = 0;
+  tms = 0;
       tdi = 0;
       tdo = 0;
       if (bytesLeft >= 4) {
-	memcpy(&tms, &buffer[byteIndex], 4);
-	memcpy(&tdi, &buffer[byteIndex + nr_bytes], 4);
-	
-	pXVC->length_offset = 32;        
-	pXVC->tms_offset = tms;         
-	pXVC->tdi_offset = tdi;       
-	pXVC->ctrl_offset = 0x01;
+  memcpy(&tms, &buffer[byteIndex], 4);
+  memcpy(&tdi, &buffer[byteIndex + nr_bytes], 4);
+  
+  pXVC->length_offset = 32;        
+  pXVC->tms_offset = tms;         
+  pXVC->tdi_offset = tdi;       
+  pXVC->ctrl_offset = 0x01;
 
-	/* Switch this to interrupt in next revision */
-	while (pXVC->ctrl_offset)
-	  {
-	  }
+  /* Switch this to interrupt in next revision */
+  while (pXVC->ctrl_offset)
+    {
+    }
 
-	tdo = pXVC->tdo_offset;
-	memcpy(&result[byteIndex], &tdo, 4);
+  tdo = pXVC->tdo_offset;
+  memcpy(&result[byteIndex], &tdo, 4);
 
-	bytesLeft -= 4;
-	bitsLeft -= 32;         
-	byteIndex += 4;
+  bytesLeft -= 4;
+  bitsLeft -= 32;         
+  byteIndex += 4;
 
 
       } else {
-	memcpy(&tms, &buffer[byteIndex], bytesLeft);
-	memcpy(&tdi, &buffer[byteIndex + nr_bytes], bytesLeft);
+  memcpy(&tms, &buffer[byteIndex], bytesLeft);
+  memcpy(&tdi, &buffer[byteIndex + nr_bytes], bytesLeft);
           
-	pXVC->length_offset = bitsLeft;        
-	pXVC->tms_offset = tms;         
-	pXVC->tdi_offset = tdi;       
-	pXVC->ctrl_offset = 0x01;
-	//					/* Switch this to interrupt in next revision */
-	while (pXVC->ctrl_offset)
-	  {
-	  }
+  pXVC->length_offset = bitsLeft;        
+  pXVC->tms_offset = tms;         
+  pXVC->tdi_offset = tdi;       
+  pXVC->ctrl_offset = 0x01;
+  //          /* Switch this to interrupt in next revision */
+  while (pXVC->ctrl_offset)
+    {
+    }
 
-	tdo = pXVC->tdo_offset;          
-	memcpy(&result[byteIndex], &tdo, bytesLeft);
+  tdo = pXVC->tdo_offset;          
+  memcpy(&result[byteIndex], &tdo, bytesLeft);
 
-	break;
+  break;
       }
     }
     if (write(fd, result, nr_bytes) != nr_bytes) {
@@ -250,7 +250,7 @@ int main(int argc, char **argv) {
   //Get options from command line,
   try { 
     FillOptions(parse_command_line(argc, argv, cli_options),
-		allOptions);
+    allOptions);
   } catch (std::exception &e) {
     fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
     return 0;
@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
   if(configFile){
     try { 
       FillOptions(parse_config_file(configFile,cfg_options,true),
-		  allOptions);
+      allOptions);
     } catch (std::exception &e) {
       fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
     }
@@ -340,8 +340,8 @@ int main(int argc, char **argv) {
   }
    
   pXVC = (sXVC volatile*) mmap(NULL, sizeof(sXVC) + uio_offset*sizeof(uint32_t),
-			       PROT_READ|PROT_WRITE, MAP_SHARED,
-			       fdUIO, 0x0);// + uio_offset*sizeof(uint32_t));
+             PROT_READ|PROT_WRITE, MAP_SHARED,
+             fdUIO, 0x0);// + uio_offset*sizeof(uint32_t));
 
   pXVC += (uio_offset * 4) / sizeof(sXVC);
 
@@ -392,11 +392,11 @@ int main(int argc, char **argv) {
     }
     if(offset){  
       XVCLock = ((uint32_t volatile*) mmap(NULL,sizeof(uint32_t)*0x800,
-					   PROT_READ|PROT_WRITE, MAP_SHARED,
-					   fdXVCLock,0x0))  + offset;
+             PROT_READ|PROT_WRITE, MAP_SHARED,
+             fdXVCLock,0x0))  + offset;
       if(MAP_FAILED == XVCLock){
-	syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
-	return 1;            
+  syslog(LOG_ERR,"Failed to mmap %s.\n",uioFileName);
+  return 1;            
       }
       syslog(LOG_ERR,"Found XVC lock register @ 0x%04X\n",offset);    
     }else{
@@ -472,44 +472,44 @@ int main(int argc, char **argv) {
 
       connectionFD = accept(listenFD, (struct sockaddr*) &address, &nsize);
 
-	  
+    
       syslog(LOG_INFO,"connection accepted - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
       if (connectionFD < 0) {
-	syslog(LOG_ERR,"accept: %s",strerror(errno));	
+  syslog(LOG_ERR,"accept: %s",strerror(errno)); 
       } else {
-	syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
-	int flag = 1;
-	int optResult = setsockopt(connectionFD,
-				   IPPROTO_TCP,
-				   TCP_NODELAY,
-				   (char *)&flag,
-				   sizeof(int));
-	if (optResult < 0)
-	  syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
-	
-	
-	pXVC->IP =address.sin_addr.s_addr;
-	pXVC->port = address.sin_port;
+  syslog(LOG_INFO,"setting TCP_NODELAY to 1\n");
+  int flag = 1;
+  int optResult = setsockopt(connectionFD,
+           IPPROTO_TCP,
+           TCP_NODELAY,
+           (char *)&flag,
+           sizeof(int));
+  if (optResult < 0)
+    syslog(LOG_ERR,"TCP_NODELAY error: %s",strerror(errno));
+  
+  
+  pXVC->IP =address.sin_addr.s_addr;
+  pXVC->port = address.sin_port;
 
-	//set the activeFDSet for read to now be the connection
-	FD_ZERO(&connectionFDSet);
-	FD_SET(connectionFD,&connectionFDSet);
-	activeFDSet = connectionFDSet;
-	maxFD = connectionFD;
+  //set the activeFDSet for read to now be the connection
+  FD_ZERO(&connectionFDSet);
+  FD_SET(connectionFD,&connectionFDSet);
+  activeFDSet = connectionFDSet;
+  maxFD = connectionFD;
       }
     //---------------------------------------------------------------------------
     }else if((connectionFD > 0) &&
-	     (FD_ISSET(connectionFD,&read))){
+       (FD_ISSET(connectionFD,&read))){
       if(handle_data(connectionFD)){
-	//error happened
-	syslog(LOG_INFO,"connection closed - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
-	pXVC->IP =0;
-	pXVC->port = 0;
-	
-	close(connectionFD);
-	activeFDSet = listenFDSet;
-	maxFD = listenFD;	
-	connectionFD = -1;
+  //error happened
+  syslog(LOG_INFO,"connection closed - fd %d %s:%u\n", connectionFD,inet_ntoa(address.sin_addr),address.sin_port);
+  pXVC->IP =0;
+  pXVC->port = 0;
+  
+  close(connectionFD);
+  activeFDSet = listenFDSet;
+  maxFD = listenFD; 
+  connectionFD = -1;
       }
     }
   }  

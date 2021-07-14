@@ -17,6 +17,8 @@
 
 #include <boost/algorithm/string/predicate.hpp> //for iequals
 
+#include <stdlib.h> // for strtoul
+
 using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
@@ -152,6 +154,30 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Unblocks all four C2CX AXI and AXILITE bits\n"\
 	       "Usage: \n"\
 	       "  unblockAXI\n");
+    AddCommand("EnableEyeScan",&ApolloSMDevice::EnableEyeScan,
+	       "Set up all attributes for eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  EnableEyeScan <base node> <prescale> \n");
+    AddCommandAlias("esn","EnableEyeScan");
+
+    AddCommand("SetOffsets",&ApolloSMDevice::SetOffsets,
+	       "Set up voltage and phase offsets for eyescan\n"   \
+	       "Usage: \n"                              \
+	       "  SetOffsets <base node> <voltage> <phase> \n");
+    AddCommandAlias("vpoff","SetOffsets");
+
+    AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
+	       "Perform a single eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  SingleEyeScan <base node> <lpmNode> <max prescale>\n");
+    AddCommandAlias("singlees","SingleEyeScan");
+
+    AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
+	       "Perform an eye scan\n"   \
+	       "Usage: \n"                              \
+	       "  EyeScan <base node> <lpmNode> <file> <horizontal increment double> <vertical increment integer> <max prescale>\n", 
+	       &ApolloSMDevice::RegisterAutoComplete);
+    AddCommandAlias("es","EyeScan");
     AddCommand("restartCMuC",&ApolloSMDevice::restartCMuC,
 	       "Restart micro controller on CM\n"	\
 	       "Usage: \n"\
@@ -337,8 +363,26 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
   //get rid of last space
   sendline.pop_back();
 
-  //printf("Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
-  Print(Level::INFO, "Recieved:\n\n%s\n\n", (SM->UART_CMD(ttyDev, sendline,promptChar)).c_str());
+  // so the output from a uart_cmd consists of, foremost, a bunch of control sequences, then a new line, then the actual
+  // output of what we want, version or help menu, etc. What we will do is throw away everything before the first new line
+  int const firstNewLine = 10;
+  //  bool firstNewLineReached = false;
+  size_t firstNewLineIndex;
+
+  // send the command
+  std::string recvline = SM->UART_CMD(ttyDev, sendline, promptChar);  
+  
+  // find the first new line
+  for(size_t i = 0; i < recvline.size(); i++) {
+    if(firstNewLine == (int)recvline[i]) {
+      firstNewLineIndex = i;
+      break;
+    }
+  }
+
+  // Erase the newline and everything before (which are presumably control sequences that we don't want)
+  recvline.erase(recvline.begin(), recvline.begin()+firstNewLineIndex);
+  Print(Level::INFO, "Recieved:\n\n%s\n\n",recvline.c_str() );
 
   return CommandReturn::OK;
 } 
@@ -410,6 +454,162 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strA
   return CommandReturn::OK;						   
 }
 						 
+// To set up all attributes for an eye scan
+CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  // For base 0, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
+  uint32_t prescale = strtoul(strArg[1].c_str(), NULL, 0);
+
+  // prescale attribute has only 5 bits of space
+  uint32_t maxPrescaleAllowed = 31;
+
+  // Checks that the prescale is in allowed range
+  if(maxPrescaleAllowed < prescale) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  // base node and prescale
+  SM->EnableEyeScan(strArg[0], prescale);
+  
+  return CommandReturn::OK;
+}
+
+
+CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(2 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  // For base 0 in strtoul, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
+
+  // Probably a better function for this
+  uint8_t vertOffset = strtoul(strArg[0].c_str(), NULL, 0);
+  // vertical offset has only 7 bits of space (for magnitude)
+  uint8_t maxVertOffset = 127;
+  
+  // Checks that the vertical offset is in allowed range
+  if(maxVertOffset < vertOffset) {
+    return CommandReturn::BAD_ARGS;
+  }  
+
+  // Probably a better function for this
+  uint8_t horzOffset = strtoul(strArg[1].c_str(), NULL, 0);
+  // vertical offset has only 7 bits of space (for magnitude)
+  //  uint8_t maxVertOffset = 127;
+
+
+//
+//  float horzOffset = strtof(strArg[1].c_str());
+//  float maxHorzOffset = 0.5;
+//
+//  if(maxHorzOffset < horzOffset) {
+//    return CommandReturn::BAD_ARGS;
+//  }
+//
+//  if(0 > horzOffset) {
+//    // no negatives (yet)
+//    return CommandReturn::BAD_ARGS;
+//  }
+//
+//  
+//
+
+  SM->SetOffsets("C2C1_PHY.", vertOffset, horzOffset);
+
+  return CommandReturn::OK;
+}
+
+// Performs a single eye scan
+CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+  
+  if(3 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  std::string baseNode = strArg[0];
+  std::string lpmNode = strArg[1];  
+  uint32_t maxPrescale = strtoul(strArg[2].c_str(), NULL, 0);
+  // Add a dot to baseNode if it does not already have one
+  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
+    baseNode.append(".");
+  }
+
+  printf("The base node is %s\n", baseNode.c_str());
+  SESout singleOut = SM->SingleEyeScan(baseNode, lpmNode, maxPrescale);
+
+  printf("The BER is: %.15f\n", singleOut.BER); 
+
+  return CommandReturn::OK;
+}
+
+CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+
+  // base node, text file, horizontal increment double, vertical increment integer, maximum prescale
+  if(6 != strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+  
+  std::string baseNode = strArg[0];
+  std::string lpmNode = strArg[1]; 
+  // Add a dot to baseNode if it does not already have one
+  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
+    baseNode.append(".");
+  }
+
+  std::string fileName = strArg[2];
+  if(0 != fileName.compare(fileName.size()-4,4,".txt")) {
+    return CommandReturn::BAD_ARGS;
+  }
+
+  printf("The base node is %s\n", baseNode.c_str());
+  printf("The file to write to is %s\n", fileName.c_str());
+  
+  double horzIncrement = atof(strArg[3].c_str());
+  int vertIncrement = atoi(strArg[4].c_str());
+
+  printf("We have horz increment %f and vert increment %d\n", horzIncrement, vertIncrement);
+
+  uint32_t maxPrescale = strtoul(strArg[5].c_str(), NULL, 0);
+  printf("The max prescale is: %d\n", maxPrescale);
+  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, lpmNode, horzIncrement, vertIncrement, maxPrescale);
+  //std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement, maxPrescale);
+
+//  int fd = open(fileName, O_CREAT | O_RDWR, 0644);
+//
+//  if(0 > fd) {
+//    printf("Error trying to open file %s\n", fileName.c_str());
+//    return CommandReturn::OK;
+//  }
+//
+
+  FILE * dataFile = fopen(fileName.c_str(), "w");
+  
+  //FILE * dataFile = stdout;
+  
+  printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+  
+  for(int i = 0; i < (int)esCoords.size(); i++) {
+    fprintf(dataFile, "%.9f ", esCoords[i].phase);
+    fprintf(dataFile, "%d ", esCoords[i].voltage);
+    fprintf(dataFile, "%.20f ", esCoords[i].BER);
+    fprintf(dataFile, "%lu ", esCoords[i].sample0);
+    fprintf(dataFile, "%lu ", esCoords[i].error0);
+    fprintf(dataFile, "%lu ", esCoords[i].sample1);
+    fprintf(dataFile, "%lu ", esCoords[i].error1);
+    fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
+    fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
+  }
+  
+  fclose(dataFile);
+
+  return CommandReturn::OK;
+
+}
 CommandReturn::status ApolloSMDevice::restartCMuC(std::vector<std::string> strArg,
 						  std::vector<uint64_t> /*intArg*/){
   if (strArg.size() != 1) {

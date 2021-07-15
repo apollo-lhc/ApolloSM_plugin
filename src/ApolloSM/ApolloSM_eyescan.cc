@@ -74,7 +74,7 @@ std::map<int, int> static const busWidthMap =
     {6, 64},
     {7, 80}
     // currently unsupported values
-//,
+    //,
     //{8, 128},
     //{9, 160}
   };
@@ -387,7 +387,7 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     if((BER < PRECISION) && (prescale != maxPrescale)) {
       prescale+=PRESCALE_STEP;
       if(prescale > maxPrescale) {
-	    prescale = maxPrescale;
+	prescale = maxPrescale;
 	//	printf("max prescale %d reached\n", maxPrescale);
       }
       assertNode(baseNode + "PRESCALE", prescale);
@@ -395,20 +395,20 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       loop = true;
     } else {
       if (errorCount==0) //if scan found no errors default to BER floor
-      {
-        errorCount=1;
-        BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+	{
+	  errorCount=1;
+	  BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
         
-      }
-        actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-        errorCount0=errorCount;
-//      printf("Stopping single scan because: ");
-//      if(!(BER < PRECISION)) {
-//	printf("NOT BER < PRECISION\n");
-//      }
-//      if(!(prescale != maxPrescale)) {
-//	printf("NOT prescale != maxPrescale\n");
-//      }
+	}
+      actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+      errorCount0=errorCount;
+      //      printf("Stopping single scan because: ");
+      //      if(!(BER < PRECISION)) {
+      //	printf("NOT BER < PRECISION\n");
+      //      }
+      //      if(!(prescale != maxPrescale)) {
+      //	printf("NOT prescale != maxPrescale\n");
+      //      }
       loop = false;
     }
   }
@@ -437,8 +437,8 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     loop = true;
     
     while(loop) {
-      // confirm we are in WAIT, if not, stop scan
-      //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
+      //confirm we are in WAIT, if not, stop scan
+      //confirmNode(baseNode + "CTRL_STATUS", WAIT);
       RegWriteRegister(baseNode + "RUN", STOP_RUN);
       
       // assert RUN
@@ -453,7 +453,7 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
 	  // Scan has ended
 	  break;
 	}
-	// sleep 1 millisecond
+	// sleep 1 microsecond
 	usleep(1000);
 	count++;
 	if(1000000 == count) {
@@ -465,54 +465,53 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
       sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
       
-      // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
+      //Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
       
-      // Figure out the prescale and data width to calculate BER
-      // prescale = RegReadRegister(baseNode + "PRESCALE");
-      //    regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
-      //    regDataWidthInt = (int)regDataWidth;
+      //Figure out the prescale and data width to calculate BER
+      //prescale = RegReadRegister(baseNode + "PRESCALE");
+      //regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
+      //regDataWidthInt = (int)regDataWidth;
       //std::map<int, int>::iterator it = busWidthMap.find(regDataWidthInt);
-      // should check if int is at the end
+      //should check if int is at the end
       //  int actualDataWidth = it->second;
-      //    actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+      //  actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
       
       // de-assert RUN (aka go back to WAIT)
-      //  assertNode(baseNode + "RUN", STOP_RUN);
+      // assertNode(baseNode + "RUN", STOP_RUN);
       RegWriteRegister(baseNode + "RUN", STOP_RUN);
       
       // calculate BER
-      //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
       BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       
       // If BER is lower than precision we need to check with a higher prescale to ensure that
       // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
       if((BER < PRECISION) && (prescale != maxPrescale)) {
-	     prescale+=PRESCALE_STEP;
-        	if(prescale > maxPrescale) {
-        	  prescale = maxPrescale;
-        	  //	printf("max prescale %d reached\n", maxPrescale);
-        	}
-        	assertNode(baseNode + "PRESCALE", prescale);
-        	// useless but just to be paranoid
-        	loop = true;
-              } else {
-                if (errorCount==0) //if scan found no errors default to BER floor
-                {
-                  errorCount=1;
-                  BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+	prescale+=PRESCALE_STEP;
+	if(prescale > maxPrescale) {
+	  prescale = maxPrescale;
+	  //printf("max prescale %d reached\n", maxPrescale);
+	}
+	assertNode(baseNode + "PRESCALE", prescale);
+	// useless but just to be paranoid
+	loop = true;
+      } else {
+	if (errorCount==0) //if scan found no errors default to BER floor
+	  {
+	    errorCount=1;
+	    BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
                   
-                }
-                actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-                errorCount1=errorCount;
-        	//      printf("Stopping single scan because: ");
-        	//      if(!(BER < PRECISION)) {
-        	//	printf("NOT BER < PRECISION\n");
-        	//      }
-        	//      if(!(prescale != maxPrescale)) {
-        	//	printf("NOT prescale != maxPrescale\n");
-        	//      }
-        	loop = false;
+	  }
+	actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
+	errorCount1=errorCount;
+	//printf("Stopping single scan because: ");
+	//if(!(BER < PRECISION)) {
+	//  printf("NOT BER < PRECISION\n");
+	//}
+	//if(!(prescale != maxPrescale)) {
+	//  printf("NOT prescale != maxPrescale\n");
+	//}
+	loop = false;
       }
     }
   }
@@ -536,9 +535,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
   time_t start, end; // used to time execution
   time(&start);      // recording start time
   
-//  if(1/horzIncrement != 0) {
-//    throwException("Please enter a horizontal increment divisible into 1\n");
-//  }
+  //  if(1/horzIncrement != 0) {
+  //    throwException("Please enter a horizontal increment divisible into 1\n");
+  //  }
 
   // Make sure all DRP attributes are set up for eye scan 
   //EnableEyeScan(baseNode, prescale);
@@ -609,7 +608,7 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       // record voltage and phase coordinates
       esCoords[coordsIndex].voltage = voltage; 
       esCoords[coordsIndex].phase = phase;
-      //      printf("%d %d\n", voltage, phaseInt);
+      //printf("%d %d\n", voltage, phaseInt);
       //Get BER for this point
       //esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
       SESout singleScanOut=SingleEyeScan(baseNode, lpmNode, maxPrescale);
@@ -620,9 +619,9 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       esCoords[coordsIndex].sample1=singleScanOut.sample1;
       printf("BER=%.20f\n",singleScanOut.BER);
       if (esCoords[coordsIndex].BER<min_BER)
-      {
-        min_BER=esCoords[coordsIndex].BER;
-      }
+	{
+	  min_BER=esCoords[coordsIndex].BER;
+	}
       //sample count and error count for this point
       // uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
       // int const regDataWidthInt = (int)regDataWidth;
@@ -636,25 +635,117 @@ std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string l
       esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
       esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
 
-      //      printf("%.9f\n", esCoords[coordsIndex].BER);
-      //      printf("%d\n", esCoords[coordsIndex].voltage);
+      //printf("%.9f\n", esCoords[coordsIndex].BER);
+      //printf("%d\n", esCoords[coordsIndex].voltage);
       
-      // going to next coordinate/scan 
+      //going to next coordinate/scan 
       coordsIndex++;
       resizeCount++;
     }
   }
   //clock end
-    // Recording end time.
-    time(&end);                                                                                 //end simulation time 
+  // Recording end time.
+  time(&end);                                                                                 //end simulation time 
 
-    // Calculating total time taken by the program.
-    double time_taken = double(end - start);
-    printf("Time taken by program is %f seconds.\n",time_taken);
-    printf("Min BER is %.15f\n.", min_BER);
+  // Calculating total time taken by the program.
+  double time_taken = double(end - start);
+  printf("Time taken by program is %f seconds.\n",time_taken);
+  printf("Min BER is %.15f\n.", min_BER);
 
-//  // reset FPGA_ID
-//  zeroFPGA_ID();
+  //  // reset FPGA_ID
+  //  zeroFPGA_ID();
+  return esCoords;
+}
+
+std::vector<eyescanCoords> ApolloSM::Bathtub(std::string baseNode, std::string lpmNode, double horzIncrement, uint32_t maxPrescale) {
+  //clock for timing
+  time_t start, end; // used to time execution
+  time(&start);      // recording start time
+  
+  
+  // declare vector of all eye scan plot coordinates
+  std::vector<eyescanCoords> esCoords;
+
+  // index for vector of coordinates
+  int coordsIndex = 0;
+  int resizeCount = 1;
+  int voltage =0;
+  SetEyeScanVoltage(baseNode, voltage, POSITIVE);
+
+  syslog(LOG_INFO, "appending\n");
+  // check for a '.' at the end of baseNode and add it if it isn't there 
+  if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
+    baseNode.append(".");
+  }
+
+  // Figure out RXOUT_DIV to set max phase
+  uint32_t rxoutDiv = RegReadRegister(baseNode + "RXOUT_DIV");
+  // should check if int is at the end
+  int maxPhase = rxoutDivMap.find(rxoutDiv)->second;
+
+  printf("The max phase is: %d\n", maxPhase);
+
+  double phaseMultiplier = maxPhase/MAXUI;
+
+  // =========================
+  double min_BER=100.;
+  // Set offsets and perform eyescan
+    
+    for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
+      
+      int phaseInt;
+      uint32_t sign;
+
+      if(phase < 0) {
+	phaseInt = abs(ceil(phase*phaseMultiplier));
+	sign = NEGATIVE;
+      } else {
+	phaseInt = abs(floor(phase*phaseMultiplier));
+      	sign = POSITIVE;
+      }
+      printf("phase is %f\n", phase);
+      SetEyeScanPhase(baseNode, phaseInt, sign);
+      esCoords.resize(resizeCount);
+      
+      // record voltage and phase coordinates
+      esCoords[coordsIndex].voltage = voltage; 
+      esCoords[coordsIndex].phase = phase;
+
+      //Get BER for this point
+      SESout singleScanOut=SingleEyeScan(baseNode, lpmNode, maxPrescale);
+      esCoords[coordsIndex].BER=singleScanOut.BER;
+
+      //sample count and error count for this point
+      esCoords[coordsIndex].error0=singleScanOut.error0;
+      esCoords[coordsIndex].sample0=singleScanOut.sample0;
+      esCoords[coordsIndex].error1=singleScanOut.error1;
+      esCoords[coordsIndex].sample1=singleScanOut.sample1;
+      printf("BER=%.20f\n",singleScanOut.BER);
+      if (esCoords[coordsIndex].BER<min_BER)
+	{
+	  min_BER=esCoords[coordsIndex].BER;
+	}
+
+      // Vert sign mask is 0x80 so we need to shift right by 7
+      esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
+      esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
+      
+      //going to next coordinate/scan 
+      coordsIndex++;
+      resizeCount++;
+    }
+  
+  //clock end
+  // Recording end time.
+  time(&end);                                                                                 //end simulation time 
+
+  // Calculating total time taken by the program.
+  double time_taken = double(end - start);
+  printf("Time taken by program is %f seconds.\n",time_taken);
+  printf("Min BER is %.15f\n.", min_BER);
+
+  //  // reset FPGA_ID
+  //  zeroFPGA_ID();
   return esCoords;
 }
 

@@ -106,7 +106,7 @@ int label2uio_old(std::string ilabel)
       //bad read
       continue;
     }else{
-      dtEntryAddr=SearchDeviceTree(itDVTPath->path().string(),ilabel);
+      dtEntryAddr=SearchDeviceTree(itDir->path().string(),ilabel);
       if(dtEntryAddr != 0){
 	//we found the correct entry
 	break;

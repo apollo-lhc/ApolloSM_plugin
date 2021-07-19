@@ -670,6 +670,8 @@ std::vector<eyescanCoords> ApolloSM::Bathtub(std::string baseNode, std::string l
   int coordsIndex = 0;
   int resizeCount = 1;
   int voltage =0;
+  uint32_t POSITIVE=0;
+  uint32_t NEGATIVE=0;
   SetEyeScanVoltage(baseNode, voltage, POSITIVE);
 
   syslog(LOG_INFO, "appending\n");

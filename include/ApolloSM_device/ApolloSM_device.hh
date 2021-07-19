@@ -66,7 +66,7 @@ namespace BUTool{
     CommandReturn::status SetOffsets(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status SingleEyeScan(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status EyeScan(std::vector<std::string>,std::vector<uint64_t>);
-    
+    CommandReturn::status Bathtub(std::vector<std::string>,std::vector<uint64_t>);
     //Add new command (sub command) auto-complete files here
     std::string autoComplete_Help(std::vector<std::string> const &,std::string const &,int);
 

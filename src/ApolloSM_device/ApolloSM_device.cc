@@ -642,7 +642,7 @@ CommandReturn::status ApolloSMDevice::Bathtub(std::vector<std::string> strArg, s
   double horzIncrement = atof(strArg[3].c_str());
   
 
-  printf("We have horz increment %f and vert increment %d\n", horzIncrement, vertIncrement);
+  printf("We have horz increment %f", horzIncrement);
 
   uint32_t maxPrescale = strtoul(strArg[4].c_str(), NULL, 0);
   printf("The max prescale is: %d\n", maxPrescale);

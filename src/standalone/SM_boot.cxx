@@ -179,7 +179,7 @@ std::vector<std::string> split_string(std::string str, std::string const & delim
 bool isNumber(std::string const & str){
   bool ret = true;
   for(size_t iChar=0;iChar<str.size();iChar++){
-    if(!isxdigit(str[iChar])){
+    if(!isxdigit(str[iChar]) && str[iChar] != 'x'){
       ret=false;
       break;
     }

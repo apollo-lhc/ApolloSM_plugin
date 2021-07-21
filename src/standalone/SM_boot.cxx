@@ -8,6 +8,8 @@
 #include <unistd.h> // usleep, execl
 #include <signal.h>
 #include <time.h>
+#include <stdlib.h>     /* strtoul */
+
 
 #include <syslog.h>  ///for syslog
 
@@ -155,6 +157,35 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
   updateTemp(SM,"SLAVE_I2C.S5.VAL", temps.REGTemp);
 }
 
+std::vector<std::string> split_string(std::string str, std::string const & delimiter){
+  
+  size_t position = 0;
+  std::string token;
+  std::vector<std::string> split;
+  while( (position = str.find(delimiter)) != std::string::npos) {
+    token = str.substr(0, position);
+    if(token.size()){
+      split.push_back(token);
+      str.erase(0, position+delimiter.length());
+    }
+  }
+  if(str.size()){
+    split.push_back(str);
+  }
+  
+  return split;
+}
+
+bool isNumber(std::string const & str){
+  bool ret = true;
+  for(size_t iChar=0;iChar<str.size();iChar++){
+    if(!isxdigit(str[iChar])){
+      ret=false;
+      break;
+    }
+  }   
+  return ret;
+}
 
 int main(int argc, char** argv) { 
 
@@ -176,6 +207,7 @@ int main(int argc, char** argv) {
     ("cm_powerup,P",         po::value<bool>(),        "Powerup CM")
     ("cm_powerup_time,t",    po::value<int>(),         "Powerup time in seconds")
     ("sensorsThroughZynq,s", po::value<bool>(),        "Read sensors through the Zynq")
+    ("regwrite,w",           po::value<std::string>(), "Reg write to perform on boot")
     ("config_file",          po::value<std::string>(), "config file"); // This is the only option not also in the file option (obviously); 
    
   po::options_description cfg_options("SM_boot options");
@@ -185,6 +217,7 @@ int main(int argc, char** argv) {
     ("polltime",           po::value<int>(),         "Polltime in seconds")
     ("cm_powerup",         po::value<bool>(),        "Powerup CM")
     ("cm_powerup_time",    po::value<int>(),         "Powerup time in seconds")
+    ("regwrite,w",         po::value<std::string>(), "Reg write to perform on boot")
     ("sensorsThroughZynq", po::value<bool>(),        "Read sensors through the Zynq"); // This means: by default, read the sensors through the zynq
 
   std::map<std::string,std::vector<std::string> > allOptions;
@@ -267,6 +300,47 @@ int main(int argc, char** argv) {
     syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
   
 
+
+    // ====================================
+    // Do all of the reg writes we are asked to
+    auto regWrites = allOptions["regwrite"];
+    for(auto itRegWrite = regWrites.begin();
+	itRegWrite != regWrites.end();
+	itRegWrite++){      
+      //Loop over each regwrite line and split it into reg/value
+      std::vector<std::string> split = split_string(*itRegWrite," ");
+      if(split.size() == 2){
+	//validate the second argument (write value)
+	
+	if(!isNumber(split[1])){
+	  syslog(LOG_INFO,"Bad reg write value: %s",split[1].c_str());
+	  continue;
+	}	
+	uint32_t val = strtoul(split[1].c_str(),NULL,0);
+
+	try{
+	  //Must only be two strings from the split
+	  if(std::isdigit(split[0][0])){
+	    //If the first digit is a number, assume it is a number dec, 0x
+	    uint32_t addr = strtoul(split[0].c_str(),NULL,0);
+	    SM->RegWriteAddress(addr,val);
+	    syslog(LOG_INFO,"Wrote: 0x%08X to 0x%08X\n",val,addr);
+	  }else{
+	    SM->RegWriteRegister(split[0],val);
+	    syslog(LOG_INFO,"Wrote: 0x%08X to %s\n",val,split[0].c_str());
+	  }
+	}catch(BUException::IO_ERROR &e){
+	  syslog(LOG_INFO,"Bad reg write: %s",itRegWrite->c_str());
+	  continue;
+	}
+
+      }else{
+	syslog(LOG_INFO,"Bad reg write: %s",itRegWrite->c_str());
+      }
+	
+    }
+
+
     // ====================================
     // Turn on CM uC      
     if (powerupCMuC){
@@ -284,7 +358,6 @@ int main(int argc, char** argv) {
     }else{
       syslog(LOG_INFO,"Reading out CM sensors via zynq\n");
     }
-
 
     // ==================================
     // Main DAEMON loop

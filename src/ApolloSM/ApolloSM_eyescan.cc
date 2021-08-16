@@ -1,140 +1,32 @@
-#include <ApolloSM/ApolloSM.hh>
-//#include <BUException/ExceptionBase.hh>
-#include <BUTool/ToolException.hh>
-#include <IPBusIO/IPBusIO.hh>
-#include <ApolloSM/eyescan.hh>
-#include <ApolloSM/ApolloSM_Exceptions.hh> // EYESCAN_ERROR
-#include <vector>
-#include <stdlib.h>
-//#include <math.h> // pow
-#include <map>
-#include <syslog.h>
-#include <time.h>
+#include <eyescan_class.hh>
+#include <stdio.h>
 
-// ================================================================================
-// Definitions
-
-#define VERT_INDEX 0
-#define HORZ_INDEX 1
-
-// Correct eye scan attribute values
-#define ES_EYE_SCAN_EN 0x1
-#define ES_ERRDET_EN 0x1
-#define PMA_CFG 0x000 // Actually 10 0s: 10b0000000000
-#define PMA_RSV2 0x1
-#define ES_QUALIFIER 0x0000
-#define ES_QUAL_MASK 0xFFFF
-
-#define RX_DATA_WIDTH_GTX 0x4 // zynq
-#define RX_INT_DATAWIDTH_GTX 0x1 // We use 32 bit
-
-#define RX_DATA_WIDTH_GTH 0x4 // kintex
-#define RX_INT_DATAWIDTH_GTH 0x0 //16 bit
-
-#define RX_DATA_WIDTH_GTY 0x6 // virtex
-#define RX_INT_DATAWIDTH_GTY 0x1 //32 bit
-
-#define SEVEN_FPGA 1
-#define SEVEN_BUS_SIZE 3
-#define USP_FPGA 2
-#define USP_BUS_SIZE 4
-#define GTH_CHECK_COUNT 16
-#define GTY_CHECK_COUNT 10
-// ==================================================
-// identifies what FPGA to scan
-
-//std::map<std::string, int> static const FPGA_IDMap = 
-//  {
-//    {"seven", 1},
-//    {"usp", 2}
-//  };
-//
-int static volatile FPGA_ID;
-//
-//int static getFPGA_ID() {
-//  return FPGA_ID;
-//}
-//
-//void static setFPGA_ID(std::string ID) {
-//  it = FPGA_IDMap.find(ID);
-//  if(it != FPGA_IDMap.end()) {
-//    FPGA_ID = it->second;
-//  }
-//}
-//
-//void static zeroFPGA_ID() {
-//  FPGA_ID = 0;
-//} 
-// ==================================================
-// identifies bus data width
-std::map<int, int> static const busWidthMap = 
-  {
-    // read hex value (DRP encoding) vs bus width (attribute encoding)
-    {2, 16},
-    {3, 20},
-    {4, 32},
-    {5, 40},
-    {6, 64},
-    {7, 80}
-    // currently unsupported values
-    //,
-    //{8, 128},
-    //{9, 160}
-  };
-
-// Identifies RXOUT_DIV to use for max phase 
-std::map<uint32_t, int> static const rxoutDivMap = 
-  {
-    // RXOUT_DIV hex value (DRP encoding) vs max horizontal offset
-    // https://www.xilinx.com/support/documentation/application_notes/xapp1198-eye-scan.pdf pgs 8 and 9
-    {0, 32},
-    {1, 64},
-    {2, 128},
-    {3, 256},
-    {4, 512}
-  };
-// ==================================================
-
-// Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
-void throwException(std::string message) {
-  BUException::EYESCAN_ERROR e;
-  e.Append(message);
-  throw e;
-}
-
-// assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
-void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
-  RegWriteRegister(node, correctVal);
-  // Might be able to just put confirmNode here
-  if(correctVal != RegReadRegister(node)) {
-    throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
-  }
-}
-
-// confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
-void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
-  if(correctVal != RegReadRegister(node)) {
-    throwException(node + " is not set correctly to: " + std::to_string(correctVal));
-  }
-}
-
-// To set up all attributes for an eye scan
-void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
-  // ** must do this
-  // *** not quite sure 
-
-  //  zeroFPGA_ID();
-  //  setFPGA_ID(fpga_id);
-  //  if(0 == getFPGA_ID()) {
-  //    throwException("invalid fpga id");
-  //  }
-  
-
+eyescan::eyescan(std::string basenode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale){
+  ES_state_t es_state=UNINIT;
+  std::vector<eyescanCoords> scan_output;
+  int Max_prescale= max_prescale;
+ 
   syslog(LOG_INFO, "appending\n");
   // check for a '.' at the end of baseNode and add it if it isn't there 
   if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
     baseNode.append(".");
   }
+  //check that all needed addresses exist
+  myMatchRegex(baseNode+"lpmNode");
+  myMatchRegex(baseNode+"HORZ_OFFSET_MAG");
+  myMatchRegex(baseNode+"PHASE_UNIFICATION");
+  myMatchRegex(baseNode+"VERT_OFFSET_MAG");
+  myMatchRegex(baseNode+"VERT_OFFSET_SIGN");
+  myMatchRegex(baseNode+"RX_DATA_WIDTH");
+  myMatchRegex(baseNode+"PRESCALE");
+  myMatchRegex(baseNode+"RUN");
+  myMatchRegex(baseNode+"CTRL_STATUS");
+  myMatchRegex(baseNode+"ERROR_COUNT");
+  myMatchRegex(baseNode+"SAMPLE_COUNT");
+  myMatchRegex(baseNode+"UT_SIGN");
+
+
+
   //Figure out which transister type we're scanning
   typedef enum {gtx, gty, gth, unknown} transist;
   
@@ -157,36 +49,6 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
     t=unknown;
       throwException("No transistor type found.\n");
   }
-    
-  
-  
-  //uint32_t data_width_mask = GetRegMask(baseNode + "RX_DATA_WIDTH");
-  //int count;
-  //for(count = 0; data_width_mask; data_width_mask >>= 1) {
-  //  count += data_width_mask&1;
-  //}
-  //printf("data_width count is %d\n", count);
-
-  //uint32_t check_mask = GetRegMask(baseNode + "GTY_GTH_CHECK");
-  //int count2;
-  //for(count2 = 0; check_mask; check_mask >>= 1) {
-  //  count2 += check_mask&1;
-  //}
-  //printf("transceiver check count is %d\n", count2);
-
-  //  FPGA_ID = 0;
-  //  uint32_t busSize = GetRegSize(baseNode+"RX_DATA_WIDTH");
-  //  if(SEVEN_BUS_SIZE == busSize) {
-  //    FPGA_ID = SEVEN_FPGA;
-  //  } else if (USP_BUS_SIZE == busSize) {
-  //    FPGA_ID = USP_FPGA;
-  //  }
-  //  if(0 == FPGA_ID) {
-  //    throwException("bus size does not match any known FPGA bus size\n");
-  //  }
-
-  // For reading, so I use does not equal, !=, or mask, &? 
-
   // ** ES_EYE_SCAN_EN assert 1
   assertNode(baseNode + "EYE_SCAN_EN", ES_EYE_SCAN_EN);
 
@@ -267,31 +129,80 @@ void ApolloSM::EnableEyeScan(std::string baseNode, uint32_t prescale) {
   } else {
     confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
   }
+
+  //make voltage vector
+  double volt_step=254./nBinsY;
+  double volt_array[nBinsY+1];
+  double volt;
+  std::vector<double> volt_vect;
+  if (nBinsY==1)
+  {
+    volt_vect[0]=0.;
+  } else{
+    for (double i = -254.; i <= 254; i=i+volt_step)
+    {
+      volt_vect.push_back(i);
+    }
+  }
+  
+  //make phase array
+  double phase_step=1./nBinsX;
+  double phase_array[nBinsX+1];
+  double phase;
+  std::vector<double> phase_vect;
+  if (nBinsX==1)
+  {
+    phase_vect[0]=0.;
+  } else{
+    for (double i = -.5; i <= .5; i=i+phase_step)
+    {
+      phase_vect.push_back(i);
+    }
+  }
+
+  
+  std::vector<Coords> Coords_vect;
+  for (int i = 0; i < volt_vect.size(); ++i)
+  {
+    for (int j = 0; j < phase_vect.size(); ++j)
+    {
+      Coords_vect.voltage[i]=volt_vect[i];
+      Coords_vect.phase[j]=phase_vect[j];
+    }
+  }
+  volt = Coords_vect.voltage[0];
+  phase=Coords_vect.phase[0];
+  scan_pixel(phase, volt, Max_prescale);
+  es_state=BUSY;
 }
 
-// ==================================================
+eyescan::~eyescan();
 
-float GetEyeScanVoltage() {
-  // Change hex to int
-  // return the int
-  float i = 1;
-  return i;
+ES_state_t check(){  //checks es_state
+  return es_state;
 }
+void update(){
+  ES_state_t s = check();
+  switch (s){
+    case UNINIT:
+      break;
+    case BUSY:
+      break;
 
-void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign) {
-  // write the hex
-  RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
-  RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
+    case WAITING_PIXEL:
+      volt = Coords_vect.voltage[0];
+      phase = Coords_vect.phase[0];
+      scan_pixel(phase, volt, Max_prescale);
+      es_state=BUSY;
+    case DONE:
+      break;
+
+    default :
+      break;
+
+  }
+
 }
-
-
-float GetEyeScanPhase() {
-  // change hex to int
-  // return the int
-  float i = 1;
-  return i;
-}
-
 
 void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
   // write the hex
@@ -299,40 +210,27 @@ void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset
   //printf("Set phase stop 1 \n");
   RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign); 
   //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
+ }
+
+void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign) {
+  // write the hex
+  RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
+  RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
 }
- 
-void ApolloSM::SetOffsets(std::string /*baseNode*/, uint8_t /*vertOffset*/, uint16_t /*horzOffset*/) {
-  // Set offsets
 
-  // set voltage offset
-  //  SetEyeScanVoltage(baseNode, vertOffset);
-  // set phase offset
-  //  SetEyeScanPhase(baseNode, horzOffset);
+std::vector<eyescanCoords> dataout(){
+  return scan_output;
 }
- 
-// ==================================================
 
-#define WAIT 0x1
-#define END 0x5
-#define RUN 0x1
-#define STOP_RUN 0x0
-
-// use the precision map in EyeScanLink.cc
-#define PRECISION 0.00000001 // 10^-9
-
-#define PRESCALE_STEP 3
-//#define MAX_PRESCALE 3
-
-// Performs a single eye scan and returns the BER
-SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpmNode, uint32_t const maxPrescale) {
-
-  SESout singleScanOut;
+eyescanCoords scan_pixel(float phase; float volt; int prescale){
+  es_state = BUSY;
+	eyescanCoords singleScanOut;
   double BER;
   float errorCount;
   float sampleCount;
   float errorCount0;
   float actualsample0;
-  uint32_t prescale = 0;
+
   uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
   int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
@@ -341,16 +239,41 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   uint32_t const dfe = 0;
   uint32_t const lpm = 1;
 
-  //uint32_t const rxlpmen = RegReadRegister("CM.CM_1.C2C.RX.LPM_EN");
   uint32_t const rxlpmen = RegReadRegister(lpmNode);
-  
-  //RegReadRegister(0x1900003B);
-  //  uint32_t const rxlpmenmasked = RegReadRegister(0x1900003B) & 0x00000100; 
+
+  //SET VOLTAGE
+  // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
+  // For bit 7 (8th bit) of ES_VERT_OFFSET
+  uint32_t POSITIVE = 0;
+  uint32_t NEGATIVE = 1;
+
+  printf("Voltage= %d\n", volt);
+  syslog(LOG_INFO, "%d\n", volt);
+
+if(volt < 0) {
+    SetEyeScanVoltage(baseNode, (uint8_t)(-1*voltage), NEGATIVE); 
+  } else {
+    SetEyeScanVoltage(baseNode, volt, POSITIVE);
+  }
+
+//SET PHASE
+int phaseInt;
+uint32_t sign;
+
+if(phase < 0) {
+	phaseInt = abs(ceil(phase*phaseMultiplier));
+	sign = NEGATIVE;
+} else {
+	phaseInt = abs(floor(phase*phaseMultiplier));
+  sign = POSITIVE;
+  }
+printf("phase is %f\n", phase);
+SetEyeScanPhase(baseNode, phaseInt, sign);
 
   if(lpm == rxlpmen) {
-    printf("Looks like we have LPM. The register is %u\n", rxlpmen);
+    //printf("Looks like we have LPM. The register is %u\n", rxlpmen);
   } else if(dfe == rxlpmen) {
-    printf("Looks like we have DFE. The register is %u\n", rxlpmen);
+    //printf("Looks like we have DFE. The register is %u\n", rxlpmen);
   } else {
     printf("Something is wrong. We don't have lpm or dfe\n");
   }
@@ -391,7 +314,6 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
     sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
     
     // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
-    usleep(10000);
     
     // de-assert RUN (aka go back to WAIT)
     //  assertNode(baseNode + "RUN", STOP_RUN);
@@ -422,15 +344,7 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
 	}
       actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
       errorCount0=errorCount;
-      printf("Actual Samples=%f\n",actualsample0);
-      printf("Actual Errors=%f\n",errorCount0);
-      //      printf("Stopping single scan because: ");
-      //      if(!(BER < PRECISION)) {
-      //	printf("NOT BER < PRECISION\n");
-      //      }
-      //      if(!(prescale != maxPrescale)) {
-      //	printf("NOT prescale != maxPrescale\n");
-      //      }
+
       loop = false;
     }
   }
@@ -489,15 +403,6 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
       
       //Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
       
-      //Figure out the prescale and data width to calculate BER
-      //prescale = RegReadRegister(baseNode + "PRESCALE");
-      //regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
-      //regDataWidthInt = (int)regDataWidth;
-      //std::map<int, int>::iterator it = busWidthMap.find(regDataWidthInt);
-      //should check if int is at the end
-      //  int actualDataWidth = it->second;
-      //  actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
-      
       // de-assert RUN (aka go back to WAIT)
       // assertNode(baseNode + "RUN", STOP_RUN);
       RegWriteRegister(baseNode + "RUN", STOP_RUN);
@@ -526,13 +431,6 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
 	  }
 	actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
 	errorCount1=errorCount;
-	//printf("Stopping single scan because: ");
-	//if(!(BER < PRECISION)) {
-	//  printf("NOT BER < PRECISION\n");
-	//}
-	//if(!(prescale != maxPrescale)) {
-	//  printf("NOT prescale != maxPrescale\n");
-	//}
 	loop = false;
       }
     }
@@ -542,234 +440,16 @@ SESout ApolloSM::SingleEyeScan(std::string const baseNode, std::string const lpm
   singleScanOut.error0=(unsigned long int)errorCount0;
   singleScanOut.sample1=(unsigned long int)actualsample1;
   singleScanOut.error1=(unsigned long int)errorCount1;
+  singleScanOut.voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
+  singleScanOut.phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
+  scan_output.push_back(singleScanOut);
+  Coords.erase(Coords.begin());
+  if (Coords.size()==0)
+  {
+    es_state=DONE;
+  } else{
+    es_state=WAITING_PIXEL;
+  }
 
   return singleScanOut;
-
 }
-
-// ==================================================
-
-#define MAXUI 0.5
-#define MINUI -0.5
- 
-std::vector<eyescanCoords> ApolloSM::EyeScan(std::string baseNode, std::string lpmNode, double horzIncrement, int vertIncrement, uint32_t maxPrescale) {
-  //clock for timing
-  time_t start, end; // used to time execution
-  time(&start);      // recording start time
-  
-  //  if(1/horzIncrement != 0) {
-  //    throwException("Please enter a horizontal increment divisible into 1\n");
-  //  }
-
-  // Make sure all DRP attributes are set up for eye scan 
-  //EnableEyeScan(baseNode, prescale);
-  //EnableEyeScan(baseNode, 0x1);
-  
-  // declare vector of all eye scan plot coordinates
-  std::vector<eyescanCoords> esCoords;
-
-  // index for vector of coordinates
-  int coordsIndex = 0;
-  int resizeCount = 1;
-
-  // =========================
-  uint8_t maxVoltage = 127;
-  int minVoltage = -127;
-
-  syslog(LOG_INFO, "appending\n");
-  // check for a '.' at the end of baseNode and add it if it isn't there 
-  if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
-    baseNode.append(".");
-  }
-
-  // Figure out RXOUT_DIV to set max phase
-  uint32_t rxoutDiv = RegReadRegister(baseNode + "RXOUT_DIV");
-  // should check if int is at the end
-  int maxPhase = rxoutDivMap.find(rxoutDiv)->second;
-
-  printf("The max phase is: %d\n", maxPhase);
-
-  double phaseMultiplier = maxPhase/MAXUI;
-
-  // =========================
-  double min_BER=100.;
-  // Set offsets and perform eyescan
-  for(int voltage = minVoltage; voltage <= maxVoltage; voltage+=vertIncrement) {
-
-    // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
-    // For bit 7 (8th bit) of ES_VERT_OFFSET
-    uint32_t POSITIVE = 0;
-    uint32_t NEGATIVE = 1;
-
-    printf("Voltage= %d\n", voltage);
-    syslog(LOG_INFO, "%d\n", voltage);
- 
-    if(voltage < 0) {
-      SetEyeScanVoltage(baseNode, (uint8_t)(-1*voltage), NEGATIVE); 
-    } else {
-      SetEyeScanVoltage(baseNode, voltage, POSITIVE);
-    }
-    
-    for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
-      
-      int phaseInt;
-      uint32_t sign;
-
-      if(phase < 0) {
-	phaseInt = abs(ceil(phase*phaseMultiplier));
-	sign = NEGATIVE;
-      } else {
-	phaseInt = abs(floor(phase*phaseMultiplier));
-      	sign = POSITIVE;
-      }
-      printf("phase is %f\n", phase);
-      SetEyeScanPhase(baseNode, phaseInt, sign);
-      esCoords.resize(resizeCount);
-      
-
-      // record voltage and phase coordinates
-      esCoords[coordsIndex].voltage = voltage; 
-      esCoords[coordsIndex].phase = phase;
-      //printf("%d %d\n", voltage, phaseInt);
-      //Get BER for this point
-      //esCoords[coordsIndex].BER = SingleEyeScan(baseNode, lpmNode, maxPrescale);
-      SESout singleScanOut=SingleEyeScan(baseNode, lpmNode, maxPrescale);
-      esCoords[coordsIndex].BER=singleScanOut.BER;
-      esCoords[coordsIndex].error0=singleScanOut.error0;
-      esCoords[coordsIndex].sample0=singleScanOut.sample0;
-      esCoords[coordsIndex].error1=singleScanOut.error1;
-      esCoords[coordsIndex].sample1=singleScanOut.sample1;
-      printf("BER=%.20f\n",singleScanOut.BER);
-      if (esCoords[coordsIndex].BER<min_BER)
-	{
-	  min_BER=esCoords[coordsIndex].BER;
-	}
-      //sample count and error count for this point
-      // uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
-      // int const regDataWidthInt = (int)regDataWidth;
-      // int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
-      // int sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
-      // int prescale = RegReadRegister(baseNode + "PRESCALE");
-      //int es_sample_count=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-      //esCoords[coordsIndex].sample = es_sample_count;
-      //esCoords[coordsIndex].error = RegReadRegister(baseNode + "ERROR_COUNT");
-      // Vert sign mask is 0x80 so we need to shift right by 7
-      esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
-      esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
-
-      //printf("%.9f\n", esCoords[coordsIndex].BER);
-      //printf("%d\n", esCoords[coordsIndex].voltage);
-      
-      //going to next coordinate/scan 
-      coordsIndex++;
-      resizeCount++;
-    }
-  }
-  //clock end
-  // Recording end time.
-  time(&end);                                                                                 //end simulation time 
-
-  // Calculating total time taken by the program.
-  double time_taken = double(end - start);
-  printf("Time taken by program is %f seconds.\n",time_taken);
-  printf("Min BER is %.15f\n.", min_BER);
-
-  //  // reset FPGA_ID
-  //  zeroFPGA_ID();
-  return esCoords;
-}
-
-std::vector<eyescanCoords> ApolloSM::Bathtub(std::string baseNode, std::string lpmNode, double horzIncrement, uint32_t maxPrescale) {
-  //clock for timing
-  time_t start, end; // used to time execution
-  time(&start);      // recording start time
-  
-  
-  // declare vector of all eye scan plot coordinates
-  std::vector<eyescanCoords> esCoords;
-
-  // index for vector of coordinates
-  int coordsIndex = 0;
-  int resizeCount = 1;
-  int voltage =0;
-  uint32_t POSITIVE=0;
-  uint32_t NEGATIVE=0;
-  SetEyeScanVoltage(baseNode, voltage, POSITIVE);
-
-  syslog(LOG_INFO, "appending\n");
-  // check for a '.' at the end of baseNode and add it if it isn't there 
-  if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
-    baseNode.append(".");
-  }
-
-  // Figure out RXOUT_DIV to set max phase
-  uint32_t rxoutDiv = RegReadRegister(baseNode + "RXOUT_DIV");
-  // should check if int is at the end
-  int maxPhase = rxoutDivMap.find(rxoutDiv)->second;
-
-  printf("The max phase is: %d\n", maxPhase);
-
-  double phaseMultiplier = maxPhase/MAXUI;
-
-  // =========================
-  double min_BER=100.;
-  // Set offsets and perform eyescan
-    
-  for(double phase = MINUI; phase <= MAXUI; phase+=horzIncrement) {
-      
-    int phaseInt;
-    uint32_t sign;
-
-    if(phase < 0) {
-      phaseInt = abs(ceil(phase*phaseMultiplier));
-      sign = NEGATIVE;
-    } else {
-      phaseInt = abs(floor(phase*phaseMultiplier));
-      sign = POSITIVE;
-    }
-    printf("phase is %f\n", phase);
-    SetEyeScanPhase(baseNode, phaseInt, sign);
-    esCoords.resize(resizeCount);
-      
-    // record voltage and phase coordinates
-    esCoords[coordsIndex].voltage = voltage; 
-    esCoords[coordsIndex].phase = phase;
-
-    //Get BER for this point
-    SESout singleScanOut=SingleEyeScan(baseNode, lpmNode, maxPrescale);
-    esCoords[coordsIndex].BER=singleScanOut.BER;
-
-    //sample count and error count for this point
-    esCoords[coordsIndex].error0=singleScanOut.error0;
-    esCoords[coordsIndex].sample0=singleScanOut.sample0;
-    esCoords[coordsIndex].error1=singleScanOut.error1;
-    esCoords[coordsIndex].sample1=singleScanOut.sample1;
-    printf("BER=%.20f\n",singleScanOut.BER);
-    if (esCoords[coordsIndex].BER<min_BER)
-      {
-	min_BER=esCoords[coordsIndex].BER;
-      }
-
-    // Vert sign mask is 0x80 so we need to shift right by 7
-    esCoords[coordsIndex].voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
-    esCoords[coordsIndex].phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
-      
-    //going to next coordinate/scan 
-    coordsIndex++;
-    resizeCount++;
-  }
-  
-  //clock end
-  // Recording end time.
-  time(&end);                                                                                 //end simulation time 
-
-  // Calculating total time taken by the program.
-  double time_taken = double(end - start);
-  printf("Time taken by program is %f seconds.\n",time_taken);
-  printf("Min BER is %.15f\n.", min_BER);
-
-  //  // reset FPGA_ID
-  //  zeroFPGA_ID();
-  return esCoords;
-}
-

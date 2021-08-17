@@ -54,7 +54,7 @@ private:
 
 
 public:
-	eyescan(std::string basenode, std::string lpmN0de, int nBinsX, int nBinsY, int max_prescale);
+	eyescan(std::string basenode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale);
 	~eyescan();
 
 	ES_state_t check();

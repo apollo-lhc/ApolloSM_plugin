@@ -530,145 +530,142 @@ CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg
   return CommandReturn::OK;
 }
 
-// Performs a single eye scan
-CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+// // Performs a single eye scan
+// CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
-  if(3 != strArg.size()) {
-    return CommandReturn::BAD_ARGS;
+//   if(3 != strArg.size()) {
+//     return CommandReturn::BAD_ARGS;
+//   }
+
+//   std::string baseNode = strArg[0];
+//   std::string lpmNode = strArg[1];  
+//   uint32_t maxPrescale = strtoul(strArg[2].c_str(), NULL, 0);
+//   // Add a dot to baseNode if it does not already have one
+//   if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
+//     baseNode.append(".");
+//   }
+
+//   printf("The base node is %s\n", baseNode.c_str());
+//   SESout singleOut = SM->SingleEyeScan(baseNode, lpmNode, maxPrescale);
+
+//   printf("The BER is: %.15f\n", singleOut.BER); 
+
+//   return CommandReturn::OK;
+// }
+
+CommandReturn::status ApolloSMDevice::EyeScan(){
+
+  std::ifstream inputfile;
+  inputfile.open("input.txt")
+  std::string line;
+  std::vector<eyescan> eyescanVec;
+  std::vector<string> outputfileVec;
+
+
+  while(std::getline(inputfile,line)){
+    std::istringstream stm(line);
+    std::string baseNode,lpmNode, outputfile;
+    int nXbins, nYbins, maxPrescale;
+    constexp char TAB = " ";
+
+    std::getline(stm,baseNode,TAB);
+    std::getline(stm,lpmNode,TAB);
+    std::getline(stm,nXbins,TAB);
+    std::getline(stm,nYbins,TAB);
+    std::getline(stm,maxPrescale,TAB);
+    std::getline(stm,outputfile,TAB);
+
+    eyescanVec.push_back(eyescan(baseNode,lpmNode,nXbins,nYbins,maxPrescale));
+    outputfileVec.push_back(outputfile)
+
   }
+  inputfile.close(); 
+  while(eyescanVec.size()!=0){
+    for (int i = 0; i < eyescanVec.size(); ++i)
+    {
+      if(eyescanVec[i].check()==DONE){
+        std::vector<eyescanCoords> esCoords=eyescanVec.dataout();
 
-  std::string baseNode = strArg[0];
-  std::string lpmNode = strArg[1];  
-  uint32_t maxPrescale = strtoul(strArg[2].c_str(), NULL, 0);
-  // Add a dot to baseNode if it does not already have one
-  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
-    baseNode.append(".");
+        FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");
+        
+        printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+        
+        for(int i = 0; i < (int)esCoords.size(); i++) {
+          fprintf(dataFile, "%.9f ", esCoords[i].phase);
+          fprintf(dataFile, "%d ", esCoords[i].voltage);
+          fprintf(dataFile, "%.20f ", esCoords[i].BER);
+          fprintf(dataFile, "%lu ", esCoords[i].sample0);
+          fprintf(dataFile, "%lu ", esCoords[i].error0);
+          fprintf(dataFile, "%lu ", esCoords[i].sample1);
+          fprintf(dataFile, "%lu ", esCoords[i].error1);
+          fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
+          fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
+        }
+      
+        fclose(dataFile);
+        eyescanVec.erase(i);
+        outputfileVec.erase(i);
+      }else{
+        eyescanVec[i].update();
+      }
+    }
   }
-
-  printf("The base node is %s\n", baseNode.c_str());
-  SESout singleOut = SM->SingleEyeScan(baseNode, lpmNode, maxPrescale);
-
-  printf("The BER is: %.15f\n", singleOut.BER); 
-
-  return CommandReturn::OK;
-}
-
-CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
-
-  // base node, text file, horizontal increment double, vertical increment integer, maximum prescale
-  if(6 != strArg.size()) {
-    return CommandReturn::BAD_ARGS;
-  }
-  
-  std::string baseNode = strArg[0];
-  std::string lpmNode = strArg[1]; 
-  // Add a dot to baseNode if it does not already have one
-  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
-    baseNode.append(".");
-  }
-
-  std::string fileName = strArg[2];
-  if(0 != fileName.compare(fileName.size()-4,4,".txt")) {
-    return CommandReturn::BAD_ARGS;
-  }
-
-  printf("The base node is %s\n", baseNode.c_str());
-  printf("The file to write to is %s\n", fileName.c_str());
-  
-  double horzIncrement = atof(strArg[3].c_str());
-  int vertIncrement = atoi(strArg[4].c_str());
-
-  printf("We have horz increment %f and vert increment %d\n", horzIncrement, vertIncrement);
-
-  uint32_t maxPrescale = strtoul(strArg[5].c_str(), NULL, 0);
-  printf("The max prescale is: %d\n", maxPrescale);
-  std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, lpmNode, horzIncrement, vertIncrement, maxPrescale);
-  //std::vector<eyescanCoords> esCoords = SM->EyeScan(baseNode, horzIncrement, vertIncrement, maxPrescale);
-
-//  int fd = open(fileName, O_CREAT | O_RDWR, 0644);
-//
-//  if(0 > fd) {
-//    printf("Error trying to open file %s\n", fileName.c_str());
-//    return CommandReturn::OK;
-//  }
-//
-
-  FILE * dataFile = fopen(fileName.c_str(), "w");
-  
-  //FILE * dataFile = stdout;
-  
-  printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
-  
-  for(int i = 0; i < (int)esCoords.size(); i++) {
-    fprintf(dataFile, "%.9f ", esCoords[i].phase);
-    fprintf(dataFile, "%d ", esCoords[i].voltage);
-    fprintf(dataFile, "%.20f ", esCoords[i].BER);
-    fprintf(dataFile, "%lu ", esCoords[i].sample0);
-    fprintf(dataFile, "%lu ", esCoords[i].error0);
-    fprintf(dataFile, "%lu ", esCoords[i].sample1);
-    fprintf(dataFile, "%lu ", esCoords[i].error1);
-    fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
-    fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
-  }
-  
-  fclose(dataFile);
-
   return CommandReturn::OK;
 
 }
 
-CommandReturn::status ApolloSMDevice::Bathtub(std::vector<std::string> strArg, std::vector<uint64_t>) {
+// CommandReturn::status ApolloSMDevice::Bathtub(std::vector<std::string> strArg, std::vector<uint64_t>) {
 
-  // base node, text file, horizontal increment double, vertical increment integer, maximum prescale
-  if(5 != strArg.size()) {
-    return CommandReturn::BAD_ARGS;
-  }
+//   // base node, text file, horizontal increment double, vertical increment integer, maximum prescale
+//   if(5 != strArg.size()) {
+//     return CommandReturn::BAD_ARGS;
+//   }
   
-  std::string baseNode = strArg[0];
-  std::string lpmNode = strArg[1]; 
-  // Add a dot to baseNode if it does not already have one
-  if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
-    baseNode.append(".");
-  }
+//   std::string baseNode = strArg[0];
+//   std::string lpmNode = strArg[1]; 
+//   // Add a dot to baseNode if it does not already have one
+//   if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
+//     baseNode.append(".");
+//   }
 
-  std::string fileName = strArg[2];
-  if(0 != fileName.compare(fileName.size()-4,4,".txt")) {
-    return CommandReturn::BAD_ARGS;
-  }
+//   std::string fileName = strArg[2];
+//   if(0 != fileName.compare(fileName.size()-4,4,".txt")) {
+//     return CommandReturn::BAD_ARGS;
+//   }
 
-  printf("The base node is %s\n", baseNode.c_str());
-  printf("The file to write to is %s\n", fileName.c_str());
+//   printf("The base node is %s\n", baseNode.c_str());
+//   printf("The file to write to is %s\n", fileName.c_str());
   
-  double horzIncrement = atof(strArg[3].c_str());
+//   double horzIncrement = atof(strArg[3].c_str());
   
 
-  printf("We have horz increment %f", horzIncrement);
+//   printf("We have horz increment %f", horzIncrement);
 
-  uint32_t maxPrescale = strtoul(strArg[4].c_str(), NULL, 0);
-  printf("The max prescale is: %d\n", maxPrescale);
-  std::vector<eyescanCoords> esCoords = SM->Bathtub(baseNode, lpmNode, horzIncrement, maxPrescale);
+//   uint32_t maxPrescale = strtoul(strArg[4].c_str(), NULL, 0);
+//   printf("The max prescale is: %d\n", maxPrescale);
+//   std::vector<eyescanCoords> esCoords = SM->Bathtub(baseNode, lpmNode, horzIncrement, maxPrescale);
 
-  FILE * dataFile = fopen(fileName.c_str(), "w");
+//   FILE * dataFile = fopen(fileName.c_str(), "w");
 
-  printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+//   printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
   
-  for(int i = 0; i < (int)esCoords.size(); i++) {
-    fprintf(dataFile, "%.9f ", esCoords[i].phase);
-    fprintf(dataFile, "%d ", esCoords[i].voltage);
-    fprintf(dataFile, "%.20f ", esCoords[i].BER);
-    fprintf(dataFile, "%lu ", esCoords[i].sample0);
-    fprintf(dataFile, "%lu ", esCoords[i].error0);
-    fprintf(dataFile, "%lu ", esCoords[i].sample1);
-    fprintf(dataFile, "%lu ", esCoords[i].error1);
-    fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
-    fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
-  }
+//   for(int i = 0; i < (int)esCoords.size(); i++) {
+//     fprintf(dataFile, "%.9f ", esCoords[i].phase);
+//     fprintf(dataFile, "%d ", esCoords[i].voltage);
+//     fprintf(dataFile, "%.20f ", esCoords[i].BER);
+//     fprintf(dataFile, "%lu ", esCoords[i].sample0);
+//     fprintf(dataFile, "%lu ", esCoords[i].error0);
+//     fprintf(dataFile, "%lu ", esCoords[i].sample1);
+//     fprintf(dataFile, "%lu ", esCoords[i].error1);
+//     fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
+//     fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
+//   }
   
-  fclose(dataFile);
+//   fclose(dataFile);
 
-  return CommandReturn::OK;
+//   return CommandReturn::OK;
 
-}
+// }
 
 CommandReturn::status ApolloSMDevice::restartCMuC(std::vector<std::string> strArg,
 						  std::vector<uint64_t> /*intArg*/){

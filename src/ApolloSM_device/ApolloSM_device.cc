@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+#include <sstream>
 
 
 #include <boost/algorithm/string/predicate.hpp> //for iequals

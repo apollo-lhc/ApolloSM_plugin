@@ -445,29 +445,29 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strA
   return CommandReturn::OK;						   
 }
 						 
-// To set up all attributes for an eye scan
-CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
+// // To set up all attributes for an eye scan
+// CommandReturn::status ApolloSMDevice::EnableEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
-  if(2 != strArg.size()) {
-    return CommandReturn::BAD_ARGS;
-  }
+//   if(2 != strArg.size()) {
+//     return CommandReturn::BAD_ARGS;
+//   }
 
-  // For base 0, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
-  uint32_t prescale = strtoul(strArg[1].c_str(), NULL, 0);
+//   // For base 0, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
+//   uint32_t prescale = strtoul(strArg[1].c_str(), NULL, 0);
 
-  // prescale attribute has only 5 bits of space
-  uint32_t maxPrescaleAllowed = 31;
+//   // prescale attribute has only 5 bits of space
+//   uint32_t maxPrescaleAllowed = 31;
 
-  // Checks that the prescale is in allowed range
-  if(maxPrescaleAllowed < prescale) {
-    return CommandReturn::BAD_ARGS;
-  }
+//   // Checks that the prescale is in allowed range
+//   if(maxPrescaleAllowed < prescale) {
+//     return CommandReturn::BAD_ARGS;
+//   }
 
-  // base node and prescale
-  SM->EnableEyeScan(strArg[0], prescale);
+//   // base node and prescale
+//   SM->EnableEyeScan(strArg[0], prescale);
   
-  return CommandReturn::OK;
-}
+//   return CommandReturn::OK;
+// }
 
 
 CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg, std::vector<uint64_t>) {
@@ -549,16 +549,23 @@ CommandReturn::status ApolloSMDevice::EyeScan(){
 
   while(std::getline(inputfile,line)){
     std::istringstream stm(line);
-    std::string baseNode,lpmNode, outputfile;
+    std::string baseNode,lpmNode, outputfile, nXbins_str, nYbins_str, maxPrescale_str;
     int nXbins, nYbins, maxPrescale;
     constexpr char TAB = ',';
 
     std::getline(stm,baseNode,TAB);
     std::getline(stm,lpmNode,TAB);
-    std::getline(stm,nXbins,TAB);
-    std::getline(stm,nYbins,TAB);
-    std::getline(stm,maxPrescale,TAB);
+    std::getline(stm,nXbins_str,TAB);
+    std::getline(stm,nYbins_str,TAB);
+    std::getline(stm,maxPrescale_str,TAB);
     std::getline(stm,outputfile,TAB);
+    stringstream ss;
+    ss(nXbins_str);
+    ss>>nXbins;
+    ss(nYbins_str);
+    ss>>nYbins;
+    ss(maxPrescale_str);
+    ss>>maxPrescale;
 
     eyescanVec.push_back(eyescan(baseNode,lpmNode,nXbins,nYbins,maxPrescale));
     outputfileVec.push_back(outputfile);

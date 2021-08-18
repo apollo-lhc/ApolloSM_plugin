@@ -166,11 +166,11 @@ void ApolloSMDevice::LoadCommandList(){
 	       "  SetOffsets <base node> <voltage> <phase> \n");
     AddCommandAlias("vpoff","SetOffsets");
 
-    AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
-	       "Perform a single eye scan\n"   \
-	       "Usage: \n"                              \
-	       "  SingleEyeScan <base node> <lpmNode> <max prescale>\n");
-    AddCommandAlias("singlees","SingleEyeScan");
+    // AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
+	   //     "Perform a single eye scan\n"   \
+	   //     "Usage: \n"                              \
+	   //     "  SingleEyeScan <base node> <lpmNode> <max prescale>\n");
+    // AddCommandAlias("singlees","SingleEyeScan");
 
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
 	       "Perform an eye scan\n"   \
@@ -178,12 +178,12 @@ void ApolloSMDevice::LoadCommandList(){
 	       "  EyeScan <base node> <lpmNode> <file> <horizontal increment double> <vertical increment integer> <max prescale>\n", 
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
-    AddCommand("Bathtub",&ApolloSMDevice::Bathtub,
-         "Perform an Bathtub scan\n"   \
-         "Usage: \n"                              \
-         "  Bathtub <base node> <lpmNode> <file> <horizontal increment double> <max prescale>\n", 
-         &ApolloSMDevice::RegisterAutoComplete);
-    AddCommandAlias("bt","Bathtub");
+    // AddCommand("Bathtub",&ApolloSMDevice::Bathtub,
+    //      "Perform an Bathtub scan\n"   \
+    //      "Usage: \n"                              \
+    //      "  Bathtub <base node> <lpmNode> <file> <horizontal increment double> <max prescale>\n", 
+    //      &ApolloSMDevice::RegisterAutoComplete);
+    // AddCommandAlias("bt","Bathtub");
     AddCommand("restartCMuC",&ApolloSMDevice::restartCMuC,
 	       "Restart micro controller on CM\n"	\
 	       "Usage: \n"\
@@ -556,10 +556,10 @@ CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg
 CommandReturn::status ApolloSMDevice::EyeScan(){
 
   std::ifstream inputfile;
-  inputfile.open("input.txt")
+  inputfile.open("input.txt");
   std::string line;
   std::vector<eyescan> eyescanVec;
-  std::vector<string> outputfileVec;
+  std::vector<std::string> outputfileVec;
 
 
   while(std::getline(inputfile,line)){

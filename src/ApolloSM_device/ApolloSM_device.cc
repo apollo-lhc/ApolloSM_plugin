@@ -566,15 +566,15 @@ CommandReturn::status ApolloSMDevice::EyeScan(){
     std::getline(stm,outputfile,TAB);
 
     eyescanVec.push_back(eyescan(baseNode,lpmNode,nXbins,nYbins,maxPrescale));
-    outputfileVec.push_back(outputfile)
+    outputfileVec.push_back(outputfile);
 
   }
   inputfile.close(); 
   while(eyescanVec.size()!=0){
-    for (int i = 0; i < eyescanVec.size(); ++i)
+    for (uint32_t i = 0; i < eyescanVec.size(); ++i)
     {
       if(eyescanVec[i].check()==DONE){
-        std::vector<eyescanCoords> esCoords=eyescanVec[i].dataout();
+        const std::vector<eyescanCoords> esCoords=eyescanVec[i].dataout();
 
         FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");
         
@@ -593,8 +593,8 @@ CommandReturn::status ApolloSMDevice::EyeScan(){
         }
       
         fclose(dataFile);
-        eyescanVec.erase(i);
-        outputfileVec.erase(i);
+        eyescanVec[i].erase();
+        outputfileVec[i].erase();
       }else{
         eyescanVec[i].update();
       }

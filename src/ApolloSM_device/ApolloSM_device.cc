@@ -551,7 +551,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(){
     std::istringstream stm(line);
     std::string baseNode,lpmNode, outputfile;
     int nXbins, nYbins, maxPrescale;
-    constexpr char TAB = '  ';
+    constexpr char TAB = ',';
 
     std::getline(stm,baseNode,TAB);
     std::getline(stm,lpmNode,TAB);

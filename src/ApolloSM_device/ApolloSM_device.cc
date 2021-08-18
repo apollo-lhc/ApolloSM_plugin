@@ -166,11 +166,6 @@ void ApolloSMDevice::LoadCommandList(){
 	       "  SetOffsets <base node> <voltage> <phase> \n");
     AddCommandAlias("vpoff","SetOffsets");
 
-    // AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
-	   //     "Perform a single eye scan\n"   
-	   //     "Usage: \n"                              
-	   //     "  SingleEyeScan <base node> <lpmNode> <max prescale>\n");
-    // AddCommandAlias("singlees","SingleEyeScan");
 
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
 	       "Perform an eye scan\n"   \
@@ -178,12 +173,7 @@ void ApolloSMDevice::LoadCommandList(){
 	       "  EyeScan <base node> <lpmNode> <file> <horizontal increment double> <vertical increment integer> <max prescale>\n", 
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
-    // AddCommand("Bathtub",&ApolloSMDevice::Bathtub,
-    //      "Perform an Bathtub scan\n"   
-    //      "Usage: \n"                              
-    //      "  Bathtub <base node> <lpmNode> <file> <horizontal increment double> <max prescale>\n", 
-    //      &ApolloSMDevice::RegisterAutoComplete);
-    // AddCommandAlias("bt","Bathtub");
+
     AddCommand("restartCMuC",&ApolloSMDevice::restartCMuC,
 	       "Restart micro controller on CM\n"	\
 	       "Usage: \n"\
@@ -566,7 +556,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(){
     std::istringstream stm(line);
     std::string baseNode,lpmNode, outputfile;
     int nXbins, nYbins, maxPrescale;
-    constexp char TAB = " ";
+    constexpr char TAB = " ";
 
     std::getline(stm,baseNode,TAB);
     std::getline(stm,lpmNode,TAB);
@@ -584,7 +574,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(){
     for (int i = 0; i < eyescanVec.size(); ++i)
     {
       if(eyescanVec[i].check()==DONE){
-        std::vector<eyescanCoords> esCoords=eyescanVec.dataout();
+        std::vector<eyescanCoords> esCoords=eyescanVec[i].dataout();
 
         FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");
         

@@ -167,8 +167,8 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommandAlias("vpoff","SetOffsets");
 
     // AddCommand("SingleEyeScan",&ApolloSMDevice::SingleEyeScan,
-	   //     "Perform a single eye scan\n"   \
-	   //     "Usage: \n"                              \
+	   //     "Perform a single eye scan\n"   
+	   //     "Usage: \n"                              
 	   //     "  SingleEyeScan <base node> <lpmNode> <max prescale>\n");
     // AddCommandAlias("singlees","SingleEyeScan");
 
@@ -179,8 +179,8 @@ void ApolloSMDevice::LoadCommandList(){
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
     // AddCommand("Bathtub",&ApolloSMDevice::Bathtub,
-    //      "Perform an Bathtub scan\n"   \
-    //      "Usage: \n"                              \
+    //      "Perform an Bathtub scan\n"   
+    //      "Usage: \n"                              
     //      "  Bathtub <base node> <lpmNode> <file> <horizontal increment double> <max prescale>\n", 
     //      &ApolloSMDevice::RegisterAutoComplete);
     // AddCommandAlias("bt","Bathtub");

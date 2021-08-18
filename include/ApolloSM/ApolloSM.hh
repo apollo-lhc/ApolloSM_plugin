@@ -4,7 +4,9 @@
 #include <IPBusIO/IPBusConnection.hh>
 #include <IPBusStatus/IPBusStatus.hh>
 #include <BUException/ExceptionBase.hh>
-#include <ApolloSM/eyescan.hh>
+//#include <ApolloSM/eyescan.hh>
+#include <ApolloSM/eyescan_class.hh>
+
 
 #include <iostream>
 

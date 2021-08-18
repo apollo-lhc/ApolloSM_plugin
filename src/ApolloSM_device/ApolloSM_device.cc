@@ -560,7 +560,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(){
     std::getline(stm,nYbins_str,TAB);
     std::getline(stm,maxPrescale_str,TAB);
     std::getline(stm,outputfile,TAB);
-    stringstream ss;
+    std::stringstream ss;
     ss(nXbins_str);
     ss>>nXbins;
     ss(nYbins_str);

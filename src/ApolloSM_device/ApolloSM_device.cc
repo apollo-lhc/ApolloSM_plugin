@@ -154,11 +154,6 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Unblocks all four C2CX AXI and AXILITE bits\n"\
 	       "Usage: \n"\
 	       "  unblockAXI\n");
-    AddCommand("EnableEyeScan",&ApolloSMDevice::EnableEyeScan,
-	       "Set up all attributes for eye scan\n"   \
-	       "Usage: \n"                              \
-	       "  EnableEyeScan <base node> <prescale> \n");
-    AddCommandAlias("esn","EnableEyeScan");
 
     AddCommand("SetOffsets",&ApolloSMDevice::SetOffsets,
 	       "Set up voltage and phase offsets for eyescan\n"   \
@@ -556,7 +551,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(){
     std::istringstream stm(line);
     std::string baseNode,lpmNode, outputfile;
     int nXbins, nYbins, maxPrescale;
-    constexpr char TAB = " ";
+    constexpr char TAB = '  ';
 
     std::getline(stm,baseNode,TAB);
     std::getline(stm,lpmNode,TAB);

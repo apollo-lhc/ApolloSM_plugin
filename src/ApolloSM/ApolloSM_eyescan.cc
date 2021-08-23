@@ -198,12 +198,12 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
 
   
   std::vector<eyescan::Coords> Coords_vect;
-  for (int i = 0; i < volt_vect.size(); ++i)
+  for (unsigned int i = 0; i < volt_vect.size(); ++i)
   {
-    for (int j = 0; j < phase_vect.size(); ++j)
+    for ( unsigned int j = 0; j < phase_vect.size(); ++j)
     {
-      Coords_vect.voltage[i]=volt_vect[i];
-      Coords_vect.phase[j]=phase_vect[j];
+      Coords_vect[i].voltage=volt_vect[i];
+      Coords_vect[j].phase=phase_vect[j];
     }
   }
   volt = Coords_vect.voltage[0];
@@ -212,7 +212,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
   es_state=BUSY;
 }
 
-eyescan::~eyescan();
+eyescan::~eyescan() {};
 
 eyescan::ES_state_t eyescan::check(){  //checks es_state
   return es_state;
@@ -254,7 +254,7 @@ void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint3
   RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
 }
 
-std::vector<eyescanCoords> eyescan::dataout(){
+std::vector<eyescan::eyescanCoords> eyescan::dataout(){
   return scan_output;
 }
 

@@ -86,7 +86,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
       throwException("No transistor type found.\n");
   }
   // ** ES_EYE_SCAN_EN assert 1
-  assertNode(baseNode + "EYE_SCAN_EN", ES_EYE_SCAN_EN);
+  ApolloSM::assertNode(baseNode + "EYE_SCAN_EN", ES_EYE_SCAN_EN);
 
   // ** ES_ERRDET_EN assert 1
   assertNode(baseNode + "ERRDET_EN", ES_ERRDET_EN);
@@ -197,7 +197,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
   }
 
   
-  std::vector<Coords> Coords_vect;
+  std::vector<eyescan::Coords> Coords_vect;
   for (int i = 0; i < volt_vect.size(); ++i)
   {
     for (int j = 0; j < phase_vect.size(); ++j)
@@ -214,7 +214,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
 
 eyescan::~eyescan();
 
-ES_state_t eyescan::check(){  //checks es_state
+eyescan::ES_state_t eyescan::check(){  //checks es_state
   return es_state;
 }
 void eyescan::update(){
@@ -258,7 +258,7 @@ std::vector<eyescanCoords> eyescan::dataout(){
   return scan_output;
 }
 
-eyescanCoords eyescan::scan_pixel(float phase; float volt; int prescale){
+eyescan::eyescanCoords eyescan::scan_pixel(float phase; float volt; int prescale){
   es_state = BUSY;
 	eyescanCoords singleScanOut;
   double BER;

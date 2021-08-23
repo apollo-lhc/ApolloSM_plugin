@@ -565,7 +565,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     eyescanVec.push_back(eyescan(baseNode,lpmNode,nXbins,nYbins,maxPrescale));
     outputfileVec.push_back(outputfile);
   }
-  ES_state_t done_state = DONE;
+  eyescan::ES_state_t done_state = DONE;
   while(eyescanVec.size()!=0){
     for (uint32_t i = 0; i < eyescanVec.size(); ++i)
     {
@@ -578,19 +578,19 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
         
         for(int i = 0; i < (int)esCoords.size(); i++) {
           fprintf(dataFile, "%.9f ", esCoords[i].phase);
-          fprintf(dataFile, "%d ", esCoords[i].voltage);
+          fprintf(dataFile, "%f ", esCoords[i].voltage);
           fprintf(dataFile, "%.20f ", esCoords[i].BER);
-          fprintf(dataFile, "%lu ", esCoords[i].sample0);
-          fprintf(dataFile, "%lu ", esCoords[i].error0);
-          fprintf(dataFile, "%lu ", esCoords[i].sample1);
-          fprintf(dataFile, "%lu ", esCoords[i].error1);
+          fprintf(dataFile, "%x ", esCoords[i].sample0);
+          fprintf(dataFile, "%x ", esCoords[i].error0);
+          fprintf(dataFile, "%x ", esCoords[i].sample1);
+          fprintf(dataFile, "%x ", esCoords[i].error1);
           fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
           fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
         }
       
         fclose(dataFile);
-        eyescanVec.erase(i);
-        outputfileVec.erase(i);
+        eyescanVec.erase(eyescanVec.begin()+i);
+        outputfileVec.erase(outputfileVec.begin()+i);
       }else{
         eyescanVec[i].update();
       }

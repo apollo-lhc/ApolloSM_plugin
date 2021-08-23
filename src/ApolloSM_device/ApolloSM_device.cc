@@ -565,12 +565,12 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     eyescanVec.push_back(eyescan(baseNode,lpmNode,nXbins,nYbins,maxPrescale));
     outputfileVec.push_back(outputfile);
   }
-
+  ES_state_t done_state = DONE;
   while(eyescanVec.size()!=0){
     for (uint32_t i = 0; i < eyescanVec.size(); ++i)
     {
-      if(eyescanVec[i].check()==DONE){
-        const std::vector<eyescanCoords> esCoords=eyescanVec[i].dataout();
+      if(eyescanVec[i].check()==done_state){
+        const std::vector<eyescan::eyescanCoords> esCoords=eyescanVec[i].dataout();
 
         FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");
         

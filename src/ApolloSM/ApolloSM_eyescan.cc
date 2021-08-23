@@ -1,7 +1,12 @@
-#include <eyescan_class.hh>
+#include <ApolloSM/ApolloSM.hh>
+#include "ApolloSM/eyescan_class.hh"
 #include <stdio.h>
+#include <BUTool/ToolException.hh>
+#include <IPBusIO/IPBusIO.hh>
+#include <ApolloSM/ApolloSM_Exceptions.hh>
 
-eyescan::eyescan(std::string basenode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale){
+
+eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale){
   ES_state_t es_state=UNINIT;
   std::vector<eyescanCoords> scan_output;
   int Max_prescale= max_prescale;

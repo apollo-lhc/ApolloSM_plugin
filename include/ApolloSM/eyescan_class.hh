@@ -15,7 +15,7 @@
 class eyescan
 {
 public:
-	typedef enum { UNINIT, BUSY, WAITING_PRESCALE, DONE  } ES_state_t;
+	typedef enum { UNINIT, BUSY, WAITING_PRESCALE, DONE=0  } ES_state_t;
 
 	// All necessary information to plot an eyescan
 struct eyescanCoords {

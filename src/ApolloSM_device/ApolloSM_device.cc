@@ -166,7 +166,7 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
 	       "Perform an eye scan\n"   \
 	       "Usage: \n"                              \
-	       "  EyeScan <base node> <lpmNode> <file> <horizontal increment double> <vertical increment integer> <max prescale>\n", 
+	       "  EyeScan <# x bins> <# y bins> <max prescale> <base node 0> <lpmNode 0> <file 0> ...\n", 
 	       &ApolloSMDevice::RegisterAutoComplete);
     AddCommandAlias("es","EyeScan");
 
@@ -539,40 +539,33 @@ CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg
 //   return CommandReturn::OK;
 // }
 
-CommandReturn::status ApolloSMDevice::EyeScan(){
+CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>){
 
-  std::ifstream inputfile;
-  inputfile.open("input.txt");
-  std::string line;
+  if(6 > strArg.size()) {
+    return CommandReturn::BAD_ARGS;
+  }
+  if (strArg.size()%3!=0)
+  {
+    return CommandReturn::BAD_ARGS;
+  }
+  int num_of_nodes = (strArg.size()-3)/3;
+
   std::vector<eyescan> eyescanVec;
   std::vector<std::string> outputfileVec;
 
+  int nXbins = atoi(strArg[0].c_str());
+  int nYbins = atoi(strArg[1].c_str());
+  int maxPrescale = atoi(strArg[2].c_str());
 
-  while(std::getline(inputfile,line)){
-    std::istringstream stm(line);
-    std::string baseNode,lpmNode, outputfile, nXbins_str, nYbins_str, maxPrescale_str;
-    int nXbins, nYbins, maxPrescale;
-    constexpr char TAB = ',';
-
-    std::getline(stm,baseNode,TAB);
-    std::getline(stm,lpmNode,TAB);
-    std::getline(stm,nXbins_str,TAB);
-    std::getline(stm,nYbins_str,TAB);
-    std::getline(stm,maxPrescale_str,TAB);
-    std::getline(stm,outputfile,TAB);
-    std::stringstream ss;
-    ss(nXbins_str);
-    ss>>nXbins;
-    ss(nYbins_str);
-    ss>>nYbins;
-    ss(maxPrescale_str);
-    ss>>maxPrescale;
-
+  for (int i = 0; i < num_of_nodes; ++i)
+  {
+    std::string basenode=strArg[(i+1*3)];
+    std::string lpmNode=strArg[(i+1*3)+1];
+    std::string outputfile=strArg[(i+1*3)+2];
     eyescanVec.push_back(eyescan(baseNode,lpmNode,nXbins,nYbins,maxPrescale));
     outputfileVec.push_back(outputfile);
-
   }
-  inputfile.close(); 
+
   while(eyescanVec.size()!=0){
     for (uint32_t i = 0; i < eyescanVec.size(); ++i)
     {

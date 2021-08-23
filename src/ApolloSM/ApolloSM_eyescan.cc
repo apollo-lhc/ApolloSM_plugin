@@ -1,9 +1,39 @@
-#include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/eyescan_class.hh>
 #include <stdio.h>
 #include <BUTool/ToolException.hh>
 #include <IPBusIO/IPBusIO.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
+#include <IPBusIO/IPBusIO.hh>
+#include <vector>
+#include <stdlib.h>
+//#include <math.h> // pow
+#include <map>
+#include <syslog.h>
+#include <time.h>
+
+
+// Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
+void throwException(std::string message) {
+  BUException::EYESCAN_ERROR e;
+  e.Append(message);
+  throw e;
+}
+
+// assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
+void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
+  RegWriteRegister(node, correctVal);
+  // Might be able to just put confirmNode here
+  if(correctVal != RegReadRegister(node)) {
+    throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
+  }
+}
+
+// confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
+void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
+  if(correctVal != RegReadRegister(node)) {
+    throwException(node + " is not set correctly to: " + std::to_string(correctVal));
+  }
+}
 
 
 eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale){
@@ -62,7 +92,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
 
   // ** ES_PRESCALE set prescale
   //  uint32_t prescale32 = std::stoi(prescale); 
-  assertNode(baseNode + "PRESCALE", prescale);
+  assertNode(baseNode + "PRESCALE", Max_prescale);
 
   // *** PMA_CFG confirm all 0s
   if(t == gtx) {
@@ -137,7 +167,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
 
   //make voltage vector
   double volt_step=254./nBinsY;
-  double volt_array[nBinsY+1];
+  //double volt_array[nBinsY+1];
   double volt;
   std::vector<double> volt_vect;
   if (nBinsY==1)
@@ -152,7 +182,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
   
   //make phase array
   double phase_step=1./nBinsX;
-  double phase_array[nBinsX+1];
+  //double phase_array[nBinsX+1];
   double phase;
   std::vector<double> phase_vect;
   if (nBinsX==1)
@@ -166,7 +196,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
   }
 
   
-  std::vector<Coords> Coords_vect;
+  std::vector<eyescanCoords> Coords_vect;
   for (int i = 0; i < volt_vect.size(); ++i)
   {
     for (int j = 0; j < phase_vect.size(); ++j)
@@ -183,10 +213,10 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
 
 eyescan::~eyescan();
 
-eyescan::check(){  //checks es_state
+ES_state_t eyescan::check(){  //checks es_state
   return es_state;
 }
-eyescan::update(){
+void eyescan::update(){
   ES_state_t s = check();
   switch (s){
     case UNINIT:
@@ -223,11 +253,11 @@ void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint3
   RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
 }
 
-std::vector<eyescanCoords> dataout(){
+std::vector<eyescanCoords> eyescan::dataout(){
   return scan_output;
 }
 
-eyescan::scan_pixel(float phase; float volt; int prescale){
+eyescanCoords eyescan::scan_pixel(float phase; float volt; int prescale){
   es_state = BUSY;
 	eyescanCoords singleScanOut;
   double BER;

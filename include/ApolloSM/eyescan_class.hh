@@ -1,17 +1,17 @@
 #ifndef __EYESCANCLASS_HH__
 #define __EYESCANCLASS_HH__
-#include <ApolloSM/ApolloSM.hh>
-//#include <BUException/ExceptionBase.hh>
-#include <BUTool/ToolException.hh>
-#include <IPBusIO/IPBusIO.hh>
-//#include <ApolloSM/eyescan.hh>
-#include <ApolloSM/ApolloSM_Exceptions.hh> // EYESCAN_ERROR
-#include <vector>
-#include <stdlib.h>
-//#include <math.h> // pow
-#include <map>
-#include <syslog.h>
-#include <time.h>
+// //#include <ApolloSM/ApolloSM.hh>
+// //#include <BUException/ExceptionBase.hh>
+// #include <BUTool/ToolException.hh>
+// #include <IPBusIO/IPBusIO.hh>
+// //#include <ApolloSM/eyescan.hh>
+// #include <ApolloSM/ApolloSM_Exceptions.hh> // EYESCAN_ERROR
+// #include <vector>
+// #include <stdlib.h>
+// //#include <math.h> // pow
+// #include <map>
+// #include <syslog.h>
+// #include <time.h>
 
 // Correct eye scan attribute values
 #define ES_EYE_SCAN_EN 0x1
@@ -89,28 +89,28 @@ private:
 
 };
 	
-// Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
-void throwException(std::string message) {
-  BUException::EYESCAN_ERROR e;
-  e.Append(message);
-  throw e;
-}
+// // Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
+// void throwException(std::string message) {
+//   BUException::EYESCAN_ERROR e;
+//   e.Append(message);
+//   throw e;
+// }
 
-// assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
-void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
-  RegWriteRegister(node, correctVal);
-  // Might be able to just put confirmNode here
-  if(correctVal != RegReadRegister(node)) {
-    throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
-  }
-}
+// // assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
+// void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
+//   RegWriteRegister(node, correctVal);
+//   // Might be able to just put confirmNode here
+//   if(correctVal != RegReadRegister(node)) {
+//     throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
+//   }
+// }
 
-// confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
-void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
-  if(correctVal != RegReadRegister(node)) {
-    throwException(node + " is not set correctly to: " + std::to_string(correctVal));
-  }
-}
+// // confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
+// void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
+//   if(correctVal != RegReadRegister(node)) {
+//     throwException(node + " is not set correctly to: " + std::to_string(correctVal));
+//   }
+// }
 
 
 #endif

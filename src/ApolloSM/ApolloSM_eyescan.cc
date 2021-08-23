@@ -1,3 +1,4 @@
+#include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/eyescan_class.hh>
 #include <stdio.h>
 #include <BUTool/ToolException.hh>
@@ -196,7 +197,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
   }
 
   
-  std::vector<eyescanCoords> Coords_vect;
+  std::vector<Coords> Coords_vect;
   for (int i = 0; i < volt_vect.size(); ++i)
   {
     for (int j = 0; j < phase_vect.size(); ++j)

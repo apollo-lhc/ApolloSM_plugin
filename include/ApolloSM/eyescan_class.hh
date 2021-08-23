@@ -4,7 +4,7 @@
 //#include <BUException/ExceptionBase.hh>
 #include <BUTool/ToolException.hh>
 #include <IPBusIO/IPBusIO.hh>
-#include <ApolloSM/eyescan.hh>
+//#include <ApolloSM/eyescan.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh> // EYESCAN_ERROR
 #include <vector>
 #include <stdlib.h>

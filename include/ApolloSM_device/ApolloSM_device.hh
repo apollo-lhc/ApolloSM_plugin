@@ -16,6 +16,7 @@
 
 #include <IPBusRegHelper/IPBusRegHelper.hh>
 #include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/eyescan_class.hh>
 
 namespace BUTool{
   

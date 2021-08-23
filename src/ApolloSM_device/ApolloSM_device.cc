@@ -559,7 +559,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 
   for (int i = 0; i < num_of_nodes; ++i)
   {
-    std::string basenode=strArg[(i+1*3)];
+    std::string baseNode=strArg[(i+1*3)];
     std::string lpmNode=strArg[(i+1*3)+1];
     std::string outputfile=strArg[(i+1*3)+2];
     eyescanVec.push_back(eyescan(baseNode,lpmNode,nXbins,nYbins,maxPrescale));
@@ -589,8 +589,8 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
         }
       
         fclose(dataFile);
-        eyescanVec[i].erase();
-        outputfileVec[i].erase();
+        eyescanVec.erase(i);
+        outputfileVec.erase(i);
       }else{
         eyescanVec[i].update();
       }

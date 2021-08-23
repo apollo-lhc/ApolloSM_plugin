@@ -12,6 +12,25 @@
 #include <map>
 #include <syslog.h>
 #include <time.h>
+
+// Correct eye scan attribute values
+#define ES_EYE_SCAN_EN 0x1
+#define ES_ERRDET_EN 0x1
+#define PMA_CFG 0x000 // Actually 10 0s: 10b0000000000
+#define PMA_RSV2 0x1
+#define ES_QUALIFIER 0x0000
+#define ES_QUAL_MASK 0xFFFF
+
+#define RX_DATA_WIDTH_GTX 0x4 // zynq
+#define RX_INT_DATAWIDTH_GTX 0x1 // We use 32 bit
+
+#define RX_DATA_WIDTH_GTH 0x4 // kintex
+#define RX_INT_DATAWIDTH_GTH 0x0 //16 bit
+
+#define RX_DATA_WIDTH_GTY 0x6 // virtex
+#define RX_INT_DATAWIDTH_GTY 0x1 //32 bit
+
+
 class eyescan
 {
 public:
@@ -70,7 +89,28 @@ private:
 
 };
 	
+// Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
+void throwException(std::string message) {
+  BUException::EYESCAN_ERROR e;
+  e.Append(message);
+  throw e;
+}
 
+// assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
+void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
+  RegWriteRegister(node, correctVal);
+  // Might be able to just put confirmNode here
+  if(correctVal != RegReadRegister(node)) {
+    throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
+  }
+}
+
+// confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
+void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
+  if(correctVal != RegReadRegister(node)) {
+    throwException(node + " is not set correctly to: " + std::to_string(correctVal));
+  }
+}
 
 
 #endif

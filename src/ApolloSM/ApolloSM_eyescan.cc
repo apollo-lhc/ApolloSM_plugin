@@ -1,5 +1,5 @@
 #include <ApolloSM/ApolloSM.hh>
-#include "ApolloSM/eyescan_class.hh"
+#include <ApolloSM/eyescan_class.hh>
 #include <stdio.h>
 #include <BUTool/ToolException.hh>
 #include <IPBusIO/IPBusIO.hh>
@@ -183,10 +183,10 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
 
 eyescan::~eyescan();
 
-ES_state_t check(){  //checks es_state
+eyescan::check(){  //checks es_state
   return es_state;
 }
-void update(){
+eyescan::update(){
   ES_state_t s = check();
   switch (s){
     case UNINIT:
@@ -227,7 +227,7 @@ std::vector<eyescanCoords> dataout(){
   return scan_output;
 }
 
-eyescanCoords scan_pixel(float phase; float volt; int prescale){
+eyescan::scan_pixel(float phase; float volt; int prescale){
   es_state = BUSY;
 	eyescanCoords singleScanOut;
   double BER;

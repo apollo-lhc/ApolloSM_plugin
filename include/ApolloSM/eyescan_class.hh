@@ -84,7 +84,7 @@ public:
 
 private:
 	eyescan();
-	eyescanCoords scan_pixel(float phase, float volt, int prescale);
+	eyescanCoords scan_pixel(std::string lpmNode, float phase, float volt, int prescale);
 	//void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
 	//void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign);
 	

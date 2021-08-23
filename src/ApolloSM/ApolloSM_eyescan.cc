@@ -39,7 +39,7 @@ void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
 
 eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale){
   ES_state_t es_state=UNINIT;
-  std:string lpmNode=lpmNode;
+  std::string lpmNode=lpmNode;
   std::vector<eyescanCoords> scan_output;
   int Max_prescale= max_prescale;
  

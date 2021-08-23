@@ -62,7 +62,9 @@ struct Coords {
 // };
 
 private:
+	std::string lpmNode;
 	ES_state_t es_state;
+	std::vector<Coords> Coords_vect;
 	std::vector<eyescanCoords> scan_output;
 	std::vector<double> volt_vect;
 	std::vector<double> phase_vect;

@@ -39,6 +39,7 @@ void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
 
 eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale){
   ES_state_t es_state=UNINIT;
+  std:string lpmNode=lpmNode;
   std::vector<eyescanCoords> scan_output;
   int Max_prescale= max_prescale;
  
@@ -206,9 +207,9 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
       Coords_vect[j].phase=phase_vect[j];
     }
   }
-  volt = Coords_vect.voltage[0];
-  phase=Coords_vect.phase[0];
-  scan_pixel(phase, volt, Max_prescale);
+  volt = Coords_vect[0].voltage;
+  phase=Coords_vect[0].phase;
+  scan_pixel(lpmNode, phase, volt, Max_prescale);
   es_state=BUSY;
 }
 
@@ -258,7 +259,7 @@ std::vector<eyescan::eyescanCoords> eyescan::dataout(){
   return scan_output;
 }
 
-eyescan::eyescanCoords eyescan::scan_pixel(float phase; float volt; int prescale){
+eyescan::eyescanCoords eyescan::scan_pixel(std::string lpmNode, float phase, float volt, int prescale){
   es_state = BUSY;
 	eyescanCoords singleScanOut;
   double BER;

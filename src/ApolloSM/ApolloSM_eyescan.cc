@@ -274,6 +274,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(std::string lpmNode, float phase, flo
   float sampleCount;
   float errorCount0;
   float actualsample0;
+  int maxPrescale=prescale;
 
   uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
@@ -487,8 +488,8 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
   singleScanOut.voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
   singleScanOut.phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
   scan_output.push_back(singleScanOut);
-  Coords.erase(Coords.begin());
-  if (Coords.size()==0)
+  Coords_vect.erase(Coords_vect.begin());
+  if (Coords_vect.size()==0)
   {
     es_state=DONE;
   } else{

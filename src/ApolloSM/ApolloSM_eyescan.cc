@@ -12,6 +12,14 @@
 #include <syslog.h>
 #include <time.h>
 
+#define WAIT 0x1
+#define END 0x5
+#define RUN 0x1
+#define STOP_RUN 0x0
+#define PRECISION 0.00000001 // 10^-9
+
+#define PRESCALE_STEP 3
+
 
 // Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
 void throwException(std::string message) {
@@ -39,7 +47,6 @@ void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
 
 eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale){
   ES_state_t es_state=UNINIT;
-  std::string lpmNode=lpmNode;
   std::vector<eyescanCoords> scan_output;
   int Max_prescale= max_prescale;
  
@@ -49,7 +56,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
     baseNode.append(".");
   }
   //check that all needed addresses exist
-  myMatchRegex(baseNode+"lpmNode");
+  myMatchRegex(baseNode+lpmNode);
   myMatchRegex(baseNode+"HORZ_OFFSET_MAG");
   myMatchRegex(baseNode+"PHASE_UNIFICATION");
   myMatchRegex(baseNode+"VERT_OFFSET_MAG");
@@ -227,8 +234,8 @@ void eyescan::update(){
       break;
 
     case WAITING_PIXEL:
-      volt = Coords_vect.voltage[0];
-      phase = Coords_vect.phase[0];
+      volt = Coords_vect[0].voltage;
+      phase = Coords_vect[0].phase;
       scan_pixel(phase, volt, Max_prescale);
       es_state=BUSY;
     case DONE:

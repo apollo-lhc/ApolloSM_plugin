@@ -236,7 +236,7 @@ void eyescan::update(){
     case WAITING_PIXEL:
       volt = Coords_vect[0].voltage;
       phase = Coords_vect[0].phase;
-      scan_pixel(phase, volt, Max_prescale);
+      scan_pixel(lpmNode, phase, volt, Max_prescale);
       es_state=BUSY;
     case DONE:
       break;

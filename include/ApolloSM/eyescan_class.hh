@@ -80,7 +80,7 @@ public:
 
 	ES_state_t check();
 	void update();
-	std::vector<eyescanCoords> const & dataout();
+	std::vector<eyescanCoords> dataout();
 
 private:
 	eyescan();

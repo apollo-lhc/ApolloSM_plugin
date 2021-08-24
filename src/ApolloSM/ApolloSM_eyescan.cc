@@ -292,11 +292,11 @@ eyescan::eyescanCoords eyescan::scan_pixel(std::string lpmNode, float phase, flo
   uint32_t POSITIVE = 0;
   uint32_t NEGATIVE = 1;
 
-  printf("Voltage= %d\n", volt);
-  syslog(LOG_INFO, "%d\n", volt);
+  printf("Voltage= %f\n", volt);
+  syslog(LOG_INFO, "%f\n", volt);
 
 if(volt < 0) {
-    SetEyeScanVoltage(baseNode, (uint8_t)(-1*voltage), NEGATIVE); 
+    SetEyeScanVoltage(baseNode, (uint8_t)(-1*volt), NEGATIVE); 
   } else {
     SetEyeScanVoltage(baseNode, volt, POSITIVE);
   }

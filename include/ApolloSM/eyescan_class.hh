@@ -85,34 +85,15 @@ public:
 private:
 	eyescan();
 	eyescanCoords scan_pixel(std::string lpmNode, float phase, float volt, int prescale);
-	//void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
-	//void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign);
 	
+	void assertNode(std::string node, uint32_t correctVal);
+  void confirmNode(std::string node, uint32_t correctVal);
+
+  void SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign);
+
+  void SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
 
 };
-	
-// // Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
-// void throwException(std::string message) {
-//   BUException::EYESCAN_ERROR e;
-//   e.Append(message);
-//   throw e;
-// }
-
-// // assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
-// void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
-//   RegWriteRegister(node, correctVal);
-//   // Might be able to just put confirmNode here
-//   if(correctVal != RegReadRegister(node)) {
-//     throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
-//   }
-// }
-
-// // confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
-// void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
-//   if(correctVal != RegReadRegister(node)) {
-//     throwException(node + " is not set correctly to: " + std::to_string(correctVal));
-//   }
-// }
 
 
 #endif

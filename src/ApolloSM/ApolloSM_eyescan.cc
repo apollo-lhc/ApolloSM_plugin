@@ -29,7 +29,7 @@ void throwException(std::string message) {
 }
 
 // assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
-void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
+void eyescan::assertNode(std::string node, uint32_t correctVal) {
   RegWriteRegister(node, correctVal);
   // Might be able to just put confirmNode here
   if(correctVal != RegReadRegister(node)) {
@@ -38,7 +38,7 @@ void ApolloSM::assertNode(std::string node, uint32_t correctVal) {
 }
 
 // confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
-void ApolloSM::confirmNode(std::string node, uint32_t correctVal) {
+void eyescan::confirmNode(std::string node, uint32_t correctVal) {
   if(correctVal != RegReadRegister(node)) {
     throwException(node + " is not set correctly to: " + std::to_string(correctVal));
   }
@@ -248,7 +248,7 @@ void eyescan::update(){
 
 }
 
-void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
+void eyescan::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
   // write the hex
   RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
   //printf("Set phase stop 1 \n");
@@ -256,7 +256,7 @@ void ApolloSM::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset
   //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
  }
 
-void ApolloSM::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign) {
+void eyescan::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign) {
   // write the hex
   RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
   RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);

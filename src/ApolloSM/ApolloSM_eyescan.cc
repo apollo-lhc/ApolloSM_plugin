@@ -224,10 +224,10 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
 
 eyescan::~eyescan() {};
 
-eyescan::ES_state_t eyescan::check(){  //checks es_state
+eyescan::ES_state_t eyescan::check(ApolloSM*SM){  //checks es_state
   return es_state;
 }
-void eyescan::update(){
+void eyescan::update(ApolloSM*SM){
   ES_state_t s = check();
   switch (s){
     case UNINIT:

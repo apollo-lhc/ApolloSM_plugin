@@ -1,10 +1,6 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/eyescan_class.hh>
-#include <stdio.h>
-#include <BUTool/ToolException.hh>
-#include <IPBusIO/IPBusIO.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
-#include <IPBusIO/IPBusIO.hh>
 #include <vector>
 #include <stdlib.h>
 //#include <math.h> // pow

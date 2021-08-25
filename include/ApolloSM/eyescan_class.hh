@@ -86,7 +86,7 @@ public:
 
 private:
 	eyescan();
-	eyescanCoords scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, int prescale);
+	eyescanCoords scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, uint32_t prescale);
 	
 	//void assertNode(ApolloSM*SM, std::string node, uint32_t correctVal);
   //void confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal);

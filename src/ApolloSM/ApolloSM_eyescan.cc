@@ -230,7 +230,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   }
   volt = Coords_vect[0].voltage;
   phase=Coords_vect[0].phase;
-  scan_pixel(ApolloSM*SM, lpmNode, phase, volt, Max_prescale);
+  scan_pixel(SM, lpmNode, phase, volt, Max_prescale);
   es_state=BUSY;
 }
 
@@ -250,7 +250,7 @@ void eyescan::update(ApolloSM*SM){
     case WAITING_PIXEL:
       volt = Coords_vect[0].voltage;
       phase = Coords_vect[0].phase;
-      scan_pixel(ApolloSM*SM, lpmNode, phase, volt, Max_prescale);
+      scan_pixel(SM, lpmNode, phase, volt, Max_prescale);
       es_state=BUSY;
     case DONE:
       break;
@@ -310,9 +310,9 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   syslog(LOG_INFO, "%f\n", volt);
 
 if(volt < 0) {
-    SetEyeScanVoltage(ApolloSM*SM, baseNode, (uint8_t)(-1*volt), NEGATIVE); 
+  SetEyeScanVoltage(SM, baseNode, (uint8_t)(-1*volt), NEGATIVE); 
   } else {
-    SetEyeScanVoltage(ApolloSM*SM, baseNode, volt, POSITIVE);
+    SetEyeScanVoltage(SM, baseNode, volt, POSITIVE);
   }
 
 //SET PHASE
@@ -327,7 +327,7 @@ if(phase < 0) {
   sign = POSITIVE;
   }
 printf("phase is %f\n", phase);
-SetEyeScanPhase(ApolloSM*SM, baseNode, phaseInt, sign);
+SetEyeScanPhase(SM, baseNode, phaseInt, sign);
 
   if(lpm == rxlpmen) {
     //printf("Looks like we have LPM. The register is %u\n", rxlpmen);

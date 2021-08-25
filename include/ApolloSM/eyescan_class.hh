@@ -87,8 +87,8 @@ private:
 	eyescan();
 	eyescanCoords scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, int prescale);
 	
-	void assertNode(ApolloSM*SM, std::string node, uint32_t correctVal);
-  void confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal);
+	//void assertNode(ApolloSM*SM, std::string node, uint32_t correctVal);
+  //void confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal);
 
   void SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign);
 

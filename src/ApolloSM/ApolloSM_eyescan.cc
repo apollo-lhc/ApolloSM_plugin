@@ -19,6 +19,16 @@
 
 #define PRESCALE_STEP 3
 
+#define assertNode(node, correctVal) do{ \
+  SM->RegWriteRegister(node, correctVal);
+  if(correctVal != SM->RegReadRegister(node)) { \
+    throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal)) \
+} while(0)
+
+#define confirmNode(node, correctVal) do{
+  if(correctVal != SM->RegReadRegister(node)) { \
+    throwException(node + " is not set correctly to: " + std::to_string(correctVal)); \
+} while(0)
 
 
 // Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
@@ -28,21 +38,21 @@ void throwException(std::string message) {
   throw e;
 }
 
-// assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
-void eyescan::assertNode(ApolloSM*SM, std::string node, uint32_t correctVal) {
-  SM->RegWriteRegister(node, correctVal);
-  // Might be able to just put confirmNode here
-  if(correctVal != SM->RegReadRegister(node)) {
-    throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
-  }
-}
+// // assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
+// void eyescan::assertNode(ApolloSM*SM, std::string node, uint32_t correctVal) {
+//   SM->RegWriteRegister(node, correctVal);
+//   // Might be able to just put confirmNode here
+//   if(correctVal != SM->RegReadRegister(node)) {
+//     throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
+//   }
+// }
 
-// confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
-void eyescan::confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal) {
-  if(correctVal != SM->RegReadRegister(node)) {
-    throwException(node + " is not set correctly to: " + std::to_string(correctVal));
-  }
-}
+// // confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
+// void eyescan::confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal) {
+//   if(correctVal != SM->RegReadRegister(node)) {
+//     throwException(node + " is not set correctly to: " + std::to_string(correctVal));
+//   }
+// }
 
 
 eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale){

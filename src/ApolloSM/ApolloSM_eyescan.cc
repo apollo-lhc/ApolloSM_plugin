@@ -45,10 +45,12 @@ void eyescan::confirmNode(std::string node, uint32_t correctVal) {
 }
 
 
-eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale){
+eyescan::eyescan(std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale){
   ES_state_t es_state=UNINIT;
   std::vector<eyescanCoords> scan_output;
   int Max_prescale= max_prescale;
+  std::string baseNode=baseNode_set;
+  std::string lpmNode=lpmNode_set;
  
   syslog(LOG_INFO, "appending\n");
   // check for a '.' at the end of baseNode and add it if it isn't there 
@@ -94,7 +96,7 @@ eyescan::eyescan(std::string baseNode, std::string lpmNode, int nBinsX, int nBin
       throwException("No transistor type found.\n");
   }
   // ** ES_EYE_SCAN_EN assert 1
-  ApolloSM::assertNode(baseNode + "EYE_SCAN_EN", ES_EYE_SCAN_EN);
+  assertNode(baseNode + "EYE_SCAN_EN", ES_EYE_SCAN_EN);
 
   // ** ES_ERRDET_EN assert 1
   assertNode(baseNode + "ERRDET_EN", ES_ERRDET_EN);

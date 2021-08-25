@@ -63,6 +63,7 @@ struct Coords {
 
 private:
 	std::string lpmNode;
+	std::string baseNode;
 	ES_state_t es_state;
 	std::vector<Coords> Coords_vect;
 	std::vector<eyescanCoords> scan_output;
@@ -75,7 +76,7 @@ private:
 
 
 public:
-	eyescan(std::string basenode, std::string lpmNode, int nBinsX, int nBinsY, int max_prescale);
+	eyescan(std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale);
 	~eyescan();
 
 	ES_state_t check();

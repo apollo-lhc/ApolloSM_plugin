@@ -30,22 +30,22 @@ void throwException(std::string message) {
 
 // assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
 void eyescan::assertNode(std::string node, uint32_t correctVal) {
-  RegWriteRegister(node, correctVal);
+  SM->RegWriteRegister(node, correctVal);
   // Might be able to just put confirmNode here
-  if(correctVal != RegReadRegister(node)) {
+  if(correctVal != SM->RegReadRegister(node)) {
     throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
   }
 }
 
 // confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
 void eyescan::confirmNode(std::string node, uint32_t correctVal) {
-  if(correctVal != RegReadRegister(node)) {
+  if(correctVal != SM->RegReadRegister(node)) {
     throwException(node + " is not set correctly to: " + std::to_string(correctVal));
   }
 }
 
 
-eyescan::eyescan(std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale){
+eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale){
   ES_state_t es_state=UNINIT;
   std::vector<eyescanCoords> scan_output;
   int Max_prescale= max_prescale;
@@ -58,18 +58,18 @@ eyescan::eyescan(std::string baseNode_set, std::string lpmNode_set, int nBinsX, 
     baseNode.append(".");
   }
   //check that all needed addresses exist
-  myMatchRegex(baseNode+lpmNode);
-  myMatchRegex(baseNode+"HORZ_OFFSET_MAG");
-  myMatchRegex(baseNode+"PHASE_UNIFICATION");
-  myMatchRegex(baseNode+"VERT_OFFSET_MAG");
-  myMatchRegex(baseNode+"VERT_OFFSET_SIGN");
-  myMatchRegex(baseNode+"RX_DATA_WIDTH");
-  myMatchRegex(baseNode+"PRESCALE");
-  myMatchRegex(baseNode+"RUN");
-  myMatchRegex(baseNode+"CTRL_STATUS");
-  myMatchRegex(baseNode+"ERROR_COUNT");
-  myMatchRegex(baseNode+"SAMPLE_COUNT");
-  myMatchRegex(baseNode+"UT_SIGN");
+  SM->myMatchRegex(baseNode+lpmNode);
+  SM->myMatchRegex(baseNode+"HORZ_OFFSET_MAG");
+  SM->myMatchRegex(baseNode+"PHASE_UNIFICATION");
+  SM->myMatchRegex(baseNode+"VERT_OFFSET_MAG");
+  SM->myMatchRegex(baseNode+"VERT_OFFSET_SIGN");
+  SM->myMatchRegex(baseNode+"RX_DATA_WIDTH");
+  SM->myMatchRegex(baseNode+"PRESCALE");
+  SM->myMatchRegex(baseNode+"RUN");
+  SM->myMatchRegex(baseNode+"CTRL_STATUS");
+  SM->myMatchRegex(baseNode+"ERROR_COUNT");
+  SM->myMatchRegex(baseNode+"SAMPLE_COUNT");
+  SM->myMatchRegex(baseNode+"UT_SIGN");
 
 
 
@@ -78,9 +78,9 @@ eyescan::eyescan(std::string baseNode_set, std::string lpmNode_set, int nBinsX, 
   
   transist t;
   
-  std::vector<std::string> test_gtx = myMatchRegex(baseNode+"TYPE_7_GTX");
-  std::vector<std::string> test_gty = myMatchRegex(baseNode+"TYPE_USP_GTY");
-  std::vector<std::string> test_gth = myMatchRegex(baseNode+"TYPE_USP_GTH");
+  std::vector<std::string> test_gtx = SM->myMatchRegex(baseNode+"TYPE_7_GTX");
+  std::vector<std::string> test_gty = SM->myMatchRegex(baseNode+"TYPE_USP_GTY");
+  std::vector<std::string> test_gth = SM->myMatchRegex(baseNode+"TYPE_USP_GTH");
   
   if(test_gtx.size()!=0){
     t=gtx;
@@ -278,8 +278,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(std::string lpmNode, float phase, flo
   float actualsample0;
   int maxPrescale=prescale;
 
-
-  uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
+  uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
   int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
   
@@ -287,7 +286,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(std::string lpmNode, float phase, flo
   uint32_t const dfe = 0;
   uint32_t const lpm = 1;
 
-  uint32_t const rxlpmen = RegReadRegister(lpmNode);
+  uint32_t const rxlpmen = SM->RegReadRegister(lpmNode);
 
   //SET VOLTAGE
   // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
@@ -335,11 +334,11 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
   while(loop) {
     // confirm we are in WAIT, if not, stop scan
     //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
-    RegWriteRegister(baseNode + "RUN", STOP_RUN);
+    SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);
     
     // assert RUN
     //  assertNode(baseNode + "RUN", RUN);
-    RegWriteRegister(baseNode + "RUN", RUN);  
+    SM->RegWriteRegister(baseNode + "RUN", RUN);  
     
     // poll END
     int count = 0;
@@ -365,7 +364,7 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
     
     // de-assert RUN (aka go back to WAIT)
     //  assertNode(baseNode + "RUN", STOP_RUN);
-    RegWriteRegister(baseNode + "RUN", STOP_RUN);
+    SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);
         
     // calculate BER
     //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
@@ -413,9 +412,9 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
     //printf("Alright dfe = rxlpmen: %u = %u. Calculating again\n", dfe, rxlpmen);
     // whatever the UT sign was, change it 
     if(1 == (RegReadRegister(baseNode + "UT_SIGN"))) {
-      RegWriteRegister(baseNode + "UT_SIGN", 0);
+      SM->RegWriteRegister(baseNode + "UT_SIGN", 0);
     } else {
-      RegWriteRegister(baseNode + "UT_SIGN", 1);
+      SM->RegWriteRegister(baseNode + "UT_SIGN", 1);
     }
     
     loop = true;
@@ -423,17 +422,17 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
     while(loop) {
       //confirm we are in WAIT, if not, stop scan
       //confirmNode(baseNode + "CTRL_STATUS", WAIT);
-      RegWriteRegister(baseNode + "RUN", STOP_RUN);
+      SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);
       
       // assert RUN
       //  assertNode(baseNode + "RUN", RUN);
-      RegWriteRegister(baseNode + "RUN", RUN);  
+      SM->RegWriteRegister(baseNode + "RUN", RUN);  
       
       // poll END
       int count = 0;
       // one second max
       while(1000000 > count) {
-	if(END == RegReadRegister(baseNode + "CTRL_STATUS")) {
+	if(END == SM->RegReadRegister(baseNode + "CTRL_STATUS")) {
 	  // Scan has ended
 	  break;
 	}
@@ -446,14 +445,14 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
       }	  
       
       // read error and sample count
-      errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
-      sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
+      errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
+      sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
       
       //Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
       
       // de-assert RUN (aka go back to WAIT)
       // assertNode(baseNode + "RUN", STOP_RUN);
-      RegWriteRegister(baseNode + "RUN", STOP_RUN);
+      SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);
       
       // calculate BER
       BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
@@ -488,8 +487,8 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
   singleScanOut.error0=(unsigned long int)errorCount0;
   singleScanOut.sample1=(unsigned long int)actualsample1;
   singleScanOut.error1=(unsigned long int)errorCount1;
-  singleScanOut.voltageReg = RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
-  singleScanOut.phaseReg = RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
+  singleScanOut.voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
+  singleScanOut.phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
   scan_output.push_back(singleScanOut);
   Coords_vect.erase(Coords_vect.begin());
   if (Coords_vect.size()==0)

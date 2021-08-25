@@ -22,12 +22,14 @@
 #define assertNode(node, correctVal) do{ \
   SM->RegWriteRegister(node, correctVal); \
   if(correctVal != SM->RegReadRegister(node)) { \
-    throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal)) \
+    throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));\
+  } \
 } while(0)
 
-#define confirmNode(node, correctVal) do{
+#define confirmNode(node, correctVal) do{ \
   if(correctVal != SM->RegReadRegister(node)) { \
     throwException(node + " is not set correctly to: " + std::to_string(correctVal)); \
+  } \
 } while(0)
 
 

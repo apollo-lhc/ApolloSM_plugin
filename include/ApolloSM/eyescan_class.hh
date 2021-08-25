@@ -76,23 +76,23 @@ private:
 
 
 public:
-	eyescan(std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale);
+	eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale);
 	~eyescan();
 
-	ES_state_t check();
-	void update();
-	std::vector<eyescanCoords> dataout();
+	ES_state_t check(ApolloSM*SM);
+	void update(ApolloSM*SM);
+	std::vector<eyescanCoords> dataout(ApolloSM*SM);
 
 private:
 	eyescan();
-	eyescanCoords scan_pixel(std::string lpmNode, float phase, float volt, int prescale);
+	eyescanCoords scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, int prescale);
 	
-	void assertNode(std::string node, uint32_t correctVal);
-  void confirmNode(std::string node, uint32_t correctVal);
+	void assertNode(ApolloSM*SM, std::string node, uint32_t correctVal);
+  void confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal);
 
-  void SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign);
+  void SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign);
 
-  void SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
+  void SetEyeScanPhase(ApolloSM*SM, std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
 
 };
 

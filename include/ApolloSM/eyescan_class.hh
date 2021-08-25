@@ -79,9 +79,9 @@ public:
 	eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale);
 	~eyescan();
 
-	ES_state_t check(ApolloSM*SM);
+	ES_state_t check();
 	void update(ApolloSM*SM);
-	std::vector<eyescanCoords> dataout(ApolloSM*SM);
+	std::vector<eyescanCoords> dataout();
 	void throwException(std::string message);
 
 private:

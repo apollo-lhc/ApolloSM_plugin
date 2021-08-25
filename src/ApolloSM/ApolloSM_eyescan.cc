@@ -60,7 +60,7 @@ void eyescan::throwException(std::string message) {
 eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale){
   ES_state_t es_state=UNINIT;
   std::vector<eyescanCoords> scan_output;
-  int Max_prescale= max_prescale;
+  uint32_t Max_prescale= max_prescale;
   std::string baseNode=baseNode_set;
   std::string lpmNode=lpmNode_set;
  
@@ -230,13 +230,13 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   }
   volt = Coords_vect[0].voltage;
   phase=Coords_vect[0].phase;
-  scan_pixel(lpmNode, phase, volt, Max_prescale);
+  scan_pixel(ApolloSM*SM, lpmNode, phase, volt, Max_prescale);
   es_state=BUSY;
 }
 
 eyescan::~eyescan() {};
 
-eyescan::ES_state_t eyescan::check(ApolloSM*SM){  //checks es_state
+eyescan::ES_state_t eyescan::check(){  //checks es_state
   return es_state;
 }
 void eyescan::update(ApolloSM*SM){
@@ -250,7 +250,7 @@ void eyescan::update(ApolloSM*SM){
     case WAITING_PIXEL:
       volt = Coords_vect[0].voltage;
       phase = Coords_vect[0].phase;
-      scan_pixel(lpmNode, phase, volt, Max_prescale);
+      scan_pixel(ApolloSM*SM, lpmNode, phase, volt, Max_prescale);
       es_state=BUSY;
     case DONE:
       break;
@@ -280,7 +280,7 @@ std::vector<eyescan::eyescanCoords> eyescan::dataout(){
   return scan_output;
 }
 
-eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, int prescale){
+eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, uint32_t prescale){
   es_state = BUSY;
 	eyescanCoords singleScanOut;
   double BER;
@@ -288,7 +288,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   float sampleCount;
   float errorCount0;
   float actualsample0;
-  int maxPrescale=prescale;
+  uint32_t maxPrescale=prescale;
 
   uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
@@ -310,9 +310,9 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   syslog(LOG_INFO, "%f\n", volt);
 
 if(volt < 0) {
-    SetEyeScanVoltage(baseNode, (uint8_t)(-1*volt), NEGATIVE); 
+    SetEyeScanVoltage(ApolloSM*SM, baseNode, (uint8_t)(-1*volt), NEGATIVE); 
   } else {
-    SetEyeScanVoltage(baseNode, volt, POSITIVE);
+    SetEyeScanVoltage(ApolloSM*SM, baseNode, volt, POSITIVE);
   }
 
 //SET PHASE
@@ -327,7 +327,7 @@ if(phase < 0) {
   sign = POSITIVE;
   }
 printf("phase is %f\n", phase);
-SetEyeScanPhase(baseNode, phaseInt, sign);
+SetEyeScanPhase(ApolloSM*SM, baseNode, phaseInt, sign);
 
   if(lpm == rxlpmen) {
     //printf("Looks like we have LPM. The register is %u\n", rxlpmen);
@@ -356,7 +356,7 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
     int count = 0;
     // one second max
     while(1000000 > count) {
-      if(END == RegReadRegister(baseNode + "CTRL_STATUS")) {
+      if(END == SM->RegReadRegister(baseNode + "CTRL_STATUS")) {
 	// Scan has ended
 	break;
       }

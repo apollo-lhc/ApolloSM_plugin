@@ -82,6 +82,7 @@ public:
 	ES_state_t check(ApolloSM*SM);
 	void update(ApolloSM*SM);
 	std::vector<eyescanCoords> dataout(ApolloSM*SM);
+	void throwException(std::string message);
 
 private:
 	eyescan();

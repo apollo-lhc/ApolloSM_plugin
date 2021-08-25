@@ -250,25 +250,25 @@ void eyescan::update(){
 
 }
 
-void eyescan::SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
+void eyescan::SetEyeScanPhase(ApolloSM*SM, std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
   // write the hex
-  RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
+  SM->RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
   //printf("Set phase stop 1 \n");
-  RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign); 
+  SM->RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign); 
   //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
  }
 
 void eyescan::SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign) {
   // write the hex
-  RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
-  RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
+  SM->RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
+  SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
 }
 
 std::vector<eyescan::eyescanCoords> eyescan::dataout(){
   return scan_output;
 }
 
-eyescan::eyescanCoords eyescan::scan_pixel(std::string lpmNode, float phase, float volt, int prescale){
+eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, int prescale){
   es_state = BUSY;
 	eyescanCoords singleScanOut;
   double BER;
@@ -280,7 +280,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(std::string lpmNode, float phase, flo
 
   uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
-  int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+  int const actualDataWidth = SM->busWidthMap.find(regDataWidthInt)->second;
   
   // Check if we're DFE or LPM
   uint32_t const dfe = 0;
@@ -357,8 +357,8 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
     }	  
     
     // read error and sample count
-    errorCount = RegReadRegister(baseNode + "ERROR_COUNT");
-    sampleCount = RegReadRegister(baseNode + "SAMPLE_COUNT");
+    errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
+    sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
     
     // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
     
@@ -411,7 +411,7 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
   if(dfe == rxlpmen) {
     //printf("Alright dfe = rxlpmen: %u = %u. Calculating again\n", dfe, rxlpmen);
     // whatever the UT sign was, change it 
-    if(1 == (RegReadRegister(baseNode + "UT_SIGN"))) {
+    if(1 == (SM->RegReadRegister(baseNode + "UT_SIGN"))) {
       SM->RegWriteRegister(baseNode + "UT_SIGN", 0);
     } else {
       SM->RegWriteRegister(baseNode + "UT_SIGN", 1);
@@ -487,7 +487,7 @@ SetEyeScanPhase(baseNode, phaseInt, sign);
   singleScanOut.error0=(unsigned long int)errorCount0;
   singleScanOut.sample1=(unsigned long int)actualsample1;
   singleScanOut.error1=(unsigned long int)errorCount1;
-  singleScanOut.voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
+  singleScanOut.voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
   singleScanOut.phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
   scan_output.push_back(singleScanOut);
   Coords_vect.erase(Coords_vect.begin());

@@ -18,6 +18,7 @@
 #define PRESCALE_STEP 3
 
 
+
 // Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
 void throwException(std::string message) {
   BUException::EYESCAN_ERROR e;
@@ -275,6 +276,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(std::string lpmNode, float phase, flo
   float actualsample0;
   int maxPrescale=prescale;
 
+
   uint32_t const regDataWidth = RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
   int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
@@ -305,10 +307,10 @@ int phaseInt;
 uint32_t sign;
 
 if(phase < 0) {
-	phaseInt = abs(ceil(phase*phaseMultiplier));
+	phaseInt = abs(ceil(phase));
 	sign = NEGATIVE;
 } else {
-	phaseInt = abs(floor(phase*phaseMultiplier));
+	phaseInt = abs(floor(phase));
   sign = POSITIVE;
   }
 printf("phase is %f\n", phase);

@@ -230,6 +230,10 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   }
   volt = Coords_vect[0].voltage;
   phase=Coords_vect[0].phase;
+  if (check()!=UNINIT)
+  {
+    throwException("eyescan object already initiated");
+  }
   scan_pixel(SM, lpmNode, phase, volt, Max_prescale);
   es_state=BUSY;
 }

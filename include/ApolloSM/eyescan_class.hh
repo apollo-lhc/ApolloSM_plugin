@@ -30,6 +30,21 @@
 #define RX_DATA_WIDTH_GTY 0x6 // virtex
 #define RX_INT_DATAWIDTH_GTY 0x1 //32 bit
 
+// identifies bus data width
+std::map<int, int> static const busWidthMap = 
+  {
+    // read hex value (DRP encoding) vs bus width (attribute encoding)
+    {2, 16},
+    {3, 20},
+    {4, 32},
+    {5, 40},
+    {6, 64},
+    {7, 80}
+    // currently unsupported values
+    //,
+    //{8, 128},
+    //{9, 160}
+  };
 
 class eyescan
 {

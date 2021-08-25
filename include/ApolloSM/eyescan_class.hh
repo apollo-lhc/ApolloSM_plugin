@@ -1,6 +1,6 @@
 #ifndef __EYESCANCLASS_HH__
 #define __EYESCANCLASS_HH__
-// //#include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/ApolloSM.hh>
 // //#include <BUException/ExceptionBase.hh>
 // #include <BUTool/ToolException.hh>
 // #include <IPBusIO/IPBusIO.hh>

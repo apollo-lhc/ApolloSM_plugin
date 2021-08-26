@@ -63,8 +63,8 @@ namespace BUTool{
 
     CommandReturn::status unblockAXI(std::vector<std::string>,std::vector<uint64_t>);
 
-    CommandReturn::status EnableEyeScan(std::vector<std::string>,std::vector<uint64_t>);
-    CommandReturn::status SetOffsets(std::vector<std::string>,std::vector<uint64_t>);
+    //CommandReturn::status EnableEyeScan(std::vector<std::string>,std::vector<uint64_t>);
+    //CommandReturn::status SetOffsets(std::vector<std::string>,std::vector<uint64_t>);
     //CommandReturn::status SingleEyeScan(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>);
     //CommandReturn::status Bathtub(std::vector<std::string>,std::vector<uint64_t>);

@@ -156,11 +156,11 @@ void ApolloSMDevice::LoadCommandList(){
 	       "Usage: \n"\
 	       "  unblockAXI\n");
 
-    AddCommand("SetOffsets",&ApolloSMDevice::SetOffsets,
-	       "Set up voltage and phase offsets for eyescan\n"   \
-	       "Usage: \n"                              \
-	       "  SetOffsets <base node> <voltage> <phase> \n");
-    AddCommandAlias("vpoff","SetOffsets");
+    // AddCommand("SetOffsets",&ApolloSMDevice::SetOffsets,
+	   //     "Set up voltage and phase offsets for eyescan\n"   \
+	   //     "Usage: \n"                              \
+	   //     "  SetOffsets <base node> <voltage> <phase> \n");
+    // AddCommandAlias("vpoff","SetOffsets");
 
 
     AddCommand("EyeScan",&ApolloSMDevice::EyeScan,

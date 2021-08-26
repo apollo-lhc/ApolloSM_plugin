@@ -230,7 +230,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   }
   volt = Coords_vect[0].voltage;
   phase=Coords_vect[0].phase;
-  if (check()!=UNINIT)
+  if (es_state!=UNINIT)
   {
     throwException("eyescan object already initiated");
   }
@@ -296,7 +296,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
 
   uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
-  int const actualDataWidth = SM->busWidthMap.find(regDataWidthInt)->second;
+  int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
   
   // Check if we're DFE or LPM
   uint32_t const dfe = 0;

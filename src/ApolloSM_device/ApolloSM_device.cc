@@ -471,50 +471,50 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strA
 // }
 
 
-CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg, std::vector<uint64_t>) {
+//CommandReturn::status ApolloSMDevice::SetOffsets(std::vector<std::string> strArg, std::vector<uint64_t>) {
   
-  if(2 != strArg.size()) {
-    return CommandReturn::BAD_ARGS;
-  }
-
-  // For base 0 in strtoul, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
-
-  // Probably a better function for this
-  uint8_t vertOffset = strtoul(strArg[0].c_str(), NULL, 0);
-  // vertical offset has only 7 bits of space (for magnitude)
-  uint8_t maxVertOffset = 127;
-  
-  // Checks that the vertical offset is in allowed range
-  if(maxVertOffset < vertOffset) {
-    return CommandReturn::BAD_ARGS;
-  }  
-
-  // Probably a better function for this
-  uint8_t horzOffset = strtoul(strArg[1].c_str(), NULL, 0);
-  // vertical offset has only 7 bits of space (for magnitude)
-  //  uint8_t maxVertOffset = 127;
-
-
-//
-//  float horzOffset = strtof(strArg[1].c_str());
-//  float maxHorzOffset = 0.5;
-//
-//  if(maxHorzOffset < horzOffset) {
+//  if(2 != strArg.size()) {
 //    return CommandReturn::BAD_ARGS;
 //  }
-//
-//  if(0 > horzOffset) {
-//    // no negatives (yet)
+
+//  // For base 0 in strtoul, a regular number (ie 14) will be decimal. A number prepended with 0x will be interpreted as hex. Unfortunately, a number prepended with a 0 (ie 014) will be interpreted as octal
+
+//  // Probably a better function for this
+//  uint8_t vertOffset = strtoul(strArg[0].c_str(), NULL, 0);
+//  // vertical offset has only 7 bits of space (for magnitude)
+//  uint8_t maxVertOffset = 127;
+  
+//  // Checks that the vertical offset is in allowed range
+//  if(maxVertOffset < vertOffset) {
 //    return CommandReturn::BAD_ARGS;
-//  }
-//
-//  
-//
+//  }  
 
-  SM->SetOffsets("C2C1_PHY.", vertOffset, horzOffset);
+//  // Probably a better function for this
+//  uint8_t horzOffset = strtoul(strArg[1].c_str(), NULL, 0);
+//  // vertical offset has only 7 bits of space (for magnitude)
+//  //  uint8_t maxVertOffset = 127;
 
-  return CommandReturn::OK;
-}
+
+////
+////  float horzOffset = strtof(strArg[1].c_str());
+////  float maxHorzOffset = 0.5;
+////
+////  if(maxHorzOffset < horzOffset) {
+////    return CommandReturn::BAD_ARGS;
+////  }
+////
+////  if(0 > horzOffset) {
+////    // no negatives (yet)
+////    return CommandReturn::BAD_ARGS;
+////  }
+////
+////  
+////
+
+//  SM->SetOffsets("C2C1_PHY.", vertOffset, horzOffset);
+
+//  return CommandReturn::OK;
+//}
 
 // // Performs a single eye scan
 // CommandReturn::status ApolloSMDevice::SingleEyeScan(std::vector<std::string> strArg, std::vector<uint64_t>) {
@@ -562,7 +562,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     std::string baseNode=strArg[(i+1*3)];
     std::string lpmNode=strArg[(i+1*3)+1];
     std::string outputfile=strArg[(i+1*3)+2];
-    eyescanVec.push_back(eyescan(baseNode,lpmNode,nXbins,nYbins,maxPrescale));
+    eyescanVec.push_back(eyescan(SM, baseNode,lpmNode,nXbins,nYbins,maxPrescale));
     outputfileVec.push_back(outputfile);
   }
   //eyescan::ES_state_t done_state;
@@ -593,7 +593,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
         eyescanVec.erase(eyescanVec.begin()+i);
         outputfileVec.erase(outputfileVec.begin()+i);
       }else{
-        eyescanVec[i].update();
+        eyescanVec[i].update(SM);
       }
     }
   }

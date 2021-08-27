@@ -46,134 +46,128 @@ ApolloSMDevice::~ApolloSMDevice(){
 
   
 void ApolloSMDevice::LoadCommandList(){
-    // general commands (Launcher_commands)
-    AddCommand("read",&ApolloSMDevice::Read,
-	       "Read from ApolloSM\n"          \
-	       "Usage: \n"                     \
-	       "  read addr <count> <FLAGS>\n" \
-	       "Flags: \n"                     \
-	       "  D:  64bit words\n"           \
-	       "  N:  suppress zero words\n",
-	       &ApolloSMDevice::RegisterAutoComplete);
-    AddCommandAlias("r","read");
+  // general commands (Launcher_commands)
+  AddCommand("read",&ApolloSMDevice::Read,
+	     "Read from ApolloSM\n"          \
+	     "Usage: \n"                     \
+	     "  read addr <count> <FLAGS>\n" \
+	     "Flags: \n"                     \
+	     "  D:  64bit words\n"           \
+	     "  N:  suppress zero words\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+  AddCommandAlias("r","read");
 
-    AddCommand("readFIFO",&ApolloSMDevice::ReadFIFO,
-	       "Read from a FIFO\n"      \
-	       "Usage: \n"               \
-	       "  readFIFO addr count\n",
-	       &ApolloSMDevice::RegisterAutoComplete);
-    AddCommandAlias("rf","readFIFO");
+  AddCommand("readFIFO",&ApolloSMDevice::ReadFIFO,
+	     "Read from a FIFO\n"      \
+	     "Usage: \n"               \
+	     "  readFIFO addr count\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+  AddCommandAlias("rf","readFIFO");
 
-    AddCommand("readoffset",&ApolloSMDevice::ReadOffset,
-	       "Read from an offset to an address\n" \
-	       "Usage: \n"                           \
-	       "  readoffset addr offset <count>\n",
-	       &ApolloSMDevice::RegisterAutoComplete);
-    AddCommandAlias("ro","readoffset");
+  AddCommand("readoffset",&ApolloSMDevice::ReadOffset,
+	     "Read from an offset to an address\n" \
+	     "Usage: \n"                           \
+	     "  readoffset addr offset <count>\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+  AddCommandAlias("ro","readoffset");
 
-    AddCommand("readstring",&ApolloSMDevice::ReadString,
-	       "Read and print a block as a string\n" \
-	       "Usage: \n"                           \
-	       "  readstring reg\n",
-	       &ApolloSMDevice::RegisterAutoComplete);
-
-
-
-    AddCommand("write",&ApolloSMDevice::Write,
-	       "Write to ApolloSM\n"           \
-	       "Usage: \n"                     \
-	       "  write addr <data> <count> \n",
-	       &ApolloSMDevice::RegisterAutoComplete);
-    AddCommandAlias("w","write");
-
-    AddCommand("writeFIFO",&ApolloSMDevice::WriteFIFO,
-	       "Write to ApolloSM FIFO\n"      \
-	       "Usage: \n"                     \
-	       "  writeFIFO addr data count\n",
-	       &ApolloSMDevice::RegisterAutoComplete);
-    AddCommandAlias("wf","writeFIFO");
-
-    AddCommand("writeoffset",&ApolloSMDevice::WriteOffset,
-	       "Write from an offset to an address\n"   \
-	       "Usage: \n"                              \
-	       "  writeoffset addr offset data count\n",
-	       &ApolloSMDevice::RegisterAutoComplete);
-    AddCommandAlias("wo","writeoffset");
+  AddCommand("readstring",&ApolloSMDevice::ReadString,
+	     "Read and print a block as a string\n" \
+	     "Usage: \n"                           \
+	     "  readstring reg\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
 
 
-    AddCommand("nodes", &ApolloSMDevice::ListRegs, 
-	       "List matching address table items\n",
-	       &ApolloSMDevice::RegisterAutoComplete);
 
-    AddCommand("status",&ApolloSMDevice::StatusDisplay,
-	       "Display tables of Apollo Status\n"  \
-	       "Usage: \n"                          \
-	       "  status level <table name>\n");
+  AddCommand("write",&ApolloSMDevice::Write,
+	     "Write to ApolloSM\n"           \
+	     "Usage: \n"                     \
+	     "  write addr <data> <count> \n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+  AddCommandAlias("w","write");
 
-    AddCommand("graphite",&ApolloSMDevice::DumpGraphite,
-	       "Display Graphite write for Apollo Status\n"  \
-	       "Usage: \n"                          \
-	       "  graphite level <table name>\n");
+  AddCommand("writeFIFO",&ApolloSMDevice::WriteFIFO,
+	     "Write to ApolloSM FIFO\n"      \
+	     "Usage: \n"                     \
+	     "  writeFIFO addr data count\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+  AddCommandAlias("wf","writeFIFO");
 
-    AddCommand("cmpwrup",&ApolloSMDevice::CMPowerUP,
-	       "Power up a command module\n"\
-	       "Usage: \n" \
-	       "  cmpwrup <iCM> <wait(s)>\n");
+  AddCommand("writeoffset",&ApolloSMDevice::WriteOffset,
+	     "Write from an offset to an address\n"   \
+	     "Usage: \n"                              \
+	     "  writeoffset addr offset data count\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+  AddCommandAlias("wo","writeoffset");
 
-    AddCommand("cmpwrdown",&ApolloSMDevice::CMPowerDown,
-	       "Power up a command module\n"\
-	       "Usage: \n" \
-	       "  cmpwrdown <iCM> <wait(s)>\n");
+
+  AddCommand("nodes", &ApolloSMDevice::ListRegs, 
+	     "List matching address table items\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+
+  AddCommand("status",&ApolloSMDevice::StatusDisplay,
+	     "Display tables of Apollo Status\n"  \
+	     "Usage: \n"                          \
+	     "  status level <table name>\n");
+
+  AddCommand("graphite",&ApolloSMDevice::DumpGraphite,
+	     "Display Graphite write for Apollo Status\n"  \
+	     "Usage: \n"                          \
+	     "  graphite level <table name>\n");
+
+  AddCommand("cmpwrup",&ApolloSMDevice::CMPowerUP,
+	     "Power up a command module\n"\
+	     "Usage: \n" \
+	     "  cmpwrup <iCM> <wait(s)>\n");
+
+  AddCommand("cmpwrdown",&ApolloSMDevice::CMPowerDown,
+	     "Power up a command module\n"\
+	     "Usage: \n" \
+	     "  cmpwrdown <iCM> <wait(s)>\n");
     
-    AddCommand("svfplayer",&ApolloSMDevice::svfplayer,
-	       "Converts an SVF file to jtag commands in AXI format\n" \
-	       "Usage: \n" \
-	       "  svfplayer svf-file XVC-device\n");
+  AddCommand("svfplayer",&ApolloSMDevice::svfplayer,
+	     "Converts an SVF file to jtag commands in AXI format\n" \
+	     "Usage: \n" \
+	     "  svfplayer svf-file XVC-device\n");
 
-    AddCommand("GenerateHTMLStatus",&ApolloSMDevice::GenerateHTMLStatus,
-	       "Creates a status table as an html file\n" \
-	       "Usage: \n" \
-	       "  GenerateHTMLStatus filename <level> <type>\n");
+  AddCommand("GenerateHTMLStatus",&ApolloSMDevice::GenerateHTMLStatus,
+	     "Creates a status table as an html file\n" \
+	     "Usage: \n" \
+	     "  GenerateHTMLStatus filename <level> <type>\n");
     
-    AddCommand("uart_term",&ApolloSMDevice::UART_Term,
-	       "The function used for communicating with the command module uart\n"\
-	       "Usage: \n"\
-	       "  uart_term \n");
+  AddCommand("uart_term",&ApolloSMDevice::UART_Term,
+	     "The function used for communicating with the command module uart\n"\
+	     "Usage: \n"\
+	     "  uart_term \n");
 
-    AddCommand("uart_cmd",&ApolloSMDevice::UART_CMD,
-	       "Manages the IO for the command module Uart\n"\
-	       "Usage: \n"\
-	       "  uart_cmd CMD_STRING\n");
+  AddCommand("uart_cmd",&ApolloSMDevice::UART_CMD,
+	     "Manages the IO for the command module Uart\n"\
+	     "Usage: \n"\
+	     "  uart_cmd CMD_STRING\n");
 
-    AddCommand("dump_debug",&ApolloSMDevice::DumpDebug,
-	       "Dumps all registers to a file for debugging\n"\
-	       "Send to D. Gastler\n"\
-	       "Usage: \n"\
-	       "  dump_debug\n");
+  AddCommand("dump_debug",&ApolloSMDevice::DumpDebug,
+	     "Dumps all registers to a file for debugging\n"\
+	     "Send to D. Gastler\n"\
+	     "Usage: \n"\
+	     "  dump_debug\n");
 
-    AddCommand("unblockAXI",&ApolloSMDevice::unblockAXI,
-	       "Unblocks all four C2CX AXI and AXILITE bits\n"\
-	       "Usage: \n"\
-	       "  unblockAXI\n");
-
-    // AddCommand("SetOffsets",&ApolloSMDevice::SetOffsets,
-	   //     "Set up voltage and phase offsets for eyescan\n"   \
-	   //     "Usage: \n"                              \
-	   //     "  SetOffsets <base node> <voltage> <phase> \n");
-    // AddCommandAlias("vpoff","SetOffsets");
+  AddCommand("unblockAXI",&ApolloSMDevice::unblockAXI,
+	     "Unblocks all four C2CX AXI and AXILITE bits\n"\
+	     "Usage: \n"\
+	     "  unblockAXI\n");
 
 
-    AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
-	       "Perform an eye scan\n"   \
-	       "Usage: \n"                              \
-	       "  EyeScan <# x bins> <# y bins> <max prescale> <base node 0> <lpmNode 0> <file 0> ...\n", 
-	       &ApolloSMDevice::RegisterAutoComplete);
-    AddCommandAlias("es","EyeScan");
+  AddCommand("EyeScan",&ApolloSMDevice::EyeScan,
+	     "Perform an eye scan\n"   \
+	     "Usage: \n"                              \
+	     "  EyeScan <# x bins> <# y bins> <max prescale> <base node 0> <lpmNode 0> <file 0> ...\n", 
+	     &ApolloSMDevice::RegisterAutoComplete);
+  AddCommandAlias("es","EyeScan");
 
-    AddCommand("restartCMuC",&ApolloSMDevice::restartCMuC,
-	       "Restart micro controller on CM\n"	\
-	       "Usage: \n"\
-	       "  restartCMuC <CM number>\n");
+  AddCommand("restartCMuC",&ApolloSMDevice::restartCMuC,
+	     "Restart micro controller on CM\n"	\
+	     "Usage: \n"\
+	     "  restartCMuC <CM number>\n");
 
 }
 
@@ -205,21 +199,21 @@ CommandReturn::status ApolloSMDevice::StatusDisplay(std::vector<std::string> str
   std::string table("");
   int statusLevel = 1;
   switch (strArg.size()) {
-    case 0:
-      break;
-    default: //fallthrough
-    case 2:
-      table = strArg[1];
-      //fallthrough
-    case 1:
-      if(!isdigit(strArg[0][0])){
-	return CommandReturn::BAD_ARGS;
-      }else if ((intArg[0] < 1) || (intArg[0] > 9)) {
-	return CommandReturn::BAD_ARGS;
-      }      
-      statusLevel = intArg[0];
-      break;
-    }
+  case 0:
+    break;
+  default: //fallthrough
+  case 2:
+    table = strArg[1];
+    //fallthrough
+  case 1:
+    if(!isdigit(strArg[0][0])){
+      return CommandReturn::BAD_ARGS;
+    }else if ((intArg[0] < 1) || (intArg[0] > 9)) {
+      return CommandReturn::BAD_ARGS;
+    }      
+    statusLevel = intArg[0];
+    break;
+  }
 
   std::ostringstream oss;
   SM->GenerateStatusDisplay(statusLevel,oss,table);
@@ -231,21 +225,21 @@ CommandReturn::status ApolloSMDevice::DumpGraphite(std::vector<std::string> strA
   std::string table("");
   int statusLevel = 1;
   switch (strArg.size()) {
-    case 0:
-      break;
-    default: //fallthrough
-    case 2:
-      table = strArg[1];
-      //fallthrough
-    case 1:
-      if(!isdigit(strArg[0][0])){
-	return CommandReturn::BAD_ARGS;
-      }else if ((intArg[0] < 1) || (intArg[0] > 9)) {
-	return CommandReturn::BAD_ARGS;
-      }      
-      statusLevel = intArg[0];
-      break;
-    }
+  case 0:
+    break;
+  default: //fallthrough
+  case 2:
+    table = strArg[1];
+    //fallthrough
+  case 1:
+    if(!isdigit(strArg[0][0])){
+      return CommandReturn::BAD_ARGS;
+    }else if ((intArg[0] < 1) || (intArg[0] > 9)) {
+      return CommandReturn::BAD_ARGS;
+    }      
+    statusLevel = intArg[0];
+    break;
+  }
   std::cout << SM->GenerateGraphiteStatus(statusLevel,table);
   return CommandReturn::OK;  
 }
@@ -439,7 +433,7 @@ CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strAr
 }
 
 CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strArg*/,
-						std::vector<uint64_t> /*intArg*/){
+						 std::vector<uint64_t> /*intArg*/){
 
   SM->unblockAXI();  
 
@@ -545,9 +539,9 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     return CommandReturn::BAD_ARGS;
   }
   if (strArg.size()%3!=0)
-  {
-    return CommandReturn::BAD_ARGS;
-  }
+    {
+      return CommandReturn::BAD_ARGS;
+    }
   int num_of_nodes = (strArg.size()-3)/3;
 
   std::vector<eyescan> eyescanVec;
@@ -558,44 +552,44 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   int maxPrescale = atoi(strArg[2].c_str());
 
   for (int i = 0; i < num_of_nodes; ++i)
-  {
-    std::string baseNode=strArg[(i+1*3)];
-    std::string lpmNode=strArg[(i+1*3)+1];
-    std::string outputfile=strArg[(i+1*3)+2];
-    eyescanVec.push_back(eyescan(SM, baseNode,lpmNode,nXbins,nYbins,maxPrescale));
-    outputfileVec.push_back(outputfile);
-  }
+    {
+      std::string baseNode=strArg[(i+1*3)];
+      std::string lpmNode=strArg[(i+1*3)+1];
+      std::string outputfile=strArg[(i+1*3)+2];
+      eyescanVec.push_back(eyescan(SM, baseNode,lpmNode,nXbins,nYbins,maxPrescale));
+      outputfileVec.push_back(outputfile);
+    }
   //eyescan::ES_state_t done_state;
   //done_state=0;
   while(eyescanVec.size()!=0){
     for (uint32_t i = 0; i < eyescanVec.size(); ++i)
-    {
-      if(eyescanVec[i].check()==0){
-        const std::vector<eyescan::eyescanCoords> esCoords=eyescanVec[i].dataout();
+      {
+	if(eyescanVec[i].check()==0){
+	  const std::vector<eyescan::eyescanCoords> esCoords=eyescanVec[i].dataout();
 
-        FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");
+	  FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");
         
-        printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+	  printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
         
-        for(int i = 0; i < (int)esCoords.size(); i++) {
-          fprintf(dataFile, "%.9f ", esCoords[i].phase);
-          fprintf(dataFile, "%f ", esCoords[i].voltage);
-          fprintf(dataFile, "%.20f ", esCoords[i].BER);
-          fprintf(dataFile, "%x ", esCoords[i].sample0);
-          fprintf(dataFile, "%x ", esCoords[i].error0);
-          fprintf(dataFile, "%x ", esCoords[i].sample1);
-          fprintf(dataFile, "%x ", esCoords[i].error1);
-          fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
-          fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
-        }
+	  for(int i = 0; i < (int)esCoords.size(); i++) {
+	    fprintf(dataFile, "%.9f ", esCoords[i].phase);
+	    fprintf(dataFile, "%f ", esCoords[i].voltage);
+	    fprintf(dataFile, "%.20f ", esCoords[i].BER);
+	    fprintf(dataFile, "%x ", esCoords[i].sample0);
+	    fprintf(dataFile, "%x ", esCoords[i].error0);
+	    fprintf(dataFile, "%x ", esCoords[i].sample1);
+	    fprintf(dataFile, "%x ", esCoords[i].error1);
+	    fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
+	    fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
+	  }
       
-        fclose(dataFile);
-        eyescanVec.erase(eyescanVec.begin()+i);
-        outputfileVec.erase(outputfileVec.begin()+i);
-      }else{
-        eyescanVec[i].update(SM);
+	  fclose(dataFile);
+	  eyescanVec.erase(eyescanVec.begin()+i);
+	  outputfileVec.erase(outputfileVec.begin()+i);
+	}else{
+	  eyescanVec[i].update(SM);
+	}
       }
-    }
   }
   return CommandReturn::OK;
 

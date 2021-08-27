@@ -49,61 +49,61 @@ std::map<int, int> static const busWidthMap =
 class eyescan
 {
 public:
-	typedef enum { UNINIT, BUSY, WAITING_PIXEL, DONE  } ES_state_t;
+  typedef enum { UNINIT, BUSY, WAITING_PIXEL, DONE  } ES_state_t;
 
-	// All necessary information to plot an eyescan
-struct eyescanCoords {
-  double voltage;
-  double phase;
-  double BER;
-  uint32_t sample0;
-  uint32_t error0;
-  uint32_t sample1;
-  uint32_t error1;
-  uint8_t voltageReg;
-  uint16_t phaseReg;
-};
+  // All necessary information to plot an eyescan
+  struct eyescanCoords {
+    double voltage;
+    double phase;
+    double BER;
+    uint32_t sample0;
+    uint32_t error0;
+    uint32_t sample1;
+    uint32_t error1;
+    uint8_t voltageReg;
+    uint16_t phaseReg;
+  };
 
-struct Coords {
-  double voltage;
-  double phase;
-};
-// struct pixel_out{ //single eyescan output
-// 	double BER;
-// 	uint32_t sample0;
-// 	uint32_t error0;
-// 	uint32_t sample1;
-// 	uint32_t error1;
-// };
+  struct Coords {
+    double voltage;
+    double phase;
+  };
+  // struct pixel_out{ //single eyescan output
+  // 	double BER;
+  // 	uint32_t sample0;
+  // 	uint32_t error0;
+  // 	uint32_t sample1;
+  // 	uint32_t error1;
+  // };
 
 private:
-	std::string lpmNode;
-	std::string baseNode;
-	ES_state_t es_state;
-	std::vector<Coords> Coords_vect;
-	std::vector<eyescanCoords> scan_output;
-	std::vector<double> volt_vect;
-	std::vector<double> phase_vect;
-	int Max_prescale;
-	float volt;
-	float phase;
+  std::string lpmNode;
+  std::string baseNode;
+  ES_state_t es_state;
+  std::vector<std::vector<Coords>> Coords_vect;
+  std::vector<eyescanCoords> scan_output;
+  std::vector<double> volt_vect;
+  std::vector<double> phase_vect;
+  int Max_prescale;
+  float volt;
+  float phase;
 
 
 
 public:
-	eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale);
-	~eyescan();
+  eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale);
+  ~eyescan();
 
-	ES_state_t check();
-	void update(ApolloSM*SM);
-	std::vector<eyescanCoords> dataout();
-	void throwException(std::string message);
+  ES_state_t check();
+  void update(ApolloSM*SM);
+  std::vector<eyescanCoords> dataout();
+  void throwException(std::string message);
 
 private:
-	eyescan();
-	eyescanCoords scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, uint32_t prescale);
+  eyescan();
+  eyescanCoords scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, uint32_t prescale);
 	
-	//void assertNode(ApolloSM*SM, std::string node, uint32_t correctVal);
+  //void assertNode(ApolloSM*SM, std::string node, uint32_t correctVal);
   //void confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal);
 
   void SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign);

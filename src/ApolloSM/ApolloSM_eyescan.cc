@@ -20,7 +20,7 @@
 #define PRESCALE_STEP 3
 
 #define assertNode(node, correctVal) do{ \
-  SM->RegWriteRegister(node, correctVal); \
+  SM->RegWriteRegister(node, correctVal);	\
   if(correctVal != SM->RegReadRegister(node)) { \
     throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));\
   } \
@@ -61,7 +61,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   ES_state_t es_state=UNINIT;
   std::vector<eyescanCoords> scan_output;
   uint32_t Max_prescale= max_prescale;
-  std::string baseNode=baseNode_set;
+  baseNode=baseNode_set;
   std::string lpmNode=lpmNode_set;
  
   syslog(LOG_INFO, "appending\n");
@@ -69,6 +69,10 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
     baseNode.append(".");
   }
+
+   printf("baseNode= %s\n",baseNode.c_str());
+
+  
   //check that all needed addresses exist
   SM->myMatchRegex(baseNode+lpmNode);
   SM->myMatchRegex(baseNode+"HORZ_OFFSET_MAG");
@@ -93,10 +97,11 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   std::vector<std::string> test_gtx = SM->myMatchRegex(baseNode+"TYPE_7_GTX");
   std::vector<std::string> test_gty = SM->myMatchRegex(baseNode+"TYPE_USP_GTY");
   std::vector<std::string> test_gth = SM->myMatchRegex(baseNode+"TYPE_USP_GTH");
-  
+ 
   if(test_gtx.size()!=0){
     t=gtx;
     printf("Transistor is GTX.\n");
+ 
   } else if(test_gty.size()!=0){
     t=gty;
     printf("Transistor is GTY.\n");
@@ -107,6 +112,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
     t=unknown;
       throwException("No transistor type found.\n");
   }
+  
   // ** ES_EYE_SCAN_EN assert 1
   assertNode(baseNode + "EYE_SCAN_EN", ES_EYE_SCAN_EN);
 
@@ -117,6 +123,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   //  uint32_t prescale32 = std::stoi(prescale); 
   assertNode(baseNode + "PRESCALE", Max_prescale);
 
+  
   // *** PMA_CFG confirm all 0s
   if(t == gtx) {
     confirmNode(baseNode + "PMA_CFG", PMA_CFG);
@@ -133,7 +140,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   } else {
     qualSize = 10;
   }
-
+  
   // *** ES_QUALIFIER I think assert all 0s
   for(int i = 0; i < qualSize; i++) {
     assertNode(baseNode + "QUALIFIER_" + std::to_string(i), ES_QUALIFIER);
@@ -187,7 +194,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   } else {
     confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
   }
-
+  
   //make voltage vector
   double volt_step=254./nBinsY;
   //double volt_array[nBinsY+1];
@@ -218,28 +225,39 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
     }
   }
 
-  
-  std::vector<eyescan::Coords> Coords_vect;
+  //printf("test stop 1 \n");
+  std::vector<std::vector<eyescan::Coords>> Coords_vect;
+  //printf("test stop 2 \n");
   for (unsigned int i = 0; i < volt_vect.size(); ++i)
   {
+    std::vector<eyescan::Coords> Coords_col;
     for ( unsigned int j = 0; j < phase_vect.size(); ++j)
     {
-      Coords_vect[i].voltage=volt_vect[i];
-      Coords_vect[j].phase=phase_vect[j];
+      eyescan::Coords pixel;
+      pixel.voltage=volt_vect[i];
+      pixel.phase=phase_vect[j];
+      //printf("test stop 3 \n");
+      //Coords_vect[i][j].voltage=volt_vect[i];
+      Coords_col.push_back(pixel);
+      // printf("test stop 4 \n");
+      //Coords_vect[i][j].phase=phase_vect[j];
+      //printf("test stop 5 \n");
     }
+    Coords_vect.push_back(Coords_col);
   }
-  volt = Coords_vect[0].voltage;
-  phase=Coords_vect[0].phase;
+  //printf("test stop 6 \n");
+  volt = Coords_vect[0][0].voltage;
+  phase=Coords_vect[0][0].phase;
   if (es_state!=UNINIT)
   {
     throwException("eyescan object already initiated");
   }
+  //printf("test stop 7\n");
   scan_pixel(SM, lpmNode, phase, volt, Max_prescale);
   es_state=BUSY;
 }
 
 eyescan::~eyescan() {};
-
 eyescan::ES_state_t eyescan::check(){  //checks es_state
   return es_state;
 }
@@ -252,8 +270,9 @@ void eyescan::update(ApolloSM*SM){
       break;
 
     case WAITING_PIXEL:
-      volt = Coords_vect[0].voltage;
-      phase = Coords_vect[0].phase;
+      //eyescan::Coords pixel = Coords_vect[0][0];
+      volt = Coords_vect[0][0].voltage;
+      phase = Coords_vect[0][0].phase;
       scan_pixel(SM, lpmNode, phase, volt, Max_prescale);
       es_state=BUSY;
     case DONE:
@@ -276,8 +295,13 @@ void eyescan::SetEyeScanPhase(ApolloSM*SM, std::string baseNode, /*uint16_t*/ in
 
 void eyescan::SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign) {
   // write the hex
-  SM->RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
+  printf("SESVolt stop 1\n");
   SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
+  printf("SESVolt stop 2\n");
+  SM->RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
+  
+  //SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
+  printf("SESVolt stop 3\n");
 }
 
 std::vector<eyescan::eyescanCoords> eyescan::dataout(){
@@ -286,14 +310,14 @@ std::vector<eyescan::eyescanCoords> eyescan::dataout(){
 
 eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, uint32_t prescale){
   es_state = BUSY;
-	eyescanCoords singleScanOut;
+  eyescanCoords singleScanOut;
   double BER;
   float errorCount;
   float sampleCount;
   float errorCount0;
   float actualsample0;
   uint32_t maxPrescale=prescale;
-
+  printf("baseNode= %s\n",baseNode.c_str());
   uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
   int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
@@ -313,25 +337,25 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   printf("Voltage= %f\n", volt);
   syslog(LOG_INFO, "%f\n", volt);
 
-if(volt < 0) {
-  SetEyeScanVoltage(SM, baseNode, (uint8_t)(-1*volt), NEGATIVE); 
+  if(volt < 0) {
+    SetEyeScanVoltage(SM, baseNode, (uint8_t)(-1*volt), NEGATIVE); 
   } else {
     SetEyeScanVoltage(SM, baseNode, volt, POSITIVE);
   }
+  printf("stop test 1");
+  //SET PHASE
+  int phaseInt;
+  uint32_t sign;
 
-//SET PHASE
-int phaseInt;
-uint32_t sign;
-
-if(phase < 0) {
+  if(phase < 0) {
 	phaseInt = abs(ceil(phase));
 	sign = NEGATIVE;
-} else {
+  } else {
 	phaseInt = abs(floor(phase));
   sign = POSITIVE;
   }
-printf("phase is %f\n", phase);
-SetEyeScanPhase(SM, baseNode, phaseInt, sign);
+  printf("phase is %f\n", phase);
+  SetEyeScanPhase(SM, baseNode, phaseInt, sign);
 
   if(lpm == rxlpmen) {
     //printf("Looks like we have LPM. The register is %u\n", rxlpmen);
@@ -410,6 +434,7 @@ SetEyeScanPhase(SM, baseNode, phaseInt, sign);
 
       loop = false;
     }
+    printf("test");
   }
 
   // ==================================================

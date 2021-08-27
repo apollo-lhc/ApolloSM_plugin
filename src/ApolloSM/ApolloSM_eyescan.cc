@@ -69,9 +69,6 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   if(baseNode.compare(baseNode.size()-1,1,".") != 0) {
     baseNode.append(".");
   }
-
-   
-
   
   //check that all needed addresses exist
   SM->myMatchRegex(baseNode+lpmNode);
@@ -86,9 +83,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   SM->myMatchRegex(baseNode+"ERROR_COUNT");
   SM->myMatchRegex(baseNode+"SAMPLE_COUNT");
   SM->myMatchRegex(baseNode+"UT_SIGN");
-
-
-
+  SM->myMatchRegex(baseNode+"TYPE_7_GTX");
   //Figure out which transister type we're scanning
   typedef enum {gtx, gty, gth, unknown} transist;
   
@@ -110,7 +105,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
     printf("Transistor is GTH.\n");
   } else{
     t=unknown;
-      throwException("No transistor type found.\n");
+    throwException("No transistor type found for node "+baseNode+".\n");
   }
   
   // ** ES_EYE_SCAN_EN assert 1
@@ -202,7 +197,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   std::vector<double> volt_vect;
   if (nBinsY==1)
   {
-    volt_vect[0]=0.;
+    volt_vect.push_back(0.);
   } else{
     for (double i = -127.; i <= 127; i=i+volt_step)
     {
@@ -326,17 +321,17 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   
   // Check if we're DFE or LPM
   uint32_t const dfe = 0;
-  //uint32_t const lpm = 1;
+  uint32_t const lpm = 1;
 
   uint32_t const rxlpmen = SM->RegReadRegister(lpmNode);
-  printf("rxlpmen=%d\n", rxlpmen);
+  //printf("rxlpmen=%d\n", rxlpmen);
   //SET VOLTAGE
   // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
   // For bit 7 (8th bit) of ES_VERT_OFFSET
   uint32_t POSITIVE = 0;
   uint32_t NEGATIVE = 1;
 
-  printf("Voltage= %f\n", volt);
+  //printf("Voltage= %f\n", volt);
   syslog(LOG_INFO, "%f\n", volt);
 
   if(volt < 0) {
@@ -356,24 +351,24 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
 	phaseInt = abs(floor(phase));
   sign = POSITIVE;
   }
-  printf("phase is %f\n", phase);
+  //printf("phase is %f\n", phase);
   SetEyeScanPhase(SM, baseNode, phaseInt, sign);
-  printf("stop after set phase\n");
+  //printf("stop after set phase\n");
   
 
-  //if(lpm == rxlpmen) {
-    //printf("Looks like we have LPM. The register is %u\n", rxlpmen);
-  //} else if(dfe == rxlpmen) {
-    //printf("Looks like we have DFE. The register is %u\n", rxlpmen);
+  if(lpm == rxlpmen) {
+    printf("Looks like we have LPM. The register is %u\n", rxlpmen);
+  } else if(dfe == rxlpmen) {
+    printf("Looks like we have DFE. The register is %u\n", rxlpmen);
     //printf("test");
-  //} else {
-  //  printf("Something is wrong. We don't have lpm or dfe\n");
-  //}
+  } else {
+    printf("Something is wrong. We don't have lpm or dfe\n");
+  }
   //printf("stop after lpm check");
   // Re-zero prescale
-  printf("test/n ");
+  //printf("test\n");
   assertNode(baseNode + "PRESCALE", 0x0);
-  printf("stop after prescale=0");
+  //printf("stop after prescale=0\n");
   bool loop;
   loop = true;
 
@@ -442,7 +437,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
     }
     
   }
-  printf("stop after first while loop");
+  //printf("stop after first while loop\n");
   // ==================================================
   // If we have dfm, we need to do calculate the BER a second time and add it to the first
   double const firstBER = BER;
@@ -537,12 +532,16 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   singleScanOut.voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
   singleScanOut.phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
   scan_output.push_back(singleScanOut);
-  Coords_vect.erase(Coords_vect.begin());
+  if (Coords_vect.size()>0){
+    Coords_vect.erase(Coords_vect.begin());
+  }
   if (Coords_vect.size()==0)
   {
     es_state=DONE;
   } else{
+    
     es_state=WAITING_PIXEL;
+  
   }
   printf("End of scan_pixel");
   return singleScanOut;

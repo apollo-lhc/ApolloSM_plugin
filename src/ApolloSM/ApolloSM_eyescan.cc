@@ -70,7 +70,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
     baseNode.append(".");
   }
 
-   printf("baseNode= %s\n",baseNode.c_str());
+   
 
   
   //check that all needed addresses exist
@@ -204,7 +204,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   {
     volt_vect[0]=0.;
   } else{
-    for (double i = -254.; i <= 254; i=i+volt_step)
+    for (double i = -127.; i <= 127; i=i+volt_step)
     {
       volt_vect.push_back(i);
     }
@@ -287,21 +287,23 @@ void eyescan::update(ApolloSM*SM){
 
 void eyescan::SetEyeScanPhase(ApolloSM*SM, std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
   // write the hex
+  //printf("Set phase stop 1\n");
   SM->RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
-  //printf("Set phase stop 1 \n");
+  //printf("Set phase stop 2 \n");
   SM->RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign); 
+  //printf("Set phase stop 3\n");
   //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
  }
 
 void eyescan::SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign) {
   // write the hex
-  printf("SESVolt stop 1\n");
-  SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
-  printf("SESVolt stop 2\n");
-  SM->RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
+  //printf("SESVolt stop 1\n");
   
+  //printf("SESVolt stop 2\n");
+  SM->RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
+  SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
   //SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
-  printf("SESVolt stop 3\n");
+  //printf("SESVolt stop 3\n");
 }
 
 std::vector<eyescan::eyescanCoords> eyescan::dataout(){
@@ -317,17 +319,17 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   float errorCount0;
   float actualsample0;
   uint32_t maxPrescale=prescale;
-  printf("baseNode= %s\n",baseNode.c_str());
+  
   uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
   int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
   
   // Check if we're DFE or LPM
   uint32_t const dfe = 0;
-  uint32_t const lpm = 1;
+  //uint32_t const lpm = 1;
 
   uint32_t const rxlpmen = SM->RegReadRegister(lpmNode);
-
+  printf("rxlpmen=%d\n", rxlpmen);
   //SET VOLTAGE
   // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
   // For bit 7 (8th bit) of ES_VERT_OFFSET
@@ -342,7 +344,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   } else {
     SetEyeScanVoltage(SM, baseNode, volt, POSITIVE);
   }
-  printf("stop test 1");
+  
   //SET PHASE
   int phaseInt;
   uint32_t sign;
@@ -356,18 +358,22 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   }
   printf("phase is %f\n", phase);
   SetEyeScanPhase(SM, baseNode, phaseInt, sign);
+  printf("stop after set phase\n");
+  
 
-  if(lpm == rxlpmen) {
+  //if(lpm == rxlpmen) {
     //printf("Looks like we have LPM. The register is %u\n", rxlpmen);
-  } else if(dfe == rxlpmen) {
+  //} else if(dfe == rxlpmen) {
     //printf("Looks like we have DFE. The register is %u\n", rxlpmen);
-  } else {
-    printf("Something is wrong. We don't have lpm or dfe\n");
-  }
-
+    //printf("test");
+  //} else {
+  //  printf("Something is wrong. We don't have lpm or dfe\n");
+  //}
+  //printf("stop after lpm check");
   // Re-zero prescale
+  printf("test/n ");
   assertNode(baseNode + "PRESCALE", 0x0);
-
+  printf("stop after prescale=0");
   bool loop;
   loop = true;
 
@@ -434,9 +440,9 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
 
       loop = false;
     }
-    printf("test");
+    
   }
-
+  printf("stop after first while loop");
   // ==================================================
   // If we have dfm, we need to do calculate the BER a second time and add it to the first
   double const firstBER = BER;
@@ -538,6 +544,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   } else{
     es_state=WAITING_PIXEL;
   }
-
+  printf("End of scan_pixel");
   return singleScanOut;
+ 
 }

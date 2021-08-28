@@ -225,7 +225,8 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   //printf("phase_vect size=%d\n",phase_vect.size());
 
   //printf("test stop 1 \n");
-  std::vector<std::vector<eyescan::Coords>> Coords_vect;
+  std::queue<eyescan::Coords> Coords_queue;
+  //std::vector<std::vector<eyescan::Coords>> Coords_vect;
   //printf("test stop 2 \n");
   for (unsigned int i = 0; i < volt_vect.size(); ++i)
   {
@@ -235,18 +236,21 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
       eyescan::Coords pixel;
       pixel.voltage=volt_vect[i];
       pixel.phase=phase_vect[j];
-      //printf("test stop 3 \n");
-      //Coords_vect[i][j].voltage=volt_vect[i];
-      Coords_col.push_back(pixel);
-      // printf("test stop 4 \n");
-      //Coords_vect[i][j].phase=phase_vect[j];
-      //printf("test stop 5 \n");
+
+      Coords_queue.push(pixel);
+
     }
-    Coords_vect.push_back(Coords_col);
+    //Coords_vect.push_back(Coords_col);
   }
-  printf("Coords_vect size=%d \n",Coords_vect.size());
-  volt = Coords_vect[0][0].voltage;
-  phase=Coords_vect[0][0].phase;
+  if (Coords_queue.empty())
+  {
+    throwException("No coordinates to scan.");
+  }
+  //printf("Coords_vect size=%d \n",Coords_vect.size());
+  eyescan::Coords first_pixel;
+  first_pixel = Coords_queue.front();
+  volt = first_pixel.voltage;
+  phase = first_pixel.phase;
   if (es_state!=UNINIT)
   {
     throwException("eyescan object already initiated");
@@ -269,9 +273,9 @@ void eyescan::update(ApolloSM*SM){
       break;
 
     case WAITING_PIXEL:
-      //eyescan::Coords pixel = Coords_vect[0][0];
-      volt = Coords_vect[0][0].voltage;
-      phase = Coords_vect[0][0].phase;
+      eyescan::Coords pixel = Coords_queue.front();
+      volt = pixel.voltage;
+      phase = pixel.phase;
       scan_pixel(SM, lpmNode, phase, volt, Max_prescale);
       es_state=BUSY;
     case DONE:
@@ -537,11 +541,11 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   singleScanOut.voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
   singleScanOut.phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
   scan_output.push_back(singleScanOut);
-  if (Coords_vect.size()>0){
-    Coords_vect.erase(Coords_vect.begin());
+  if (!Coords_queue.empty(){
+    Coords_queue.pop();
   }
-  printf("Coords_vect size=%d \n",Coords_vect.size());
-  if (Coords_vect.size()==0)
+  //printf("Coords_vect size=%d \n",Coords_vect.size());
+  if (Coords_queue.empty())
   {
     es_state=DONE;
   } else{

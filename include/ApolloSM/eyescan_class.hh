@@ -80,7 +80,8 @@ private:
   std::string lpmNode;
   std::string baseNode;
   ES_state_t es_state;
-  std::vector<std::vector<Coords>> Coords_vect;
+  //std::vector<std::vector<Coords>> Coords_vect;
+  std::queue<eyescan::Coords> Coords_queue;
   std::vector<eyescanCoords> scan_output;
   std::vector<double> volt_vect;
   std::vector<double> phase_vect;

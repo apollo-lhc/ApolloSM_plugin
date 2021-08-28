@@ -550,6 +550,8 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   int nXbins = atoi(strArg[0].c_str());
   int nYbins = atoi(strArg[1].c_str());
   int maxPrescale = atoi(strArg[2].c_str());
+  printf("Progres:0/%d nodes.\n",num_of_nodes);
+  int nodes_done=0;
 
   for (int i = 0; i < num_of_nodes; ++i)
     {
@@ -575,17 +577,19 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 	    fprintf(dataFile, "%.9f ", esCoords[i].phase);
 	    fprintf(dataFile, "%f ", esCoords[i].voltage);
 	    fprintf(dataFile, "%.20f ", esCoords[i].BER);
-	    fprintf(dataFile, "%x ", esCoords[i].sample0);
-	    fprintf(dataFile, "%x ", esCoords[i].error0);
-	    fprintf(dataFile, "%x ", esCoords[i].sample1);
-	    fprintf(dataFile, "%x ", esCoords[i].error1);
-	    fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
-	    fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
+	    fprintf(dataFile, "%u ", esCoords[i].sample0);
+	    fprintf(dataFile, "%u ", esCoords[i].error0);
+	    fprintf(dataFile, "%u ", esCoords[i].sample1);
+	    fprintf(dataFile, "%u ", esCoords[i].error1);
+	    fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
+	    fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
 	  }
       
 	  fclose(dataFile);
 	  eyescanVec.erase(eyescanVec.begin()+i);
 	  outputfileVec.erase(outputfileVec.begin()+i);
+	  nodes_done+=1;
+	  printf("Progres:%d/%d nodes.\n",nodes_done,num_of_nodes);
 	}else{
 	  eyescanVec[i].update(SM);
 	}

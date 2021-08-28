@@ -95,14 +95,14 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
  
   if(test_gtx.size()!=0){
     t=gtx;
-    printf("Transistor is GTX.\n");
+    //printf("Transistor is GTX.\n");
  
   } else if(test_gty.size()!=0){
     t=gty;
-    printf("Transistor is GTY.\n");
+    //printf("Transistor is GTY.\n");
   } else if(test_gth.size()!=0){
     t=gth;
-    printf("Transistor is GTH.\n");
+    //printf("Transistor is GTH.\n");
   } else{
     t=unknown;
     throwException("No transistor type found for node "+baseNode+".\n");
@@ -192,6 +192,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   
   //make voltage vector
   double volt_step=254./nBinsY;
+  //printf("volt_step=%f\n",volt_step);
   //double volt_array[nBinsY+1];
   double volt;
   std::vector<double> volt_vect;
@@ -199,26 +200,29 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   {
     volt_vect.push_back(0.);
   } else{
-    for (double i = -127.; i <= 127; i=i+volt_step)
+    for (double i = -127.; i <= 127.; i=i+volt_step)
     {
       volt_vect.push_back(i);
     }
   }
+  //printf("volt_vect size=%d\n",volt_vect.size());
   
   //make phase array
   double phase_step=1./nBinsX;
+  //printf("phase_step=%f\n",phase_step);
   //double phase_array[nBinsX+1];
   double phase;
   std::vector<double> phase_vect;
   if (nBinsX==1)
   {
-    phase_vect[0]=0.;
+    phase_vect.push_back(0.);
   } else{
     for (double i = -.5; i <= .5; i=i+phase_step)
     {
       phase_vect.push_back(i);
     }
   }
+  //printf("phase_vect size=%d\n",phase_vect.size());
 
   //printf("test stop 1 \n");
   std::vector<std::vector<eyescan::Coords>> Coords_vect;
@@ -240,7 +244,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
     }
     Coords_vect.push_back(Coords_col);
   }
-  //printf("test stop 6 \n");
+  printf("Coords_vect size=%d \n",Coords_vect.size());
   volt = Coords_vect[0][0].voltage;
   phase=Coords_vect[0][0].phase;
   if (es_state!=UNINIT)
@@ -357,12 +361,13 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   
 
   if(lpm == rxlpmen) {
-    printf("Looks like we have LPM. The register is %u\n", rxlpmen);
+    //printf("Looks like we have LPM. The register is %u\n", rxlpmen);
   } else if(dfe == rxlpmen) {
-    printf("Looks like we have DFE. The register is %u\n", rxlpmen);
+    //printf("Looks like we have DFE. The register is %u\n", rxlpmen);
     //printf("test");
   } else {
-    printf("Something is wrong. We don't have lpm or dfe\n");
+    throwException("Something is wrong. We don't have lpm or dfe.");
+    //printf("Something is wrong. We don't have lpm or dfe\n");
   }
   //printf("stop after lpm check");
   // Re-zero prescale
@@ -535,6 +540,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   if (Coords_vect.size()>0){
     Coords_vect.erase(Coords_vect.begin());
   }
+  printf("Coords_vect size=%d \n",Coords_vect.size());
   if (Coords_vect.size()==0)
   {
     es_state=DONE;
@@ -543,7 +549,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
     es_state=WAITING_PIXEL;
   
   }
-  printf("End of scan_pixel");
+  printf("State = %d",es_state);
   return singleScanOut;
  
 }

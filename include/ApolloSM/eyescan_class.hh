@@ -1,6 +1,7 @@
 #ifndef __EYESCANCLASS_HH__
 #define __EYESCANCLASS_HH__
 #include <ApolloSM/ApolloSM.hh>
+#include <queue>
 // //#include <BUException/ExceptionBase.hh>
 // #include <BUTool/ToolException.hh>
 // #include <IPBusIO/IPBusIO.hh>
@@ -80,12 +81,13 @@ private:
   std::string lpmNode;
   std::string baseNode;
   ES_state_t es_state;
+  Coords cur_pixel;
   //std::vector<std::vector<Coords>> Coords_vect;
   std::queue<eyescan::Coords> Coords_queue;
   std::vector<eyescanCoords> scan_output;
   std::vector<double> volt_vect;
   std::vector<double> phase_vect;
-  int Max_prescale;
+  uint32_t Max_prescale;
   float volt;
   float phase;
 

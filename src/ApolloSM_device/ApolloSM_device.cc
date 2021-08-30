@@ -550,8 +550,9 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   int nXbins = atoi(strArg[0].c_str());
   int nYbins = atoi(strArg[1].c_str());
   int maxPrescale = atoi(strArg[2].c_str());
-  printf("Progres:0/%d nodes.\n",num_of_nodes);
+  printf("Progress:0/%d nodes.\n",num_of_nodes);
   int nodes_done=0;
+  int num_updates = 0;
 
   for (int i = 0; i < num_of_nodes; ++i)
     {
@@ -561,6 +562,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
       eyescanVec.push_back(eyescan(SM, baseNode,lpmNode,nXbins,nYbins,maxPrescale));
       outputfileVec.push_back(outputfile);
     }
+  
   eyescan::ES_state_t done_state;
   done_state= eyescan::DONE;
   while(eyescanVec.size()!=0){
@@ -589,9 +591,11 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 	  eyescanVec.erase(eyescanVec.begin()+i);
 	  outputfileVec.erase(outputfileVec.begin()+i);
 	  nodes_done+=1;
-	  printf("Progres:%d/%d nodes.\n",nodes_done,num_of_nodes);
+	  printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
 	}else{
 	  eyescanVec[i].update(SM);
+	  num_updates+=1;
+	  printf("Number updates=%d\n",num_updates);
 	}
       }
   }

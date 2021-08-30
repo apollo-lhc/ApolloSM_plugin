@@ -534,7 +534,9 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strA
 // }
 
 CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>){
-
+  //clock for timing
+  time_t start, end; // used to time execution
+  time(&start);      // recording start time
   if(6 > strArg.size()) {
     return CommandReturn::BAD_ARGS;
   }
@@ -599,8 +601,14 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 	}
       }
   }
-  return CommandReturn::OK;
+  //clock end
+  // Recording end time.
+  time(&end);                                   //end simulation time
 
+  // Calculating total time taken by the program.
+  double time_taken = double(end - start);
+  printf("Time taken by program is %f seconds.\n",time_taken);
+  return CommandReturn::OK;
 }
 
 // CommandReturn::status ApolloSMDevice::Bathtub(std::vector<std::string> strArg, std::vector<uint64_t>) {

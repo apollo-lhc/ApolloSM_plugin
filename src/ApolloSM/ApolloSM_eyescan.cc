@@ -349,7 +349,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   uint32_t POSITIVE = 0;
   uint32_t NEGATIVE = 1;
 
-  printf("Voltage= %f\n", volt);
+  //printf("Voltage= %f\n", volt);
   syslog(LOG_INFO, "%f\n", volt);
 
   if(volt < 0) {
@@ -370,7 +370,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
 	phaseInt = abs(floor(phase));
   sign = POSITIVE;
   }
-  printf("phase is %f\n", phase);
+  //printf("phase is %f\n", phase);
   SetEyeScanPhase(SM, baseNode, phaseInt, sign);
   //printf("stop after set phase\n");
   
@@ -439,7 +439,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
       //printf("prescale = %d\n",prescale);
       if(prescale > maxPrescale) {
 	prescale = maxPrescale;
-		printf("max prescale %d reached\n", maxPrescale);
+	//printf("max prescale %d reached\n", maxPrescale);
       }
       assertNode(baseNode + "PRESCALE", prescale);
       // useless but just to be paranoid
@@ -535,7 +535,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
 	//intf("prescale = %d\n",prescale);
 	if(prescale > maxPrescale) {
 	  prescale = maxPrescale;
-	  printf("max prescale %d reached\n", maxPrescale);
+	  //printf("max prescale %d reached\n", maxPrescale);
 	}
 	assertNode(baseNode + "PRESCALE", prescale);
 	// useless but just to be paranoid
@@ -569,7 +569,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   if (!Coords_queue.empty()){
     Coords_queue.pop();
   }
-  printf("Coords_queue size after= %d\n",Coords_queue.size());
+  //printf("Coords_queue size after= %d\n",Coords_queue.size());
   //printf("Coords_vect size=%d \n",Coords_vect.size());
   if (Coords_queue.empty())
   {
@@ -579,7 +579,7 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
     es_state=WAITING_PIXEL;
   
   }
-  printf("State = %d\n",es_state);
+  //printf("State = %d\n",es_state);
   return singleScanOut;
  
 }

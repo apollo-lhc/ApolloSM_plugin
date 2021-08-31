@@ -388,12 +388,16 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
 } 
 
 CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string> strArg, std::vector<uint64_t>) {
-
-  if(2 != strArg.size()) {
+  std::string XVC_basenode;
+  if(1 == strArg.size() && this->ExistsVariable("APOLLO_SM_DEFAULT_XVC_BASENODE")){
+    XVC_basenode = this->GetVariable("APOLLO_SM_DEFAULT_XVC_BASENODE");
+  } else if(2 == strArg.size()) {
+    XVC_basenode = strArg[1];
+  } else {
     return CommandReturn::BAD_ARGS;
   }
 
-  SM->svfplayer(strArg[0],strArg[1]);
+  SM->svfplayer(strArg[0],XVC_basenode);
   
   return CommandReturn::OK;
 }

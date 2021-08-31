@@ -1,6 +1,8 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <fstream> //std::ofstream
 
+#include <boost/algorithm/string/predicate.hpp> //for iequals
+
 ApolloSM::ApolloSM():IPBusConnection("ApolloSM"),statusDisplay(NULL){  
   statusDisplay= new IPBusStatus(GetHWInterface());
 }
@@ -158,13 +160,24 @@ bool ApolloSM::PowerDownCM(int CM_ID, int wait /*seconds*/){
   return true;
 }
 
-void ApolloSM::unblockAXI() {
-  RegWriteAction("C2C1_AXI_FW.UNBLOCK");
-  RegWriteAction("C2C1_AXILITE_FW.UNBLOCK");
-  RegWriteAction("C2C2_AXI_FW.UNBLOCK");
-  RegWriteAction("C2C2_AXILITE_FW.UNBLOCK");
-  RegWriteAction("CM.CM_1.C2C.CNT.RESET_COUNTERS");
-  RegWriteAction("CM.CM_2.C2C.CNT.RESET_COUNTERS");
+void ApolloSM::unblockAXI(std::string unblockName) {
+  std::vector<std::string> Names = myMatchRegex("*");
+  uMap::iterator unblockNode;
+  for(auto it = Names.begin();it != Names.end();it++){
+    //Get the list of parameters for this node
+    uMap parameters = GetParameters(*it);
+    if( (unblockNode = parameters.find("Unblock")) != parameters.end()){
+      if(unblockName.size() == 0){	
+	//The unblockName is empty, so every node with unblock gets a write
+	RegWriteAction(*it);
+      }else{
+	if(boost::iequals(unblockName,unblockNode->second)){
+	  RegWriteAction(*it);
+	}
+      }
+    }
+
+  }
   return;
 }
 

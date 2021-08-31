@@ -38,7 +38,7 @@ public:
 
   void DebugDump(std::ostream & output = std::cout);
 
-  void unblockAXI();
+  void unblockAXI(std::string name ="");
   
   void EnableEyeScan(std::string baseNode, uint32_t prescale);
   void SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t horzOffset);

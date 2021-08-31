@@ -153,7 +153,9 @@ void ApolloSMDevice::LoadCommandList(){
     AddCommand("unblockAXI",&ApolloSMDevice::unblockAXI,
 	       "Unblocks all four C2CX AXI and AXILITE bits\n"\
 	       "Usage: \n"\
-	       "  unblockAXI\n");
+	       "  unblockAXI <link>\n"\
+               "  writes to each node with parameter entry Unblock equal to link\n"\
+	       "  if link is blank, all Unblock tagged nodes will be written to");
     AddCommand("EnableEyeScan",&ApolloSMDevice::EnableEyeScan,
 	       "Set up all attributes for eye scan\n"   \
 	       "Usage: \n"                              \
@@ -450,10 +452,14 @@ CommandReturn::status ApolloSMDevice::DumpDebug(std::vector<std::string> /*strAr
   return CommandReturn::OK;
 }
 
-CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strArg*/,
+CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg,
 						std::vector<uint64_t> /*intArg*/){
 
-  SM->unblockAXI();  
+  if(strArg.size() > 0){
+    SM->unblockAXI(strArg[0]);  
+  }else{
+    SM->unblockAXI();  
+  }
 
   return CommandReturn::OK;						   
 }

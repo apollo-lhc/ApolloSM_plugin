@@ -1,6 +1,8 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <fstream> //std::ofstream
 
+#include <boost/algorithm/string/predicate.hpp> //for iequals
+
 ApolloSM::ApolloSM():IPBusConnection("ApolloSM"),statusDisplay(NULL){  
   statusDisplay= new IPBusStatus(GetHWInterface());
 }
@@ -163,14 +165,14 @@ void ApolloSM::unblockAXI(std::string unblockName) {
   uMap::iterator unblockNode;
   for(auto it = Names.begin();it != Names.end();it++){
     //Get the list of parameters for this node
-    uMap parameters = GetParameters(*itName);
+    uMap parameters = GetParameters(*it);
     if( (unblockNode = parameters.find("Unblock")) != parameters.end()){
       if(unblockName.size() == 0){	
 	//The unblockName is empty, so every node with unblock gets a write
-	RegWriteAction(*itName);
+	RegWriteAction(*it);
       }else{
 	if(boost::iequals(unblockName,unblockNode->second)){
-	  RegWriteAction(*itName);
+	  RegWriteAction(*it);
 	}
       }
     }

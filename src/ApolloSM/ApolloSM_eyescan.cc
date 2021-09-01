@@ -40,9 +40,8 @@ void eyescan::throwException(std::string message) {
   throw e;
 }
 
-eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX_set, int nBinsY_set, int max_prescale){
-  ES_state_t es_state=UNINIT;
-  std::vector<eyescanCoords> scan_output;
+eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX_set, int nBinsY_set, int max_prescale):es_state(UNINIT){
+ 
   Max_prescale= max_prescale;
   baseNode=baseNode_set;
   lpmNode=lpmNode_set;
@@ -56,6 +55,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   }
   
   //check that all needed addresses exist
+  //put in try catch block
   SM->myMatchRegex(baseNode+lpmNode);
   SM->myMatchRegex(baseNode+"HORZ_OFFSET_MAG");
   SM->myMatchRegex(baseNode+"PHASE_UNIFICATION");
@@ -174,6 +174,7 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
     confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
   }
   rxlpmen = SM->RegReadRegister(lpmNode);
+  es_state=SCAN_INIT;
 }
 
 eyescan::~eyescan() {};
@@ -181,13 +182,14 @@ eyescan::ES_state_t eyescan::check(){  //checks es_state
   return es_state;
 }
 void eyescan::update(ApolloSM*SM){
-  ES_state_t s = check();
-  switch (s){
+
+  switch (es_state){
     case SCAN_INIT:
       initialize();
+      es_state= SCAN_START;
       break;
-    case SCAN_RESET:
-      reset();
+    case SCAN_RESET://make reset a func; make this a READY state
+      reset();//set all samples and errors to 0
       break;
     case SCAN_START:
       assertNode(baseNode + "PRESCALE", 0x0);
@@ -198,6 +200,7 @@ void eyescan::update(ApolloSM*SM){
         if (rxlpmen==dfe)
         {
           EndPixelDFE(SM);
+          //
         } else {
           EndPixelLPM(SM);
         }
@@ -381,7 +384,7 @@ void eyescan::SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertO
   //SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
 }
 
-std::vector<eyescan::eyescanCoords> eyescan::dataout(){
+std::vector<eyescan::eyescanCoords> const& eyescan::dataout(){
   return scan_output;
 }
 

@@ -88,9 +88,11 @@ private:
   int cur_prescale;
   int nBinsX
   int nBinsY
+
+  //make these #defines
   uint32_t const dfe = 0;
   uint32_t const lpm = 1;
-  uint32_t const rxlpmen;
+  uint32_t rxlpmen;
 
 
 
@@ -100,8 +102,9 @@ public:
   //ES_state_t check();
   void check();
   void update(ApolloSM*SM);
-  std::vector<eyescanCoords> dataout();
+  std::vector<eyescanCoords>const & dataout();
   void throwException(std::string message);
+  //make function to dump to file
 
 private:
   eyescan();

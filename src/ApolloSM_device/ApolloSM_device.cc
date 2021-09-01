@@ -534,6 +534,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strA
 // }
 
 CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>){
+
   //clock for timing
   time_t start, end; // used to time execution
   time(&start);      // recording start time
@@ -566,40 +567,36 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     }
   
   eyescan::ES_state_t done_state;
-  done_state= eyescan::DONE;
+  done_state= eyescan::SCAN_DONE;
   while(eyescanVec.size()!=0){
-    for (uint32_t i = 0; i < eyescanVec.size(); ++i)
-      {
-	if(eyescanVec[i].check()==done_state){
-	  const std::vector<eyescan::eyescanCoords> esCoords=eyescanVec[i].dataout();
-
-	  FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");
-        
-	  printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
-        
-	  for(int i = 0; i < (int)esCoords.size(); i++) {
-	    fprintf(dataFile, "%.9f ", esCoords[i].phase);
-	    fprintf(dataFile, "%f ", esCoords[i].voltage);
-	    fprintf(dataFile, "%.20f ", esCoords[i].BER);
-	    fprintf(dataFile, "%u ", esCoords[i].sample0);
-	    fprintf(dataFile, "%u ", esCoords[i].error0);
-	    fprintf(dataFile, "%u ", esCoords[i].sample1);
-	    fprintf(dataFile, "%u ", esCoords[i].error1);
-	    fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
-	    fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
-	  }
-      
-	  fclose(dataFile);
-	  eyescanVec.erase(eyescanVec.begin()+i);
-	  outputfileVec.erase(outputfileVec.begin()+i);
-	  nodes_done+=1;
-	  printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
-	}else{
-	  eyescanVec[i].update(SM);
-	  num_updates+=1;
-	  printf("Number updates=%d\n",num_updates);
-	}
-      }
+    for (uint32_t i = 0; i < eyescanVec.size(); ++i){
+      if(eyescanVec[i].check()==done_state){
+        const std::vector<eyescan::eyescanCoords> esCoords=eyescanVec[i].dataout();
+  	   FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");   
+  	   printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+          
+    	  for(int i = 0; i < (int)esCoords.size(); i++) {
+      	    fprintf(dataFile, "%.9f ", esCoords[i].phase);
+      	    fprintf(dataFile, "%f ", esCoords[i].voltage);
+      	    fprintf(dataFile, "%.20f ", esCoords[i].BER);
+      	    fprintf(dataFile, "%u ", esCoords[i].sample0);
+      	    fprintf(dataFile, "%u ", esCoords[i].error0);
+      	    fprintf(dataFile, "%u ", esCoords[i].sample1);
+      	    fprintf(dataFile, "%u ", esCoords[i].error1);
+      	    fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
+      	    fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
+        }
+  	   fclose(dataFile);
+  	   eyescanVec.erase(eyescanVec.begin()+i);
+  	   outputfileVec.erase(outputfileVec.begin()+i);
+  	   nodes_done+=1;
+  	   printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
+    	}else{
+    	  eyescanVec[i].update(SM);
+    	  num_updates+=1;
+    	  printf("Number updates=%d\n",num_updates);
+    	}
+    }
   }
   //clock end
   // Recording end time.
@@ -611,58 +608,6 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   return CommandReturn::OK;
 }
 
-// CommandReturn::status ApolloSMDevice::Bathtub(std::vector<std::string> strArg, std::vector<uint64_t>) {
-
-//   // base node, text file, horizontal increment double, vertical increment integer, maximum prescale
-//   if(5 != strArg.size()) {
-//     return CommandReturn::BAD_ARGS;
-//   }
-  
-//   std::string baseNode = strArg[0];
-//   std::string lpmNode = strArg[1]; 
-//   // Add a dot to baseNode if it does not already have one
-//   if(0 != baseNode.compare(baseNode.size()-1,1,".")) {
-//     baseNode.append(".");
-//   }
-
-//   std::string fileName = strArg[2];
-//   if(0 != fileName.compare(fileName.size()-4,4,".txt")) {
-//     return CommandReturn::BAD_ARGS;
-//   }
-
-//   printf("The base node is %s\n", baseNode.c_str());
-//   printf("The file to write to is %s\n", fileName.c_str());
-  
-//   double horzIncrement = atof(strArg[3].c_str());
-  
-
-//   printf("We have horz increment %f", horzIncrement);
-
-//   uint32_t maxPrescale = strtoul(strArg[4].c_str(), NULL, 0);
-//   printf("The max prescale is: %d\n", maxPrescale);
-//   std::vector<eyescanCoords> esCoords = SM->Bathtub(baseNode, lpmNode, horzIncrement, maxPrescale);
-
-//   FILE * dataFile = fopen(fileName.c_str(), "w");
-
-//   printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
-  
-//   for(int i = 0; i < (int)esCoords.size(); i++) {
-//     fprintf(dataFile, "%.9f ", esCoords[i].phase);
-//     fprintf(dataFile, "%d ", esCoords[i].voltage);
-//     fprintf(dataFile, "%.20f ", esCoords[i].BER);
-//     fprintf(dataFile, "%lu ", esCoords[i].sample0);
-//     fprintf(dataFile, "%lu ", esCoords[i].error0);
-//     fprintf(dataFile, "%lu ", esCoords[i].sample1);
-//     fprintf(dataFile, "%lu ", esCoords[i].error1);
-//     fprintf(dataFile, "%x ", esCoords[i].voltageReg & 0xFF);
-//     fprintf(dataFile, "%x\n", esCoords[i].phaseReg & 0xFFF);
-//   }
-  
-//   fclose(dataFile);
-
-//   return CommandReturn::OK;
-
-// }
 
 CommandReturn::status ApolloSMDevice::restartCMuC(std::vector<std::string> strArg,
 						  std::vector<uint64_t> /*intArg*/){

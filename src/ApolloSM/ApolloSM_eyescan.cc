@@ -17,7 +17,6 @@
 #define RUN 0x1
 #define STOP_RUN 0x0
 #define PRECISION 0.00000001 // 10^-9
-
 #define PRESCALE_STEP 3
 
 #define assertNode(node, correctVal) do{ \
@@ -41,29 +40,14 @@ void eyescan::throwException(std::string message) {
   throw e;
 }
 
-// // assert to the node the correct value. Must be an ApolloSM function to use RegWriteRegister and RegReadRegister
-// void eyescan::assertNode(ApolloSM*SM, std::string node, uint32_t correctVal) {
-//   SM->RegWriteRegister(node, correctVal);
-//   // Might be able to just put confirmNode here
-//   if(correctVal != SM->RegReadRegister(node)) {
-//     throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));
-//   }
-// }
-
-// // confirm that the node value is correct. Must be an ApolloSM function to use RegReadRegister 
-// void eyescan::confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal) {
-//   if(correctVal != SM->RegReadRegister(node)) {
-//     throwException(node + " is not set correctly to: " + std::to_string(correctVal));
-//   }
-// }
-
-
-eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale){
+eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX_set, int nBinsY_set, int max_prescale){
   ES_state_t es_state=UNINIT;
   std::vector<eyescanCoords> scan_output;
   Max_prescale= max_prescale;
   baseNode=baseNode_set;
   lpmNode=lpmNode_set;
+  nBinsX=nBinsX_set;
+  nBinsY=nBinsY_set;
  
   syslog(LOG_INFO, "appending\n");
   // check for a '.' at the end of baseNode and add it if it isn't there 
@@ -97,7 +81,6 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   if(test_gtx.size()!=0){
     t=gtx;
     //printf("Transistor is GTX.\n");
- 
   } else if(test_gty.size()!=0){
     t=gty;
     //printf("Transistor is GTY.\n");
@@ -190,11 +173,48 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   } else {
     confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
   }
-  
-  //make voltage vector
+  rxlpmen = SM->RegReadRegister(lpmNode);
+}
+
+eyescan::~eyescan() {};
+eyescan::ES_state_t eyescan::check(){  //checks es_state
+  return es_state;
+}
+void eyescan::update(ApolloSM*SM){
+  ES_state_t s = check();
+  switch (s){
+    case SCAN_INIT:
+      initialize();
+      break;
+    case SCAN_RESET:
+      reset();
+      break;
+    case SCAN_START:
+      assertNode(baseNode + "PRESCALE", 0x0);
+      scan_pixel();
+    case SCAN_PIXEL:
+      if (END == SM->RegReadRegister(baseNode + "CTRL_STATUS")
+      {
+        if (rxlpmen==dfe)
+        {
+          EndPixelDFE(SM);
+        } else {
+          EndPixelLPM(SM);
+        }
+      } else{
+          break;
+      }
+      break;
+    case SCAN_DONE:
+      break;
+    default :
+      break;
+  }
+}
+
+void eyescan::initialize(){
+  //make Coords vector
   double volt_step=254./nBinsY;
-  //printf("volt_step=%f\n",volt_step);
-  //double volt_array[nBinsY+1];
   double volt;
   std::vector<double> volt_vect;
   if (nBinsY==1)
@@ -206,12 +226,9 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
       volt_vect.push_back(i);
     }
   }
-  //printf("volt_vect size=%d\n",volt_vect.size());
   
   //make phase array
   double phase_step=1./nBinsX;
-  //printf("phase_step=%f\n",phase_step);
-  //double phase_array[nBinsX+1];
   double phase;
   std::vector<double> phase_vect;
   if (nBinsX==1)
@@ -223,131 +240,166 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
       phase_vect.push_back(i);
     }
   }
-  //printf("phase_vect size=%d\n",phase_vect.size());
 
-  //printf("test stop 1 \n");
-  
-  //std::vector<std::vector<eyescan::Coords>> Coords_vect;
-  //printf("test stop 2 \n");
   for (unsigned int i = 0; i < volt_vect.size(); ++i)
   {
     std::vector<eyescan::Coords> Coords_col;
     for ( unsigned int j = 0; j < phase_vect.size(); ++j)
     {
-      eyescan::Coords pixel;
+      eyescan::eyescanCoords pixel;
       pixel.voltage=volt_vect[i];
       pixel.phase=phase_vect[j];
-
-      Coords_queue.push(pixel);
-     
+      Coords_vect.push_back(pixel);
     }
-    //Coords_vect.push_back(Coords_col);
   }
-  if (Coords_queue.empty())
-  {
-    throwException("No coordinates to scan.");
-  }
-  //printf("Coords_vect size=%d \n",Coords_vect.size());
   
-  cur_pixel = Coords_queue.front();
-  volt = cur_pixel.voltage;
-  phase = cur_pixel.phase;
-  if (es_state!=UNINIT)
-  {
-    throwException("eyescan object already initiated");
-  }
-  //es_state=BUSY;
-  scan_pixel(SM, lpmNode, phase, volt, Max_prescale);
-  
+  volt = (*it).voltage;
+  phase = (*it).phase;
+  es_state=SCAN_START;
 
 }
 
-eyescan::~eyescan() {};
-eyescan::ES_state_t eyescan::check(){  //checks es_state
-  return es_state;
+void eyescan::reset(){
+
 }
-void eyescan::update(ApolloSM*SM){
-  ES_state_t s = check();
-  switch (s){
-    case UNINIT:
-      break;
-    case BUSY:
-      printf("BUSY");
-      break;
 
-    case WAITING_PIXEL:
-      //intf("WAITING_PIXEL\n");
-      cur_pixel = Coords_queue.front();
-      volt = cur_pixel.voltage;
-      phase = cur_pixel.phase;
-      //es_state=BUSY;
-      //printf("WAITING PIXEL b4 scan\n");
-      scan_pixel(SM, lpmNode, phase, volt, Max_prescale);
-      //intf("WAITING_PIXEL done\n");
-    case DONE:
-      break;
+void eyescan::EndPixelLPM(ApolloSM*SM){
+  // read error and sample count
+  uint32_t errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
+  uint32_t sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
+  uint32_t actualsample0;
+  uint32_t errorCount0;
+  // calculate BER
+  double BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
+  if((BER < PRECISION) && (cur_prescale != Max_prescale)) {
+      cur_prescale+=PRESCALE_STEP;
+      
+      if(cur_prescale > Max_prescale) {
+         cur_prescale = Max_prescale;
+         
+      }
+      assertNode(baseNode + "PRESCALE", cur_prescale);
+      scan_pixel(SM);
+    } else {
+      if (errorCount==0) //if scan found no errors default to BER floor
+      {
+        errorCount=1;
+        BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
+      }
+      actualsample0=((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
+      errorCount0=errorCount;
+      (*it).BER=BER;
+      (*it).sample0=actualsample0;
+      (*it).error0=errorCount0;
+      (*it).sample1=0;
+      (*it).error1=0;
+      (*it).voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
+      (*it).phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
+      it++;
+      if (it==Coords_vect.end())
+      {
+        es_state=SCAN_DONE;
+      } else {
+        cur_prescale=0;
+        scan_pixel();
+      }
 
-    default :
-      break;
-
+    }
   }
 
+void eyescan::EndPixelDFE(ApolloSM*SM){
+  // read error and sample count
+  uint32_t errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
+  uint32_t sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
+  uint32_t actualsample =((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
+  //uint32_t errorCount0;
+  //uint32_t actualsample1;
+  //uint32_t errorCount1;
+  // calculate BER
+  double BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
+  
+  double const firstBER;
+  if((BER < PRECISION) && (cur_prescale != Max_prescale)) {
+      cur_prescale+=PRESCALE_STEP;
+      
+      if(cur_prescale > Max_prescale) {
+         cur_prescale = Max_prescale;
+         
+      }
+      assertNode(baseNode + "PRESCALE", cur_prescale);
+      scan_pixel(SM);
+  } else {
+      if (errorCount==0) //if scan found no errors default to BER floor
+        {
+          errorCount=1;
+          BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
+        }
+        switch (dfe_state){
+          case FIRST:
+            firstBER=BER;
+            (*it).sample0=actualsample;
+            (*it).error0=errorCount;
+            if(1 == (SM->RegReadRegister(baseNode + "UT_SIGN"))) {
+              SM->RegWriteRegister(baseNode + "UT_SIGN", 0);
+            } else {
+              SM->RegWriteRegister(baseNode + "UT_SIGN", 1);
+            }
+            BER=0;
+            cur_prescale=0;
+            scan_pixel();
+          case SECOND:
+            BER=firstBER+BER;
+            (*it).sample1=actualsample;
+            (*it).error1=errorCount;
+            (*it).voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
+            (*it).phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
+            it++;
+            if (it==Coords_vect.end())
+            {
+              es_state=SCAN_DONE;
+            } else {
+              cur_prescale=0;
+              scan_pixel(SM);
+            }
+          case LPM:
+          throwException("DFE mode not LPM");
+        }
+    }
 }
 
 void eyescan::SetEyeScanPhase(ApolloSM*SM, std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
   // write the hex
-  //printf("Set phase stop 1\n");
   SM->RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", horzOffset);
-  //printf("Set phase stop 2 \n");
   SM->RegWriteRegister(baseNode + "PHASE_UNIFICATION", sign); 
-  //printf("Set phase stop 3\n");
   //RegWriteRegister(baseNode + "HORZ_OFFSET_MAG", (horzOffset + 4096)&0x0FFF);
  }
 
 void eyescan::SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign) {
   // write the hex
-  //printf("SESVolt stop 1\n");
-  
-  //printf("SESVolt stop 2\n");
   SM->RegWriteRegister(baseNode + "VERT_OFFSET_MAG", vertOffset);
   SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
   //SM->RegWriteRegister(baseNode + "VERT_OFFSET_SIGN", sign);
-  //printf("SESVolt stop 3\n");
 }
 
 std::vector<eyescan::eyescanCoords> eyescan::dataout(){
   return scan_output;
 }
 
-eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, uint32_t prescale){
-  //intf("Scan_pixel start\n");
-  es_state = BUSY;
-  eyescanCoords singleScanOut;
-  double BER;
-  float errorCount;
-  float sampleCount;
-  float errorCount0;
-  float actualsample0;
-  uint32_t maxPrescale=prescale;
+void eyescan::scan_pixel(ApolloSM*SM){
+  es_state = SCAN_PIXEL;
   
   uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
   int const regDataWidthInt = (int)regDataWidth;
   int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
   
-  // Check if we're DFE or LPM
-  uint32_t const dfe = 0;
-  uint32_t const lpm = 1;
-  //printf("scan pixel stop 1\n");
-  //printf("lpmnode is "+lpmNode);
-  uint32_t const rxlpmen = SM->RegReadRegister(lpmNode);
-  //printf("scan pixel stop 1.5\n");
-  
-  //printf("rxlpmen=%d\n", rxlpmen);
   //SET VOLTAGE
   // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
   // For bit 7 (8th bit) of ES_VERT_OFFSET
   uint32_t POSITIVE = 0;
   uint32_t NEGATIVE = 1;
+  float volt = (*it).voltage;
+  float phase = (*it).phase;
+
 
   //printf("Voltage= %f\n", volt);
   syslog(LOG_INFO, "%f\n", volt);
@@ -357,8 +409,6 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
   } else {
     SetEyeScanVoltage(SM, baseNode, volt, POSITIVE);
   }
-  
-  //printf("scan pixel stop 2 after volt set\n");
   //SET PHASE
   int phaseInt;
   uint32_t sign;
@@ -370,29 +420,9 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
 	phaseInt = abs(floor(phase));
   sign = POSITIVE;
   }
-  //printf("phase is %f\n", phase);
+
   SetEyeScanPhase(SM, baseNode, phaseInt, sign);
-  //printf("stop after set phase\n");
-  
-  //printf("scan pixel stop 3\n");
-  if(lpm == rxlpmen) {
-    //printf("Looks like we have LPM. The register is %u\n", rxlpmen);
-  } else if(dfe == rxlpmen) {
-    //printf("Looks like we have DFE. The register is %u\n", rxlpmen);
-    //printf("test");
-  } else {
-    throwException("Something is wrong. We don't have lpm or dfe.");
-    //printf("Something is wrong. We don't have lpm or dfe\n");
-  }
-  //printf("stop after lpm check");
-  // Re-zero prescale
-  //printf("test\n");
-  assertNode(baseNode + "PRESCALE", 0x0);
-  //printf("stop after prescale=0\n");
-  bool loop;
-  loop = true;
-  //printf("scan pixel stop 4 before while loop\n");
-  while(loop) {
+
     // confirm we are in WAIT, if not, stop scan
     //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
     SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);
@@ -401,185 +431,4 @@ eyescan::eyescanCoords eyescan::scan_pixel(ApolloSM*SM, std::string lpmNode, flo
     //  assertNode(baseNode + "RUN", RUN);
     SM->RegWriteRegister(baseNode + "RUN", RUN);  
     
-    // poll END
-    int count = 0;
-    // one second max
-    while(1000000 > count) {
-      if(END == SM->RegReadRegister(baseNode + "CTRL_STATUS")) {
-	// Scan has ended
-	break;
-      }
-      // sleep 1 millisecond
-      usleep(1000);
-      count++;
-      if(1000000 == count) {
-	throwException("BER sequence did not reach end in one second\n");
-      }
-    }	  
-    
-    // read error and sample count
-    errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
-    sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
-    
-    // Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
-    
-    // de-assert RUN (aka go back to WAIT)
-    //  assertNode(baseNode + "RUN", STOP_RUN);
-    SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);
-        
-    // calculate BER
-    //    BER = errorCount/(pow(2,(1+prescale))*sampleCount*(float)actualDataWidth);
-    BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-    actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-    
-    // If BER is lower than precision we need to check with a higher prescale to ensure that
-    // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
-    if((BER < PRECISION) && (prescale != maxPrescale)) {
-      prescale+=PRESCALE_STEP;
-      //printf("prescale = %d\n",prescale);
-      if(prescale > maxPrescale) {
-	prescale = maxPrescale;
-	//printf("max prescale %d reached\n", maxPrescale);
-      }
-      assertNode(baseNode + "PRESCALE", prescale);
-      // useless but just to be paranoid
-      loop = true;
-    } else {
-      if (errorCount==0) //if scan found no errors default to BER floor
-	{
-	  errorCount=1;
-	  BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-        
-	}
-      actualsample0=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-      errorCount0=errorCount;
-      //printf("prescale = %d\n",prescale);
-      loop = false;
-    }
-    
-  }
-  //printf("scan pixel stop 5\n");
-  //printf("stop after first while loop\n");
-  // ==================================================
-  // If we have dfm, we need to do calculate the BER a second time and add it to the first
-  double const firstBER = BER;
-  float errorCount1=0;
-  float actualsample1=0;
-  // You have to set this to zero because if you don't have DFE, you would skip to 'return' and BER would be double counted
-  BER = 0;
-
-  // Re-zero prescale
-  prescale = 0;
-  assertNode(baseNode + "PRESCALE", 0x0);
-
-  if(dfe == rxlpmen) {
-    //intf("Alright dfe = rxlpmen: %u = %u. Calculating again\n", dfe, rxlpmen);
-    // whatever the UT sign was, change it 
-    if(1 == (SM->RegReadRegister(baseNode + "UT_SIGN"))) {
-      SM->RegWriteRegister(baseNode + "UT_SIGN", 0);
-    } else {
-      SM->RegWriteRegister(baseNode + "UT_SIGN", 1);
-    }
-    
-    loop = true;
-    
-    while(loop) {
-      //confirm we are in WAIT, if not, stop scan
-      //confirmNode(baseNode + "CTRL_STATUS", WAIT);
-      SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);
-      
-      // assert RUN
-      //  assertNode(baseNode + "RUN", RUN);
-      SM->RegWriteRegister(baseNode + "RUN", RUN);  
-      
-      // poll END
-      int count = 0;
-      //printf("before 1 sec max loop \n");
-      // one second max
-      while(1000000 > count) {
-	//printf("test 1");
-	if(END == SM->RegReadRegister(baseNode + "CTRL_STATUS")) {
-	  // Scan has ended
-	  break;
-	}
-	//printf("test2");
-	// sleep 1 microsecond
-	usleep(1000);
-	//printf("test3");
-	count++;
-	//printf("test4");
-	if(1000000 == count) {
-	  throwException("BER sequence did not reach end in one second\n");
-	}
-	//printf("test5");
-      }	  
-      //printf("after 1 sec max loop \n");
-      // read error and sample count
-      errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
-      sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
-      
-      //Should sleep for some time before de-asserting run. Can be a race condition if we don't sleep
-      usleep(1000);
-      // de-assert RUN (aka go back to WAIT)
-      // assertNode(baseNode + "RUN", STOP_RUN);
-      SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);
-      
-      // calculate BER
-      BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-      actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-      
-      // If BER is lower than precision we need to check with a higher prescale to ensure that
-      // that is believable. pg 231 https://www.xilinx.com/support/documentation/user_guides/ug578-ultrascale-gty-transceivers.pdf
-      if((BER < PRECISION) && (prescale != maxPrescale)) {
-	prescale+=PRESCALE_STEP;
-	//intf("prescale = %d\n",prescale);
-	if(prescale > maxPrescale) {
-	  prescale = maxPrescale;
-	  //printf("max prescale %d reached\n", maxPrescale);
-	}
-	assertNode(baseNode + "PRESCALE", prescale);
-	// useless but just to be paranoid
-	loop = true;
-      } else {
-	if (errorCount==0) //if scan found no errors default to BER floor
-	  {
-	    errorCount=1;
-	    BER = errorCount/((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-                  
-	  }
-	actualsample1=((1 << (1+prescale))*sampleCount*(float)actualDataWidth);
-	errorCount1=errorCount;
-	//intf("prescale = %d\n",prescale);
-	loop = false;
-      }
-    }
-  }
-  //intf("after 2nd while loop \n");
-  singleScanOut.BER=BER+firstBER;
-  singleScanOut.voltage=volt;
-  singleScanOut.phase=phase;
-  singleScanOut.sample0=(unsigned long int)actualsample0;
-  singleScanOut.error0=(unsigned long int)errorCount0;
-  singleScanOut.sample1=(unsigned long int)actualsample1;
-  singleScanOut.error1=(unsigned long int)errorCount1;
-  singleScanOut.voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
-  singleScanOut.phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
-  scan_output.push_back(singleScanOut);
-  //printf("Coords_queue size b4= %d\n",Coords_queue.size());
-  if (!Coords_queue.empty()){
-    Coords_queue.pop();
-  }
-  //printf("Coords_queue size after= %d\n",Coords_queue.size());
-  //printf("Coords_vect size=%d \n",Coords_vect.size());
-  if (Coords_queue.empty())
-  {
-    es_state=DONE;
-  } else{
-    
-    es_state=WAITING_PIXEL;
-  
-  }
-  //printf("State = %d\n",es_state);
-  return singleScanOut;
- 
 }

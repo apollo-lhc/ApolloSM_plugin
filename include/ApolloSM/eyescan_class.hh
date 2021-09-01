@@ -50,7 +50,8 @@ std::map<int, int> static const busWidthMap =
 class eyescan
 {
 public:
-  typedef enum { UNINIT, BUSY, WAITING_PIXEL, DONE  } ES_state_t;
+  typedef enum { SCAN_INIT, SCAN_RESET, SCAN_START, SCAN_PIXEL, SCAN_DONE  } ES_state_t;
+  typedef enum { FIRST, SECOND, LPM} DFE_state_t;
 
   // All necessary information to plot an eyescan
   struct eyescanCoords {
@@ -65,49 +66,49 @@ public:
     uint16_t phaseReg;
   };
 
-  struct Coords {
-    double voltage;
-    double phase;
-  };
-  // struct pixel_out{ //single eyescan output
-  // 	double BER;
-  // 	uint32_t sample0;
-  // 	uint32_t error0;
-  // 	uint32_t sample1;
-  // 	uint32_t error1;
+  // struct Coords {
+  //   double voltage;
+  //   double phase;
   // };
 
 private:
   std::string lpmNode;
   std::string baseNode;
   ES_state_t es_state;
-  Coords cur_pixel;
   //std::vector<std::vector<Coords>> Coords_vect;
-  std::queue<eyescan::Coords> Coords_queue;
-  std::vector<eyescanCoords> scan_output;
+  //std::queue<eyescan::Coords> Coords_queue;
+  std::vector<eyescanCoords> Coords_vect;
+  std::vector<eyescanCoords>::iterator it = Coords_vect.begin();
   std::vector<double> volt_vect;
   std::vector<double> phase_vect;
   uint32_t Max_prescale;
   float volt;
   float phase;
+  int Max_prescale;
+  int cur_prescale;
+  int nBinsX
+  int nBinsY
+  uint32_t const dfe = 0;
+  uint32_t const lpm = 1;
+  uint32_t const rxlpmen;
 
 
 
 public:
-  eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX, int nBinsY, int max_prescale);
+  eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX_set, int nBinsY_set, int max_prescale);
   ~eyescan();
-
-  ES_state_t check();
+  //ES_state_t check();
+  void check();
   void update(ApolloSM*SM);
   std::vector<eyescanCoords> dataout();
   void throwException(std::string message);
 
 private:
   eyescan();
-  eyescanCoords scan_pixel(ApolloSM*SM, std::string lpmNode, float phase, float volt, uint32_t prescale);
-	
-  //void assertNode(ApolloSM*SM, std::string node, uint32_t correctVal);
-  //void confirmNode(ApolloSM*SM, std::string node, uint32_t correctVal);
+  eyescanCoords scan_pixel(ApolloSM*SM);
+  void initialize();
+  void EndPixelLPM(ApolloSM*SM);
+  void EndPixelDFE(ApolloSM*SM);
 
   void SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign);
 

@@ -19,6 +19,7 @@
 #include <boost/algorithm/string/predicate.hpp> //for iequals
 
 #include <stdlib.h> // for strtoul
+#include <deque>
 
 using namespace BUTool;
 
@@ -566,37 +567,44 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
       outputfileVec.push_back(outputfile);
     }
   
+  std::deque<int> eyescanDeque;
+  for (int i = 0; i < eyescanVec.size(); ++i)
+  {
+    eyescanDeque.push_back(i);
+  }
+
+
+  for (std::vector<eyescan>::iterator i = eyescanVec.begin(); i != eyescanVec.end(); ++i)
+  {
+    if ((*i).check()==eyescan::SCAN_READY)
+    {
+      (*i).start();
+    } else{
+      (*i).throwException("Scan not ready to start.");
+    }
+  }
+
   eyescan::ES_state_t done_state;
   done_state= eyescan::SCAN_DONE;
-  while(eyescanVec.size()!=0){
-    for (uint32_t i = 0; i < eyescanVec.size(); ++i){
-      if(eyescanVec[i].check()==done_state){
-        const std::vector<eyescan::eyescanCoords> esCoords=eyescanVec[i].dataout();
-  	   FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");   
-  	   printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
-          
-    	  for(int i = 0; i < (int)esCoords.size(); i++) {
-      	    fprintf(dataFile, "%.9f ", esCoords[i].phase);
-      	    fprintf(dataFile, "%f ", esCoords[i].voltage);
-      	    fprintf(dataFile, "%.20f ", esCoords[i].BER);
-      	    fprintf(dataFile, "%u ", esCoords[i].sample0);
-      	    fprintf(dataFile, "%u ", esCoords[i].error0);
-      	    fprintf(dataFile, "%u ", esCoords[i].sample1);
-      	    fprintf(dataFile, "%u ", esCoords[i].error1);
-      	    fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
-      	    fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
+  while(eyescanDeque.size()!=0){
+    for (std::deque<int>::iterator i = eyescanDeque.begin(); i != eyescanDeque.end(); ++i)
+    {
+      for (uint32_t i = 0; i < eyescanVec.size(); ++i){
+        if(eyescanVec[i].check()==done_state){
+          eyescanVec[i].fileDump(outputfileVec[i]);
+          eyescanVec.erase(eyescanVec.begin()+i);
+          outputfileVec.erase(outputfileVec.begin()+i);
+          nodes_done+=1;
+          printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
+        }else{
+          eyescanVec[i].update(SM);
+          num_updates+=1;
+          printf("Number updates=%d\n",num_updates);
         }
-  	   fclose(dataFile);
-  	   eyescanVec.erase(eyescanVec.begin()+i);
-  	   outputfileVec.erase(outputfileVec.begin()+i);
-  	   nodes_done+=1;
-  	   printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
-    	}else{
-    	  eyescanVec[i].update(SM);
-    	  num_updates+=1;
-    	  printf("Number updates=%d\n",num_updates);
-    	}
+      }      
     }
+
+
   }
   //clock end
   // Recording end time.

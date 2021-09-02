@@ -188,23 +188,20 @@ void eyescan::update(ApolloSM*SM){
       initialize();
       es_state= SCAN_START;
       break;
-    case SCAN_RESET://make reset a func; make this a READY state
-      reset();//set all samples and errors to 0
+    case SCAN_READY://make reset a func; make this a READY state
       break;
     case SCAN_START:
       assertNode(baseNode + "PRESCALE", 0x0);
       scan_pixel();
     case SCAN_PIXEL:
-      if (END == SM->RegReadRegister(baseNode + "CTRL_STATUS")
-      {
-        if (rxlpmen==dfe)
-        {
+      if (END == SM->RegReadRegister(baseNode + "CTRL_STATUS"){
+        if (rxlpmen==DFE){
           EndPixelDFE(SM);
           //
         } else {
           EndPixelLPM(SM);
         }
-      } else{
+      } else {
           break;
       }
       break;
@@ -215,17 +212,35 @@ void eyescan::update(ApolloSM*SM){
   }
 }
 
+void eyescan::fileDump(){
+
+const std::vector<eyescan::eyescanCoords> esCoords=eyescanVec[i].dataout();
+ FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");   
+ printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+    
+  for(int i = 0; i < (int)esCoords.size(); i++) {
+      fprintf(dataFile, "%.9f ", esCoords[i].phase);
+      fprintf(dataFile, "%f ", esCoords[i].voltage);
+      fprintf(dataFile, "%.20f ", esCoords[i].BER);
+      fprintf(dataFile, "%u ", esCoords[i].sample0);
+      fprintf(dataFile, "%u ", esCoords[i].error0);
+      fprintf(dataFile, "%u ", esCoords[i].sample1);
+      fprintf(dataFile, "%u ", esCoords[i].error1);
+      fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
+      fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
+  }
+ fclose(dataFile);
+}
+
 void eyescan::initialize(){
   //make Coords vector
   double volt_step=254./nBinsY;
   double volt;
   std::vector<double> volt_vect;
-  if (nBinsY==1)
-  {
+  if (nBinsY==1){
     volt_vect.push_back(0.);
   } else{
-    for (double i = -127.; i <= 127.; i=i+volt_step)
-    {
+    for (double i = -127.; i <= 127.; i=i+volt_step){
       volt_vect.push_back(i);
     }
   }
@@ -255,18 +270,25 @@ void eyescan::initialize(){
       Coords_vect.push_back(pixel);
     }
   }
-  
   volt = (*it).voltage;
   phase = (*it).phase;
-  es_state=SCAN_START;
-
+  es_state=SCAN_READY;
 }
 
 void eyescan::reset(){
-
+  for (std::vector<>::iterator i = Coords_vect.begin(); i != Coords_vect.end(); ++i)
+  {
+    (*it).sample0=0;
+    (*it).error0=0;
+    (*it).sample1=0;
+    (*it).error1=0;
+    (*it).voltageReg=0;
+    (*it).phaseReg=0;
+  }
+  es_state=SCAN_READY;
 }
 
-void eyescan::EndPixelLPM(ApolloSM*SM){
+ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
   // read error and sample count
   uint32_t errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
   uint32_t sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
@@ -301,12 +323,12 @@ void eyescan::EndPixelLPM(ApolloSM*SM){
       it++;
       if (it==Coords_vect.end())
       {
-        es_state=SCAN_DONE;
+        return SCAN_DONE;
       } else {
         cur_prescale=0;
         scan_pixel();
+        return SCAN_PIXEL;
       }
-
     }
   }
 
@@ -359,10 +381,11 @@ void eyescan::EndPixelDFE(ApolloSM*SM){
             it++;
             if (it==Coords_vect.end())
             {
-              es_state=SCAN_DONE;
+              return SCAN_DONE;
             } else {
               cur_prescale=0;
               scan_pixel(SM);
+              return SCAN_PIXEL;
             }
           case LPM:
           throwException("DFE mode not LPM");

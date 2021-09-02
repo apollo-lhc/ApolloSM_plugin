@@ -2,6 +2,7 @@
 #define __EYESCANCLASS_HH__
 #include <ApolloSM/ApolloSM.hh>
 #include <queue>
+
 // //#include <BUException/ExceptionBase.hh>
 // #include <BUTool/ToolException.hh>
 // #include <IPBusIO/IPBusIO.hh>
@@ -30,6 +31,8 @@
 
 #define RX_DATA_WIDTH_GTY 0x6 // virtex
 #define RX_INT_DATAWIDTH_GTY 0x1 //32 bit
+#define DFE 0
+#define LPM 1
 
 // identifies bus data width
 std::map<int, int> static const busWidthMap = 
@@ -90,8 +93,7 @@ private:
   int nBinsY
 
   //make these #defines
-  uint32_t const dfe = 0;
-  uint32_t const lpm = 1;
+
   uint32_t rxlpmen;
 
 
@@ -105,13 +107,16 @@ public:
   std::vector<eyescanCoords>const & dataout();
   void throwException(std::string message);
   //make function to dump to file
+  void fileDump();
+  void reset();
 
 private:
   eyescan();
   eyescanCoords scan_pixel(ApolloSM*SM);
   void initialize();
-  void EndPixelLPM(ApolloSM*SM);
-  void EndPixelDFE(ApolloSM*SM);
+
+  ES_state_t EndPixelLPM(ApolloSM*SM);
+  ES_state_t EndPixelDFE(ApolloSM*SM);
 
   void SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign);
 

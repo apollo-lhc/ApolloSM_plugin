@@ -53,8 +53,8 @@ std::map<int, int> static const busWidthMap =
 class eyescan
 {
 public:
-  typedef enum { SCAN_INIT, SCAN_RESET, SCAN_START, SCAN_PIXEL, SCAN_DONE  } ES_state_t;
-  typedef enum { FIRST, SECOND, LPM} DFE_state_t;
+  typedef enum { UNINIT, SCAN_INIT, SCAN_READY, SCAN_START, SCAN_PIXEL, SCAN_DONE  } ES_state_t;
+  typedef enum { FIRST, SECOND, LPM_MODE} DFE_state_t;
 
   // All necessary information to plot an eyescan
   struct eyescanCoords {
@@ -78,19 +78,20 @@ private:
   std::string lpmNode;
   std::string baseNode;
   ES_state_t es_state;
+  DFE_state_t dfe_state;
+  double firstBER;
   //std::vector<std::vector<Coords>> Coords_vect;
   //std::queue<eyescan::Coords> Coords_queue;
   std::vector<eyescanCoords> Coords_vect;
-  std::vector<eyescanCoords>::iterator it = Coords_vect.begin();
+  std::vector<eyescanCoords>::iterator it;
   std::vector<double> volt_vect;
   std::vector<double> phase_vect;
   uint32_t Max_prescale;
   float volt;
   float phase;
-  int Max_prescale;
-  int cur_prescale;
-  int nBinsX
-  int nBinsY
+  uint32_t cur_prescale=0;
+  int nBinsX;
+  int nBinsY;
 
   //make these #defines
 
@@ -101,18 +102,19 @@ private:
 public:
   eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX_set, int nBinsY_set, int max_prescale);
   ~eyescan();
-  //ES_state_t check();
-  void check();
+  ES_state_t check();
+  //void check();
   void update(ApolloSM*SM);
   std::vector<eyescanCoords>const & dataout();
   void throwException(std::string message);
   //make function to dump to file
-  void fileDump();
+  void fileDump(std::string outputFile);
   void reset();
+  void start();
 
 private:
   eyescan();
-  eyescanCoords scan_pixel(ApolloSM*SM);
+  void scan_pixel(ApolloSM*SM);
   void initialize();
 
   ES_state_t EndPixelLPM(ApolloSM*SM);

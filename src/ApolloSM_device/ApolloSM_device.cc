@@ -568,7 +568,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     }
   
   std::deque<int> eyescanDeque;
-  for (int i = 0; i < eyescanVec.size(); ++i)
+  for (uint32_t i = 0; i < eyescanVec.size(); ++i)
   {
     eyescanDeque.push_back(i);
   }
@@ -576,8 +576,13 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 
   for (std::vector<eyescan>::iterator i = eyescanVec.begin(); i != eyescanVec.end(); ++i)
   {
+    //printf("b4 .update");
+    (*i).update(SM);
+    //printf("after .update");
+    usleep(1000);
     if ((*i).check()==eyescan::SCAN_READY)
     {
+      //printf("b4 .start()");
       (*i).start();
     } else{
       (*i).throwException("Scan not ready to start.");
@@ -589,22 +594,26 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   while(eyescanDeque.size()!=0){
     for (std::deque<int>::iterator i = eyescanDeque.begin(); i != eyescanDeque.end(); ++i)
     {
-      for (uint32_t i = 0; i < eyescanVec.size(); ++i){
-        if(eyescanVec[i].check()==done_state){
-          eyescanVec[i].fileDump(outputfileVec[i]);
-          eyescanVec.erase(eyescanVec.begin()+i);
-          outputfileVec.erase(outputfileVec.begin()+i);
+      //for (uint32_t i = 0; i < eyescanVec.size(); ++i){
+      //printf("size of deque %u\n",eyescanDeque.size());
+        if(eyescanVec[*i].check()==done_state){
+	  //printf("test inside ==done_state\n");
+          eyescanVec[*i].fileDump(outputfileVec[*i]);
+          eyescanDeque.erase(eyescanDeque.begin()+*i);
+          outputfileVec.erase(outputfileVec.begin()+*i);
           nodes_done+=1;
           printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
+	  if(eyescanDeque.size()==0){
+	    break;
+	  }
         }else{
-          eyescanVec[i].update(SM);
+	  //usleep(1000);
+          eyescanVec[*i].update(SM);
           num_updates+=1;
-          printf("Number updates=%d\n",num_updates);
-        }
+          //printf("Number updates=%d\n",num_updates);
+	  //}
       }      
     }
-
-
   }
   //clock end
   // Recording end time.

@@ -174,7 +174,13 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
     confirmNode(baseNode + "RX_INT_DATAWIDTH", RX_INT_DATAWIDTH_GTY);
   }
   rxlpmen = SM->RegReadRegister(lpmNode);
+  if(rxlpmen==DFE){
+    dfe_state=FIRST;
+  }else{
+    dfe_state=LPM_MODE;
+  }
   es_state=SCAN_INIT;
+  
 }
 
 eyescan::~eyescan() {};
@@ -185,57 +191,51 @@ void eyescan::update(ApolloSM*SM){
 
   switch (es_state){
     case SCAN_INIT:
+      printf("INIT\n ");
       initialize();
-      es_state= SCAN_START;
+      es_state= SCAN_READY;
       break;
     case SCAN_READY://make reset a func; make this a READY state
+      printf("READY\n");
       break;
     case SCAN_START:
+      printf("START\n");
       assertNode(baseNode + "PRESCALE", 0x0);
-      scan_pixel();
+      scan_pixel(SM);
     case SCAN_PIXEL:
-      if (END == SM->RegReadRegister(baseNode + "CTRL_STATUS"){
+      //printf("PIXEL/n");
+      if (END == SM->RegReadRegister(baseNode + "CTRL_STATUS")){
         if (rxlpmen==DFE){
-          EndPixelDFE(SM);
-          //
+          es_state = EndPixelDFE(SM);
+          //printf("test\n");
         } else {
-          EndPixelLPM(SM);
+          es_state = EndPixelLPM(SM);
         }
       } else {
           break;
       }
+      
       break;
     case SCAN_DONE:
+      printf("DONE/n");
       break;
     default :
       break;
   }
 }
 
-void eyescan::fileDump(){
-
-const std::vector<eyescan::eyescanCoords> esCoords=eyescanVec[i].dataout();
- FILE * dataFile = fopen(outputfileVec[i].c_str(), "w");   
- printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
-    
-  for(int i = 0; i < (int)esCoords.size(); i++) {
-      fprintf(dataFile, "%.9f ", esCoords[i].phase);
-      fprintf(dataFile, "%f ", esCoords[i].voltage);
-      fprintf(dataFile, "%.20f ", esCoords[i].BER);
-      fprintf(dataFile, "%u ", esCoords[i].sample0);
-      fprintf(dataFile, "%u ", esCoords[i].error0);
-      fprintf(dataFile, "%u ", esCoords[i].sample1);
-      fprintf(dataFile, "%u ", esCoords[i].error1);
-      fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
-      fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
+void eyescan::start(){
+  if(es_state==SCAN_READY){
+    es_state=SCAN_START;
+  } else {
+    throwException("Scan can't start as it is not in the ready state.");
   }
- fclose(dataFile);
 }
 
 void eyescan::initialize(){
   //make Coords vector
   double volt_step=254./nBinsY;
-  double volt;
+  //double volt;
   std::vector<double> volt_vect;
   if (nBinsY==1){
     volt_vect.push_back(0.);
@@ -247,7 +247,7 @@ void eyescan::initialize(){
   
   //make phase array
   double phase_step=1./nBinsX;
-  double phase;
+  //double phase;
   std::vector<double> phase_vect;
   if (nBinsX==1)
   {
@@ -261,7 +261,7 @@ void eyescan::initialize(){
 
   for (unsigned int i = 0; i < volt_vect.size(); ++i)
   {
-    std::vector<eyescan::Coords> Coords_col;
+    //std::vector<eyescan::Coords> Coords_col;
     for ( unsigned int j = 0; j < phase_vect.size(); ++j)
     {
       eyescan::eyescanCoords pixel;
@@ -270,13 +270,14 @@ void eyescan::initialize(){
       Coords_vect.push_back(pixel);
     }
   }
-  volt = (*it).voltage;
-  phase = (*it).phase;
+  it=Coords_vect.begin();
+  //volt = (*it).voltage;
+  //phase = (*it).phase;
   es_state=SCAN_READY;
 }
 
 void eyescan::reset(){
-  for (std::vector<>::iterator i = Coords_vect.begin(); i != Coords_vect.end(); ++i)
+  for (std::vector<eyescanCoords>::iterator i = Coords_vect.begin(); i != Coords_vect.end(); ++i)
   {
     (*it).sample0=0;
     (*it).error0=0;
@@ -288,12 +289,15 @@ void eyescan::reset(){
   es_state=SCAN_READY;
 }
 
-ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
+eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
   // read error and sample count
   uint32_t errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
   uint32_t sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
   uint32_t actualsample0;
   uint32_t errorCount0;
+  uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
+  int const regDataWidthInt = (int)regDataWidth;
+  int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
   // calculate BER
   double BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
   if((BER < PRECISION) && (cur_prescale != Max_prescale)) {
@@ -303,8 +307,9 @@ ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
          cur_prescale = Max_prescale;
          
       }
-      assertNode(baseNode + "PRESCALE", cur_prescale);
+      
       scan_pixel(SM);
+      return SCAN_PIXEL;
     } else {
       if (errorCount==0) //if scan found no errors default to BER floor
       {
@@ -326,42 +331,51 @@ ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
         return SCAN_DONE;
       } else {
         cur_prescale=0;
-        scan_pixel();
+        scan_pixel(SM);
         return SCAN_PIXEL;
       }
     }
   }
 
-void eyescan::EndPixelDFE(ApolloSM*SM){
+eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
   // read error and sample count
+  uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
+  int const regDataWidthInt = (int)regDataWidth;
+  int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
   uint32_t errorCount = SM->RegReadRegister(baseNode + "ERROR_COUNT");
   uint32_t sampleCount = SM->RegReadRegister(baseNode + "SAMPLE_COUNT");
-  uint32_t actualsample =((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
-  //uint32_t errorCount0;
-  //uint32_t actualsample1;
-  //uint32_t errorCount1;
+  //printf("we think cur prescale is %u\n", cur_prescale);
+  //int act_prescale =  SM->RegReadRegister(baseNode + "PRESCALE");
+  //printf("actual prescale is %u\n", act_prescale);
+  SM->RegWriteRegister(baseNode + "RUN",STOP_RUN);
+  uint32_t actualsample =((1 << (1+cur_prescale))*sampleCount*actualDataWidth);
   // calculate BER
-  double BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
-  
-  double const firstBER;
+  double BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(double)actualDataWidth);
+  //std::string s;
+  //std::cin>>s;
+  //std::cout<<s<<std::endl;
   if((BER < PRECISION) && (cur_prescale != Max_prescale)) {
       cur_prescale+=PRESCALE_STEP;
       
       if(cur_prescale > Max_prescale) {
          cur_prescale = Max_prescale;
-         
       }
       assertNode(baseNode + "PRESCALE", cur_prescale);
       scan_pixel(SM);
+      return SCAN_PIXEL;
   } else {
-      if (errorCount==0) //if scan found no errors default to BER floor
-        {
+      if (errorCount==0){
           errorCount=1;
           BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
         }
-        switch (dfe_state){
+      switch (dfe_state){
           case FIRST:
-            firstBER=BER;
+	    firstBER=BER;
+	    //printf("FIRST\n");
+	    //printf("Error count %u\n",errorCount);
+	    //printf("Sample count %u\n",sampleCount);
+	    //printf("Actual sample count %u\n",actualsample);
+	    //printf("BER= %10f\n",BER);
             (*it).sample0=actualsample;
             (*it).error0=errorCount;
             if(1 == (SM->RegReadRegister(baseNode + "UT_SIGN"))) {
@@ -371,24 +385,38 @@ void eyescan::EndPixelDFE(ApolloSM*SM){
             }
             BER=0;
             cur_prescale=0;
-            scan_pixel();
+	    dfe_state=SECOND;
+            scan_pixel(SM);
+	    return SCAN_PIXEL;
           case SECOND:
+	    //printf("SECOND\n");
             BER=firstBER+BER;
+	    //printf("BER= %f\n",BER);
+	    //printf("firstBER= %f\n",firstBER);
             (*it).sample1=actualsample;
             (*it).error1=errorCount;
+	    (*it).BER=BER;
             (*it).voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
             (*it).phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
+	    firstBER=0;
             it++;
             if (it==Coords_vect.end())
             {
+	      printf("it=end()\n");
               return SCAN_DONE;
             } else {
               cur_prescale=0;
+	      dfe_state = FIRST;
               scan_pixel(SM);
               return SCAN_PIXEL;
             }
-          case LPM:
-          throwException("DFE mode not LPM");
+          case LPM_MODE:
+	    throwException("DFE mode not LPM");
+	    return UNINIT;
+	  default:
+	    throwException("Not DFE or LPM mode?");
+	    return UNINIT;
+	 
         }
     }
 }
@@ -408,15 +436,39 @@ void eyescan::SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertO
 }
 
 std::vector<eyescan::eyescanCoords> const& eyescan::dataout(){
-  return scan_output;
+  return Coords_vect;
 }
+
+
+
+void eyescan::fileDump(std::string outputFile){
+
+const std::vector<eyescan::eyescanCoords> esCoords=dataout();
+ FILE * dataFile = fopen(outputFile.c_str(), "w");   
+ printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+    
+  for(int i = 0; i < (int)esCoords.size(); i++) {
+      fprintf(dataFile, "%.9f ", esCoords[i].phase);
+      fprintf(dataFile, "%f ", esCoords[i].voltage);
+      fprintf(dataFile, "%.20f ", esCoords[i].BER);
+      fprintf(dataFile, "%u ", esCoords[i].sample0);
+      fprintf(dataFile, "%u ", esCoords[i].error0);
+      fprintf(dataFile, "%u ", esCoords[i].sample1);
+      fprintf(dataFile, "%u ", esCoords[i].error1);
+      fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
+      fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
+  }
+ fclose(dataFile);
+}
+
 
 void eyescan::scan_pixel(ApolloSM*SM){
   es_state = SCAN_PIXEL;
-  
-  uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
-  int const regDataWidthInt = (int)regDataWidth;
-  int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
+  //int index = it - Coords_vect.begin();
+  //printf("Cur Index is %d out of %d\n",index, Coords_vect.size());
+  //uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
+  //int const regDataWidthInt = (int)regDataWidth;
+  //int const actualDataWidth = busWidthMap.find(regDataWidthInt)->second;
   
   //SET VOLTAGE
   // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
@@ -425,7 +477,7 @@ void eyescan::scan_pixel(ApolloSM*SM){
   uint32_t NEGATIVE = 1;
   float volt = (*it).voltage;
   float phase = (*it).phase;
-
+  assertNode(baseNode + "PRESCALE", cur_prescale);
 
   //printf("Voltage= %f\n", volt);
   syslog(LOG_INFO, "%f\n", volt);

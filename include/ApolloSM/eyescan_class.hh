@@ -34,6 +34,9 @@
 #define DFE 0
 #define LPM 1
 
+#define MAXUI 0.5
+#define MINUI -0.5
+
 // identifies bus data width
 std::map<int, int> static const busWidthMap = 
   {
@@ -48,6 +51,16 @@ std::map<int, int> static const busWidthMap =
     //,
     //{8, 128},
     //{9, 160}
+  };
+std::map<uint32_t, int> static const rxoutDivMap = 
+  {
+    // RXOUT_DIV hex value (DRP encoding) vs max horizontal offset
+    // https://www.xilinx.com/support/documentation/application_notes/xapp1198-eye-scan.pdf pgs 8 and 9
+    {0, 32},
+    {1, 64},
+    {2, 128},
+    {3, 256},
+    {4, 512}
   };
 
 class eyescan
@@ -92,7 +105,9 @@ private:
   uint32_t cur_prescale=0;
   int nBinsX;
   int nBinsY;
-
+  //uint32_t rxoutDiv;
+  //int maxPhase;
+  //double phaseMultiplier;
   //make these #defines
 
   uint32_t rxlpmen;

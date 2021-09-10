@@ -589,23 +589,34 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     }
   }
 
+  //printf("printing deque initial\n");
+  //for(std::deque<int>::iterator j = eyescanDeque.begin(); j != eyescanDeque.end(); ++j){
+  //  printf("%u\n",*j);
+  // }
   eyescan::ES_state_t done_state;
   done_state= eyescan::SCAN_DONE;
   while(eyescanDeque.size()!=0){
-    for (std::deque<int>::iterator i = eyescanDeque.begin(); i != eyescanDeque.end(); ++i)
+  LOOP:for (std::deque<int>::iterator i = eyescanDeque.begin(); i != eyescanDeque.end(); ++i)
     {
       //for (uint32_t i = 0; i < eyescanVec.size(); ++i){
       //printf("size of deque %u\n",eyescanDeque.size());
+      // printf("Cur iterator is %u\n",(*i));
         if(eyescanVec[*i].check()==done_state){
 	  //printf("test inside ==done_state\n");
           eyescanVec[*i].fileDump(outputfileVec[*i]);
           eyescanDeque.erase(eyescanDeque.begin()+*i);
+	  //printf("printing deque after erase\n");
+	  //for(std::deque<int>::iterator j = eyescanDeque.begin(); j != eyescanDeque.end(); ++j){
+	    //  printf("%u\n",*j);
+	    //}
+	  //printf("Cur iterator is %u\n",(*i));
           outputfileVec.erase(outputfileVec.begin()+*i);
           nodes_done+=1;
           printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
 	  if(eyescanDeque.size()==0){
 	    break;
 	  }
+	  goto LOOP;
         }else{
 	  //usleep(1000);
           eyescanVec[*i].update(SM);

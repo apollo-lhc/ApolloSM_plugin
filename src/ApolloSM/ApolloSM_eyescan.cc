@@ -191,15 +191,15 @@ void eyescan::update(ApolloSM*SM){
 
   switch (es_state){
     case SCAN_INIT:
-      printf("INIT\n ");
+      //printf("INIT\n ");
       initialize();
       es_state= SCAN_READY;
       break;
     case SCAN_READY://make reset a func; make this a READY state
-      printf("READY\n");
+      //printf("READY\n");
       break;
     case SCAN_START:
-      printf("START\n");
+      //printf("START\n");
       assertNode(baseNode + "PRESCALE", 0x0);
       scan_pixel(SM);
     case SCAN_PIXEL:
@@ -273,6 +273,7 @@ void eyescan::initialize(){
   it=Coords_vect.begin();
   //volt = (*it).voltage;
   //phase = (*it).phase;
+  
   es_state=SCAN_READY;
 }
 
@@ -347,7 +348,9 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
   //printf("we think cur prescale is %u\n", cur_prescale);
   //int act_prescale =  SM->RegReadRegister(baseNode + "PRESCALE");
   //printf("actual prescale is %u\n", act_prescale);
+  //printf("test1\n");
   SM->RegWriteRegister(baseNode + "RUN",STOP_RUN);
+  //printf("test2\n");
   uint32_t actualsample =((1 << (1+cur_prescale))*sampleCount*actualDataWidth);
   // calculate BER
   double BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(double)actualDataWidth);
@@ -402,7 +405,7 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
             it++;
             if (it==Coords_vect.end())
             {
-	      printf("it=end()\n");
+	      //printf("it=end()\n");
               return SCAN_DONE;
             } else {
               cur_prescale=0;
@@ -464,6 +467,9 @@ const std::vector<eyescan::eyescanCoords> esCoords=dataout();
 
 void eyescan::scan_pixel(ApolloSM*SM){
   es_state = SCAN_PIXEL;
+  uint32_t rxoutDiv = SM->RegReadRegister(baseNode + "RXOUT_DIV");
+  int maxPhase = rxoutDivMap.find(rxoutDiv)->second;
+  double phaseMultiplier = maxPhase/MAXUI;
   //int index = it - Coords_vect.begin();
   //printf("Cur Index is %d out of %d\n",index, Coords_vect.size());
   //uint32_t const regDataWidth = SM->RegReadRegister(baseNode + "RX_DATA_WIDTH");
@@ -473,6 +479,7 @@ void eyescan::scan_pixel(ApolloSM*SM){
   //SET VOLTAGE
   // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
   // For bit 7 (8th bit) of ES_VERT_OFFSET
+  
   uint32_t POSITIVE = 0;
   uint32_t NEGATIVE = 1;
   float volt = (*it).voltage;
@@ -492,15 +499,21 @@ void eyescan::scan_pixel(ApolloSM*SM){
   uint32_t sign;
 
   if(phase < 0) {
-	phaseInt = abs(ceil(phase));
-	sign = NEGATIVE;
+    phaseInt = abs(ceil(phase*phaseMultiplier));
+    sign = NEGATIVE;
   } else {
-	phaseInt = abs(floor(phase));
-  sign = POSITIVE;
+    phaseInt = abs(floor(phase*phaseMultiplier));
+    sign = POSITIVE;
   }
 
   SetEyeScanPhase(SM, baseNode, phaseInt, sign);
-
+  //printf("We think phase is %f\n",phase);
+  //printf("We think phaseint is %d\n",phaseInt);
+  float transistphase = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG");
+  if(SM->RegReadRegister(baseNode + "PHASE_UNIFICATION")==1){
+    transistphase=transistphase*-1.;
+  }
+  //printf("Phase actually is %f\n", transistphase);
     // confirm we are in WAIT, if not, stop scan
     //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
     SM->RegWriteRegister(baseNode + "RUN", STOP_RUN);

@@ -596,7 +596,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
   eyescan::ES_state_t done_state;
   done_state= eyescan::SCAN_DONE;
   while(eyescanDeque.size()!=0){
-  LOOP:for (std::deque<int>::iterator i = eyescanDeque.begin(); i != eyescanDeque.end(); ++i)
+    for (std::deque<int>::iterator i = eyescanDeque.begin(); i != eyescanDeque.end(); ++i)
     {
       //for (uint32_t i = 0; i < eyescanVec.size(); ++i){
       //printf("size of deque %u\n",eyescanDeque.size());
@@ -616,7 +616,7 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 	  if(eyescanDeque.size()==0){
 	    break;
 	  }
-	  goto LOOP;
+	  break;
         }else{
 	  //usleep(1000);
           eyescanVec[*i].update(SM);

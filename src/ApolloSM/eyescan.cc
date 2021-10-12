@@ -68,10 +68,10 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
   SM->myMatchRegex(baseNode+"SAMPLE_COUNT");
   SM->myMatchRegex(baseNode+"UT_SIGN");
   SM->myMatchRegex(baseNode+"TYPE_7_GTX");
-  //Figure out which transister type we're scanning
-  typedef enum {gtx, gty, gth, unknown} transist;
+  //Figure out which transceiver type we're scanning
+  typedef enum {gtx, gty, gth, unknown} transceiv;
   
-  transist t;
+  transceiv t;
   
   std::vector<std::string> test_gtx = SM->myMatchRegex(baseNode+"TYPE_7_GTX");
   std::vector<std::string> test_gty = SM->myMatchRegex(baseNode+"TYPE_USP_GTY");
@@ -79,16 +79,16 @@ eyescan::eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set,
  
   if(test_gtx.size()!=0){
     t=gtx;
-    //printf("Transistor is GTX.\n");
+    
   } else if(test_gty.size()!=0){
     t=gty;
-    //printf("Transistor is GTY.\n");
+    
   } else if(test_gth.size()!=0){
     t=gth;
-    //printf("Transistor is GTH.\n");
+    
   } else{
     t=unknown;
-    throwException("No transistor type found for node "+baseNode+".\n");
+    throwException("No transceiver type found for node "+baseNode+".\n");
   }
   
   // ** ES_EYE_SCAN_EN assert 1
@@ -190,7 +190,7 @@ void eyescan::update(ApolloSM*SM){
 
   switch (es_state){
   case SCAN_INIT:
-    initialize();
+    initialize(SM);
     es_state= SCAN_READY;
     break;
   case SCAN_READY://make reset a func; make this a READY state
@@ -230,7 +230,10 @@ void eyescan::start(){
   }
 }
 
-void eyescan::initialize(){
+void eyescan::initialize(ApolloSM*SM){
+  uint32_t rxoutDiv = SM->RegReadRegister(baseNode + "RXOUT_DIV");
+  int maxPhase = rxoutDivMap.find(rxoutDiv)->second;
+  double phaseMultiplier = maxPhase/MAXUI;
   //make Coords vector
   double volt_step=254./nBinsY;
   //double volt;
@@ -265,6 +268,17 @@ void eyescan::initialize(){
 	  eyescan::eyescanCoords pixel;
 	  pixel.voltage=volt_vect[i];
 	  pixel.phase=phase_vect[j];
+	  if(volt_vect[i]<0){
+	    pixel.voltageInt=ceil(volt_vect[i]);
+	  } else {
+	    pixel.voltageInt=floor(volt_vect[i]);
+	  }
+	  if(phase_vect[i]<0){
+	    pixel.phaseInt=ceil(phase_vect[j]*phaseMultiplier);
+	  } else {
+	    pixel.phaseInt=floor(phase_vect[j]*phaseMultiplier);
+	  }
+	  //printf("Initialize phaseInt is %d\n", pixel.phaseInt);
 	  Coords_vect.push_back(pixel);
 	}
     }
@@ -467,7 +481,7 @@ void eyescan::fileDump(std::string outputFile){
     
   for(int i = 0; i < (int)esCoords.size(); i++) {
     fprintf(dataFile, "%.9f ", esCoords[i].phase);
-    fprintf(dataFile, "%f ", esCoords[i].voltage);
+    fprintf(dataFile, "%d ", esCoords[i].voltageInt);
     fprintf(dataFile, "%.20f ", esCoords[i].BER);
     fprintf(dataFile, "%u ", esCoords[i].sample0);
     fprintf(dataFile, "%u ", esCoords[i].error0);
@@ -482,9 +496,7 @@ void eyescan::fileDump(std::string outputFile){
 
 void eyescan::scan_pixel(ApolloSM*SM){
   es_state = SCAN_PIXEL;
-  uint32_t rxoutDiv = SM->RegReadRegister(baseNode + "RXOUT_DIV");
-  int maxPhase = rxoutDivMap.find(rxoutDiv)->second;
-  double phaseMultiplier = maxPhase/MAXUI;
+  
   
   //SET VOLTAGE
   // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
@@ -492,37 +504,44 @@ void eyescan::scan_pixel(ApolloSM*SM){
   
   uint32_t POSITIVE = 0;
   uint32_t NEGATIVE = 1;
-  float volt = (*it).voltage;
-  float phase = (*it).phase;
+  int32_t voltInt = (*it).voltageInt;
+  int32_t phaseInt = (*it).phaseInt;
   assertNode(baseNode + "PRESCALE", cur_prescale);
 
   //printf("Voltage= %f\n", volt);
-  syslog(LOG_INFO, "%f\n", volt);
-
-  if(volt < 0) {
-    SetEyeScanVoltage(SM, baseNode, (uint8_t)(-1*volt), NEGATIVE); 
+  syslog(LOG_INFO, "%d\n", voltInt);
+  //printf("We think volt is %d\n",voltInt);
+  if(voltInt < 0) {
+    SetEyeScanVoltage(SM, baseNode, (uint8_t)(-1*voltInt), NEGATIVE); 
   } else {
-    SetEyeScanVoltage(SM, baseNode, volt, POSITIVE);
+    SetEyeScanVoltage(SM, baseNode, voltInt, POSITIVE);
   }
+  double transceivvolt = SM->RegReadRegister(baseNode+"VERT_OFFSET_MAG");
+  if(SM->RegReadRegister(baseNode+"VERT_OFFSET_SIGN")==1){
+    transceivvolt=transceivvolt*-1;
+  }
+  //printf("Volt actually is %f\n",transistvolt);
   //SET PHASE
-  int phaseInt;
+  //int phaseInt;
   uint32_t sign;
 
-  if(phase < 0) {
-    phaseInt = abs(ceil(phase*phaseMultiplier));
+  if(phaseInt < 0) {
+    //phaseInt = abs(ceil(phase*phaseMultiplier));
     sign = NEGATIVE;
   } else {
-    phaseInt = abs(floor(phase*phaseMultiplier));
+    //phaseInt = abs(floor(phase*phaseMultiplier));
     sign = POSITIVE;
   }
 
-  SetEyeScanPhase(SM, baseNode, phaseInt, sign);
-  
-  float transistphase = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG");
+  SetEyeScanPhase(SM, baseNode, abs(phaseInt), sign);
+  //printf("We think phase is %f\n",phase);
+  //printf("We think phaseInt is %d\n",phaseInt);
+  int32_t transceivphase = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG");
   if(SM->RegReadRegister(baseNode + "PHASE_UNIFICATION")==1){
-    transistphase=transistphase*-1.;
+    transceivphase=transceivphase*-1.;
   }
   
+  //printf("Transceiver phase is %d\n",transceivphase);
   // confirm we are in WAIT, if not, stop scan
   //  confirmNode(baseNode + "CTRL_STATUS", WAIT);
   //printf("==========================================\n");

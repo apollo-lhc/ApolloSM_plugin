@@ -73,6 +73,8 @@ public:
   struct eyescanCoords {
     double voltage;
     double phase;
+    int32_t voltageInt;
+    int32_t phaseInt;
     double BER;
     uint32_t sample0;
     uint32_t error0;
@@ -130,7 +132,7 @@ public:
 private:
   eyescan();
   void scan_pixel(ApolloSM*SM);
-  void initialize();
+  void initialize(ApolloSM*SM);
 
   ES_state_t EndPixelLPM(ApolloSM*SM);
   ES_state_t EndPixelDFE(ApolloSM*SM);

@@ -476,21 +476,27 @@ std::vector<eyescan::eyescanCoords> const& eyescan::dataout(){
 void eyescan::fileDump(std::string outputFile){
 
   const std::vector<eyescan::eyescanCoords> esCoords=dataout();
-  FILE * dataFile = fopen(outputFile.c_str(), "w");   
-  printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
+  
+  FILE * dataFile = fopen(outputFile.c_str(), "w");
+  if(dataFile!= NULL){
+    printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
     
-  for(int i = 0; i < (int)esCoords.size(); i++) {
-    fprintf(dataFile, "%.9f ", esCoords[i].phase);
-    fprintf(dataFile, "%d ", esCoords[i].voltageInt);
-    fprintf(dataFile, "%.20f ", esCoords[i].BER);
-    fprintf(dataFile, "%u ", esCoords[i].sample0);
-    fprintf(dataFile, "%u ", esCoords[i].error0);
-    fprintf(dataFile, "%u ", esCoords[i].sample1);
-    fprintf(dataFile, "%u ", esCoords[i].error1);
-    fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
-    fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
+    for(int i = 0; i < (int)esCoords.size(); i++) {
+      fprintf(dataFile, "%.9f ", esCoords[i].phase);
+      fprintf(dataFile, "%d ", esCoords[i].voltageInt);
+      fprintf(dataFile, "%.20f ", esCoords[i].BER);
+      fprintf(dataFile, "%u ", esCoords[i].sample0);
+      fprintf(dataFile, "%u ", esCoords[i].error0);
+      fprintf(dataFile, "%u ", esCoords[i].sample1);
+      fprintf(dataFile, "%u ", esCoords[i].error1);
+      fprintf(dataFile, "0x%03x ", esCoords[i].voltageReg & 0xFF);
+      fprintf(dataFile, "0x%03x\n", esCoords[i].phaseReg & 0xFFF);
+    }
+    fclose(dataFile);
+  } else {
+    throwException("Unable to open file"+outputFile);
+    //printf("Unable to open file %s\n", outputFile.c_str());
   }
-  fclose(dataFile);
 }
 
 

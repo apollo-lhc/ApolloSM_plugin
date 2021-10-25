@@ -5,7 +5,7 @@
 #include <BUTool/CommandList.hh>
 
 #include <BUTool/DeviceFactory.hh>
-
+#include <ApolloSM/csv_class.hh>
 #include <string>
 #include <vector>
 

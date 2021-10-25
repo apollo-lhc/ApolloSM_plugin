@@ -535,7 +535,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> /*strA
 // }
 
 CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>){
-
+  //CSV::CSV parser;
   //clock for timing
   time_t start, end; // used to time execution
   time(&start);      // recording start time
@@ -600,7 +600,10 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
     {
       
         if(eyescanVec[*i].check()==done_state){
-	  eyescanVec[*i].fileDump(outputfileVec[*i]);
+	  CSV parser;
+	  parser.fill(eyescanVec[*i].dataout(), outputfileVec[*i]);
+	  parser.write(outputfileVec[*i]);
+	  //eyescanVec[*i].fileDump(outputfileVec[*i]);
           eyescanDeque.erase(eyescanDeque.begin()+*i);
 	  nodes_done+=1;
           printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);

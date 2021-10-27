@@ -7,15 +7,15 @@ import sys
 import datetime
 import math
 
-if(5 != len(sys.argv)):
+if(3 != len(sys.argv)):
     print("Wrong number of arguments")
-    print("<file> <title> <prescale> <bus_width>")
+    print("<file> <title>")
     sys.exit()
 
 file = sys.argv[1]
 title = sys.argv[2]
-prescale = int(sys.argv[3])
-bus_width = int(sys.argv[4])
+#prescale = int(sys.argv[3])
+#bus_width = int(sys.argv[4])
 
 # get data
 data = np.genfromtxt(file,delimiter=' ')

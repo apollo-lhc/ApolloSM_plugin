@@ -8,103 +8,109 @@
 #define ES_EYE_SCAN_EN 0x1
 #define ES_ERRDET_EN 0x1
 #define PMA_CFG 0x000 // Actually 10 0s: 10b0000000000
-#define PMA_RSV2 0x1
-#define ES_QUALIFIER 0x0000
-#define ES_QUAL_MASK 0xFFFF
+//#define PMA_RSV2 0x1
+//#define ES_QUALIFIER 0x0000
+//#define ES_QUAL_MASK 0xFFFF
 
-#define RX_DATA_WIDTH_GTX 0x4 // zynq
-#define RX_INT_DATAWIDTH_GTX 0x1 // We use 32 bit
-
-#define RX_DATA_WIDTH_GTH 0x4 // kintex
-#define RX_INT_DATAWIDTH_GTH 0x0 //16 bit
-
-#define RX_DATA_WIDTH_GTY 0x6 // virtex
-#define RX_INT_DATAWIDTH_GTY 0x1 //32 bit
+//#define RX_DATA_WIDTH_GTX 0x4 // zynq
+//#define RX_INT_DATAWIDTH_GTX 0x1 // We use 32 bit
+//
+//#define RX_DATA_WIDTH_GTH 0x4 // kintex
+//#define RX_INT_DATAWIDTH_GTH 0x0 //16 bit
+//
+//#define RX_DATA_WIDTH_GTY 0x6 // virtex
+//#define RX_INT_DATAWIDTH_GTY 0x1 //32 bit
 #define DFE 0
 #define LPM 1
 
-#define MAXUI 0.5
-#define MINUI -0.5
+#define MAX_UI_MAG 0.5
 
 #define MAX_PRESCALE_VALUE ((1<<5)-1)
 
-//#define MAX_X_BINS ((1<<11)-1)
-//#define MAX_Y_BINS ((1<<8))-1)
+#define MAX_Y_BIN_MAG ((1<<7)-1)
 
-// identifies bus data width
-std::map<int, int> static const busWidthMap = 
-  {
-    // read hex value (DRP encoding) vs bus width (attribute encoding)
-    {2, 16},
-    {3, 20},
-    {4, 32},
-    {5, 40},
-    {6, 64},
-    {7, 80}
-    {8, 128},
-    {9, 160}
-  };
-std::map<uint32_t, int> static const rxoutDivMap = 
-  {
-    // RXOUT_DIV hex value (DRP encoding) vs max horizontal offset
-    // https://www.xilinx.com/support/documentation/application_notes/xapp1198-eye-scan.pdf pgs 8 and 9
-    {0, 32},
-    {1, 64},
-    {2, 128},
-    {3, 256},
-    {4, 512}
-  };
+#define PRESCALE_START 3
+#define PRESCALE_STEP 3
+
 
 class eyescan
 {
 public:
   typedef enum { UNINIT, SCAN_INIT, SCAN_READY, SCAN_START, SCAN_PIXEL, SCAN_DONE  } ES_state_t;
   typedef enum { FIRST, SECOND, LPM_MODE} DFE_state_t;
+  enum class SERDES_t : uint8_t {UNKNOWN=0,GTH_USP=1,GTX_7S=2,GTY_USP=3,GTH_7S=4};
 
   // All necessary information to plot an eyescan
   struct eyescanCoords {
-    double voltage;
-    double phase;
-    int32_t voltageInt;
-    int32_t phaseInt;
-    double BER;
-    uint32_t sample0;
-    uint32_t error0;
-    uint32_t sample1;
-    uint32_t error1;
-    uint8_t voltageReg;
-    uint16_t phaseReg;
+    eyescanCoords(){clear();};
+    double   voltage;
+    bool     voltage_real;
+    double   phase;
+    uint16_t horzWriteVal;
+    uint16_t vertWriteVal;
+
+    uint8_t  prescale;
+    double   BER;
+    uint64_t sample0;
+    uint64_t error0;
+    uint64_t sample1;
+    uint64_t error1;    
+    void clear(){
+      //clear all values
+      voltage     = 0;
+      voltage_real= 0;
+      phase       = 0;
+      horzWriteVal= 0;
+      vertWriteVal= 0;
+      reset();
+    };
+    void reset(){
+      //reset the data output values
+      BER         = 0;
+      sample0     = 0;
+      error0      = 0;
+      sample1     = 0;
+      error1      = 0;
+      prescale=PRESCALE_START;
+    };
   };
 
 
 private:
-  enum class SERDES_t : uint8_t {UNKNOWN=0,GTH_USP=1,GTX_7S=2,GTY_USP=3,GTH_7S=4};
-  SERDEST_t xcvrType;
+  //SERDES parameters
+  SERDES_t xcvrType;
   uint8_t   rxDataWidth;
-  uint8_t   rsIntDataWidth;
+  uint8_t   rxIntDataWidth;
+  uint16_t  rxOutDiv;
+  double    linkSpeedGbps;
+  uint32_t  rxlpmen;
 
+  //scan parameters
+  uint16_t maxXBinMag;
+  uint16_t binXIncr;
+  int16_t  binXBoundary;
+  uint16_t binXCount;
 
-  std::string lpmNode;
-  std::string DRPBaseNode;
+  uint16_t maxYBinMag;
+  uint16_t binYIncr;
+  int16_t  binYBoundary;
+  double   binYdV;
+  
   ES_state_t es_state;
   DFE_state_t dfe_state;
+
+  uint8_t prescale;
+  uint8_t maxPrescale;
+
+  //access parameters
+  std::string lpmNode;
+  std::string DRPBaseNode;
   double firstBER;
   std::vector<eyescanCoords> Coords_vect;
   std::vector<eyescanCoords>::iterator it;
   std::vector<double> volt_vect;
   std::vector<double> phase_vect;
-  uint8_t maxPrescale;
-  float volt;
-  float phase;
-  uint32_t cur_prescale=0;
-  uint16_t nBinsX;
-  uint16_t nBinsY;
-  //uint32_t rxoutDiv;
-  //int maxPhase;
-  //double phaseMultiplier;
-  //make these #defines
 
-  uint32_t rxlpmen;
 
 
 

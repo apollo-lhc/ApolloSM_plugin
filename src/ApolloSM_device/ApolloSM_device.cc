@@ -464,10 +464,12 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
       }
     int num_of_nodes = (strArg.size()-3)/3;
 
-    std::vector<eyescan> eyescanVec;
-    std::deque<std::string> outputfileVec;
+    std::deque<std::pair< eyescan , std::string > > eyescan;
 
     int nXbins = atoi(strArg[0].c_str());
+    if(nXBins > (1<<11) || nXBinx < 1){
+      printf("nXBins out of range %d %d\n",nXBins,(1<<11));
+    }
     int nYbins = atoi(strArg[1].c_str());
     int maxPrescale = atoi(strArg[2].c_str());
     printf("Progress:0/%d nodes.\n",num_of_nodes);
@@ -517,7 +519,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
       
 	  if(eyescanVec[*i].check()==done_state){
 	    eyescanVec[*i].fileDump(outputfileVec[*i]);
-	    eyescanDeque.erase(eyescanDeque.begin()+*i);
+	    i = eyescanDeque.erase(eyescanDeque.begin()+*i);
 	    nodes_done+=1;
 	    printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
 	    if(eyescanDeque.size()==0){

@@ -3,17 +3,6 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <queue>
 
-// //#include <BUException/ExceptionBase.hh>
-// #include <BUTool/ToolException.hh>
-// #include <IPBusIO/IPBusIO.hh>
-// //#include <ApolloSM/eyescan.hh>
-// #include <ApolloSM/ApolloSM_Exceptions.hh> // EYESCAN_ERROR
-// #include <vector>
-// #include <stdlib.h>
-// //#include <math.h> // pow
-// #include <map>
-// #include <syslog.h>
-// #include <time.h>
 
 // Correct eye scan attribute values
 #define ES_EYE_SCAN_EN 0x1
@@ -37,6 +26,11 @@
 #define MAXUI 0.5
 #define MINUI -0.5
 
+#define MAX_PRESCALE_VALUE ((1<<5)-1)
+
+//#define MAX_X_BINS ((1<<11)-1)
+//#define MAX_Y_BINS ((1<<8))-1)
+
 // identifies bus data width
 std::map<int, int> static const busWidthMap = 
   {
@@ -47,10 +41,8 @@ std::map<int, int> static const busWidthMap =
     {5, 40},
     {6, 64},
     {7, 80}
-    // currently unsupported values
-    //,
-    //{8, 128},
-    //{9, 160}
+    {8, 128},
+    {9, 160}
   };
 std::map<uint32_t, int> static const rxoutDivMap = 
   {
@@ -84,29 +76,29 @@ public:
     uint16_t phaseReg;
   };
 
-  // struct Coords {
-  //   double voltage;
-  //   double phase;
-  // };
 
 private:
+  enum class SERDES_t : uint8_t {UNKNOWN=0,GTH_USP=1,GTX_7S=2,GTY_USP=3,GTH_7S=4};
+  SERDEST_t xcvrType;
+  uint8_t   rxDataWidth;
+  uint8_t   rsIntDataWidth;
+
+
   std::string lpmNode;
-  std::string baseNode;
+  std::string DRPBaseNode;
   ES_state_t es_state;
   DFE_state_t dfe_state;
   double firstBER;
-  //std::vector<std::vector<Coords>> Coords_vect;
-  //std::queue<eyescan::Coords> Coords_queue;
   std::vector<eyescanCoords> Coords_vect;
   std::vector<eyescanCoords>::iterator it;
   std::vector<double> volt_vect;
   std::vector<double> phase_vect;
-  uint32_t Max_prescale;
+  uint8_t maxPrescale;
   float volt;
   float phase;
   uint32_t cur_prescale=0;
-  int nBinsX;
-  int nBinsY;
+  uint16_t nBinsX;
+  uint16_t nBinsY;
   //uint32_t rxoutDiv;
   //int maxPhase;
   //double phaseMultiplier;
@@ -117,7 +109,10 @@ private:
 
 
 public:
-  eyescan(ApolloSM*SM, std::string baseNode_set, std::string lpmNode_set, int nBinsX_set, int nBinsY_set, int max_prescale);
+  eyescan(ApolloSM*SM, 
+	  std::string const & DRPBaseNode_set, 
+	  std::string const & lpmNode_set, 
+	  int nBinsX_set, int nBinsY_set, int max_prescale);
   ~eyescan();
   ES_state_t check();
   //void check();

@@ -36,7 +36,7 @@
 class eyescan
 {
 public:
-  typedef enum { UNINIT, SCAN_INIT, SCAN_READY, SCAN_START, SCAN_PIXEL, SCAN_DONE  } ES_state_t;
+  typedef enum { UNINIT, SCAN_INIT, SCAN_READY, SCAN_START, SCAN_PIXEL, SCAN_DONE, SCAN_ERR } ES_state_t;
   typedef enum { FIRST, SECOND, LPM_MODE} DFE_state_t;
   enum class SERDES_t : uint8_t {UNKNOWN=0,GTH_USP=1,GTX_7S=2,GTY_USP=3,GTH_7S=4};
 
@@ -44,7 +44,7 @@ public:
   struct eyescanCoords {
     eyescanCoords(){clear();};
     double   voltage;
-    bool     voltage_real;
+    bool     voltageReal;
     double   phase;
     uint16_t horzWriteVal;
     uint16_t vertWriteVal;
@@ -58,7 +58,7 @@ public:
     void clear(){
       //clear all values
       voltage     = 0;
-      voltage_real= 0;
+      voltageReal= 0;
       phase       = 0;
       horzWriteVal= 0;
       vertWriteVal= 0;
@@ -99,7 +99,7 @@ private:
   ES_state_t es_state;
   DFE_state_t dfe_state;
 
-  uint8_t prescale;
+  //  uint8_t prescale;
   uint8_t maxPrescale;
 
   //access parameters
@@ -119,7 +119,6 @@ public:
 	  std::string const & DRPBaseNode_set, 
 	  std::string const & lpmNode_set, 
 	  int nBinsX_set, int nBinsY_set, int max_prescale);
-  ~eyescan();
   ES_state_t check();
   //void check();
   void update(ApolloSM*SM);

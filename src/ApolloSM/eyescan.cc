@@ -2,7 +2,7 @@
 #include <ApolloSM/eyescan_class.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <BUTool/ToolException.hh>
-#include <BUTool/helpers/register_helper.hh>
+//#include <BUTool/helpers/register_helper.hh>
 #include <IPBusIO/IPBusIO.hh>
 #include <vector>
 #include <queue>
@@ -11,6 +11,7 @@
 #include <map>
 #include <syslog.h>
 #include <time.h>
+#include <inttypes.h> // for PRI macros
 
 #define WAIT 0x1
 #define END 0x5
@@ -31,9 +32,11 @@ std::vector<std::vector<std::string> > const static REQUIRED_TABLE_ELEMENTS ={ \
    "ES_QUALIFIER3","ES_QUALIFIER4",					\
    "ES_QUAL_MASK0","ES_QUAL_MASK1","ES_QUAL_MASK2",			\
    "ES_QUAL_MASK3","ES_QUAL_MASK4",					\
-   "ES_CONTROL_STATUS","RX_EYESCAN_VS_RANGE",				\
+   "RX_EYESCAN_VS.RANGE",						\
+   "ES_CONTROL_STATUS",							\
    "ES_ERROR_COUNT","ES_SAMPLE_COUNT",					\
-   "ES_CONTROL.RUN","ES_CONTROL.ARM"					\
+   "ES_CONTROL.RUN","ES_CONTROL.ARM",					\
+   "RXOUT_DIV"								\
   },									\
   {"ES_HORZ_OFFSET.REG","ES_HORZ_OFFSET.OFFSET","ES_HORZ_OFFSET.PHASE_UNIFICATION",		\
    "ES_VERT_OFFSET.REG","ES_VERT_OFFSET.MAG","ES_VERT_OFFSET.SIGN","ES_VERT_OFFSET.UT",	\
@@ -62,7 +65,7 @@ std::vector<std::vector<std::string> > const static REQUIRED_TABLE_ELEMENTS ={ \
    "ES_QUAL_MASK0","ES_QUAL_MASK1","ES_QUAL_MASK2",			\
    "ES_QUAL_MASK3","ES_QUAL_MASK4","ES_QUAL_MASK5",			\
    "ES_QUAL_MASK6","ES_QUAL_MASK7","ES_QUAL_MASK8","ES_QUAL_MASK9",	\
-   "ES_CONTROL_STATUS","RX_EYESCAN_VS_RANGE",				\
+   "ES_CONTROL_STATUS","RX_EYESCAN_VS.RANGE",				\
    "ES_ERROR_COUNT","ES_SAMPLE_COUNT",					\
    "ES_CONTROL.RUN","ES_CONTROL.ARM"					\
   },									\
@@ -108,16 +111,16 @@ uint8_t const static BUS_WIDTH[BUS_WIDTH_SIZE] = {0,
 						  160};
 
 //Zero means an ivalid value
-uint8_t const static INTERNAL_DATA_WIDITH[BUS_WIDTH_SIZE][3] = {{0,0,0},	\
-								{0,0,0}, \
-								{16,0,0}, \
-								{20,0,0}, \
-								{16,32,0}, \
-								{20,40,0}, \
-								{0,32,64}, \
-								{0,40,80}, \
-								{0,0,64}, \
-								{0,0,80}, \
+uint8_t const static INTERNAL_DATA_WIDTH[BUS_WIDTH_SIZE][3] = {{0,0,0},	\
+							       {0,0,0}, \
+							       {16,0,0}, \
+							       {20,0,0}, \
+							       {16,32,0}, \
+							       {20,40,0}, \
+							       {0,32,64}, \
+							       {0,40,80}, \
+							       {0,0,64}, \
+							       {0,0,80}, \
 };
 
 // Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this
@@ -163,7 +166,7 @@ eyescan::eyescan(ApolloSM*SM,
       itCheck != REQUIRED_TABLE_ELEMENTS[int(xcvrType)].end();
       itCheck++){
     if(SM->myMatchRegex(DRPBaseNode+(*itCheck)).size() == 0){
-      throwException("Missing "+DRPBaseNode+"."+(*itCheck)+".\n");
+      throwException("Missing "+DRPBaseNode+(*itCheck)+".\n");
     }
   }
 
@@ -196,7 +199,7 @@ eyescan::eyescan(ApolloSM*SM,
   if(xcvrType == SERDES_t::GTX_7S || xcvrType == SERDES_t::GTH_7S){
     binYdV = -1;
   }else{
-    uint8_t indexV = SM->RegReadRegister(DRPBaseNode + "RX_EYESCAN_VS_RANGE");
+    uint8_t indexV = SM->RegReadRegister(DRPBaseNode + "RX_EYESCAN_VS.RANGE");
     if(indexV >= 4){
       throwException("RX_EYESCAN_VX_RANGE invalid");
     }
@@ -207,27 +210,28 @@ eyescan::eyescan(ApolloSM*SM,
     }else{
       binYdV = -1;
     }
-
+  }
   maxYBinMag = MAX_Y_BIN_MAG;
   binYIncr=_binYIncr;
   if(binYIncr > maxYBinMag){
     throwException("YIncr is too large\n");
-  //Compute the maximal horizontal x bin magnitude used for this scan
+    //Compute the maximal horizontal x bin magnitude used for this scan
+  }
   if(binYIncr == 0){
     binYBoundary = 0;
-    binYCount    = 1;
+    //    binYCount    = 1;
   }else{
     binYBoundary = (maxYBinMag/binYIncr) * binYIncr;
-    binYCount    = 2*(maxYBinMag/binYIncr) + 1;
+    //    binYCount    = 2*(maxYBinMag/binYIncr) + 1;
   }
 
   
   
   // Check ES_EYE_SCAN_EN 
   if(SM->RegReadRegister(DRPBaseNode+"ES_EYE_SCAN_EN") != 1){
-    throwException("ES_EYE_SCAN_END is not '1'.\n Enabling it requires a PMA reset.\n");
+    throwException("ES_EYE_SCAN_EN is not '1'.\n Enabling it requires a PMA reset.\n");
   }
-  if( (xcvr_type == SERDES_T::GTX_7S) && (SM->RegReadRegister(DRPBaseNode+"PMA_RSV2")&0x20 != 0x20)){
+  if( (xcvrType == SERDES_t::GTX_7S) && ((SM->RegReadRegister(DRPBaseNode+"PMA_RSV2")&0x20) != 0x20)){
     throwException("PMA_RSV2 bit 5 must be '1' for GTX_7S SERDES. Enabling it requires a PMA reset.\n");
   }
 
@@ -259,33 +263,33 @@ eyescan::eyescan(ApolloSM*SM,
   //Set ES bit masks
   //If in the future we want to only perform eyescans on specific special bit patterns,
   //Change Qalifier and QualMask appropriately
-  int qualSize = 160 ? (xvvrType == GTY_USP) : 80;
-  {
-    uint16_t es_Qualifier,es_QualMask,es_SDataMask = {0,0,0};
-    //fill all of these multi-reg values    
-    for(int iBit = 0; iBit <  qualSize; ibit++){
-      //Move these down one bit
-      es_SDataMask >>= 0x1;
-      es_Qualifier >>= 0x1;
-      es_QualMask  >>= 0x1;
+  int qualSize = (xcvrType == SERDES_t::GTY_USP) ? 160  : 80;
 
+  {
+    uint16_t esQualifier,esQualMask,esSDataMask;
+    esQualifier = esQualMask = esSDataMask = 0;
+    //fill all of these multi-reg values    
+    for(int iBit = 0; iBit <  qualSize; iBit++){
+      //Move these down one bit
+      esSDataMask >>= 0x1;
+      esQualifier >>= 0x1;
+      esQualMask  >>= 0x1;
+      
       //Set the MSB of ex_X to a '1' if we want a 1 in this bit postion
       if(!(
 	   (iBit < (qualSize/2)) &&
-	   (iBit >= (qualSize/2 - internalDataWidth))){
-	   //This is not a bit we care about, so mark it with a '1'
-	   esDataMask |= 0x8000;
-	}
+	   (iBit >= (qualSize/2 - internalDataWidth)))){
+	//This is not a bit we care about, so mark it with a '1'
+	esSDataMask |= 0x8000;
       }
-
-      es_QualMask  |= 0x8000;
+      esQualMask  |= 0x8000;
       //es_Qualifier we want to be '0', so we don't have to do anytying.
 
-      if(iBit&0xF == 0xF){
+      if((iBit & 0xF) == 0xF){
 	//we've filled 16 bits, let'w write it. 
-	SM->RegWriteRegister(DRPBaseNode+"ES_SDATA_MASK"+std::to_string(iBit&0xF0),es_SDataMask);
-	SM->RegWriteRegister(DRPBaseNode+"ES_QUALIFIER" +std::to_string(iBit&0xF0),es_SDataMask);
-	SM->RegWriteRegister(DRPBaseNode+"ES_QUAL_MASK" +std::to_string(iBit&0xF0),es_SDataMask);
+	SM->RegWriteRegister(DRPBaseNode+"ES_SDATA_MASK"+std::to_string(((iBit&0xF0)>>4)),esSDataMask);
+	SM->RegWriteRegister(DRPBaseNode+"ES_QUALIFIER" +std::to_string(((iBit&0xF0)>>4)),esQualifier);
+	SM->RegWriteRegister(DRPBaseNode+"ES_QUAL_MASK" +std::to_string(((iBit&0xF0)>>4)),esQualMask);
 	//Shifts will remove old values
       }
     }
@@ -297,18 +301,17 @@ eyescan::eyescan(ApolloSM*SM,
   }else{
     dfe_state=LPM_MODE;
   }
-  es_state=SCAN_INIT;
 
+  es_state=SCAN_INIT;
+  
   linkSpeedGbps = 10; //default to 10Gbps
   
 }
 
-eyescan::~eyescan() {};
 eyescan::ES_state_t eyescan::check(){  //checks es_state
   return es_state;
 }
 void eyescan::update(ApolloSM*SM){
-
   switch (es_state){
   case SCAN_INIT:
     initialize(SM);
@@ -327,10 +330,7 @@ void eyescan::update(ApolloSM*SM){
       } else {
 	es_state = EndPixelLPM(SM);
       }
-    } else {
-      break;
     }
-      
     break;
   case SCAN_DONE:
     printf("DONE/n");
@@ -348,7 +348,7 @@ void eyescan::start(){
   }
 }
 
-void eyescan::initialize(ApolloSM*SM){
+void eyescan::initialize(ApolloSM* /*SM*/){
   for (int16_t iHorz   = -binXBoundary; iHorz <= binXBoundary; iHorz+=binXIncr){
     for (int16_t iVert = -binYBoundary; iVert <= binYBoundary; iVert+=binYIncr){
       eyescan::eyescanCoords pixel;
@@ -366,7 +366,7 @@ void eyescan::initialize(ApolloSM*SM){
 	pixel.voltageReal = true;
       }
       //horizontal value
-      pixel.phase = iHorz*(MAX_UIO_MAG/maxXBinMag);
+      pixel.phase = iHorz*(MAX_UI_MAG/maxXBinMag);
 
       //=====================================================
       //Register write versions
@@ -374,18 +374,18 @@ void eyescan::initialize(ApolloSM*SM){
       if(iVert >= 0){
 	//set magnitude
 	pixel.vertWriteVal = iVert & 0x007F;
-	//Set UT sign and offset sign
+	//Set offset sign and UT sign 
 	pixel.vertWriteVal &= 0xFE7F;	
       }else{
 	//set magnitude
 	pixel.vertWriteVal = (-1*iVert) & 0x007F;
-	//Set UT sign and offset sign
+	//Set offset sign and UT sign 
 	pixel.vertWriteVal |= 0x0180;	
       }
       
       //ES_HORZ_OFFSET like value
       pixel.horzWriteVal = iHorz&0x7FF;
-      if(xcvrType == SERDES_T::GTY_USP){
+      if(xcvrType == SERDES_t::GTY_USP){
 	// Phase unification bit in GTY depends on link speed
 	if( linkSpeedGbps > 10){
 	  pixel.horzWriteVal |= 0x0800;
@@ -443,19 +443,17 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
 
   // calculate BER
   (*it).BER = (*it).error0 / double((*it).sample0);
-  if((BER < PRECISION) && (cur_prescale != Max_prescale)) {
+  if(((*it).BER < PRECISION) && ((*it).prescale != maxPrescale)) {
     (*it).prescale += PRESCALE_STEP; 
-    if((*it).prescale > Max_prescale) {
-      (*it).prescale = Max_prescale;         
+    if((*it).prescale > maxPrescale) {
+      (*it).prescale = maxPrescale;         
     }      
     //keep scanning pixel to get BER
     scan_pixel(SM);
     return SCAN_PIXEL;
   } else {
-    if (errorCount==0){ //if scan found no errors default to BER floor
-      BER = 1.0/double((*it).sample0);
-    }else{
-      (*it).BER=BER;
+    if ((*it).error0==0){ //if scan found no errors default to BER floor
+      (*it).BER = 1.0/double((*it).sample0);
     }
     (*it).sample1=0;
     (*it).error1=0;
@@ -509,10 +507,10 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
     //Compute total BER
     (*it).BER = ((*it).error0 / double((*it).sample0) +
 		 (*it).error1 / double((*it).sample1));
-    if((BER < PRECISION) && (cur_prescale != Max_prescale)) {
+    if(((*it).BER < PRECISION) && ((*it).prescale != maxPrescale)) {
       (*it).prescale += PRESCALE_STEP; 
-      if((*it).prescale > Max_prescale) {
-	(*it).prescale = Max_prescale;         
+      if((*it).prescale > maxPrescale) {
+	(*it).prescale = maxPrescale;         
       }            
       //keep scanning pixel to get BER
       //go to other side of DFE scan next time
@@ -520,10 +518,8 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
       scan_pixel(SM);
       return SCAN_PIXEL;
     } else {
-      if (errorCount==0){ //if scan found no errors default to BER floor
+      if ((*it).error1==0 && (*it).error0==0){ //if scan found no errors default to BER floor
 	(*it).BER = 0.5/double((*it).sample0) + 0.5/double((*it).sample1);
-      }else{
-	(*it).BER=BER;
       }
       //move to the next pixel
       it++;
@@ -539,6 +535,7 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
   }else{
     throwException("not in DFE mode");
   }
+  return SCAN_ERR;
 }
 
 
@@ -558,16 +555,16 @@ void eyescan::fileDump(std::string outputFile){
     
     for(int i = 0; i < (int)esCoords.size(); i++) {
       fprintf(dataFile, "%0.9f ", esCoords[i].phase);
-      if(esCoords[i].voltage_real){
+      if(esCoords[i].voltageReal){
 	fprintf(dataFile, "%3.1f ", esCoords[i].voltage);
       }else{
-	fprintf(dataFile, "%d ", esCoords[i].voltage);
+	fprintf(dataFile, "%3.0f ", esCoords[i].voltage);
       }
       fprintf(dataFile, "%0.20f ", esCoords[i].BER);
-      fprintf(dataFile, "%u ", esCoords[i].sample0);
-      fprintf(dataFile, "%u ", esCoords[i].error0);
-      fprintf(dataFile, "%u ", esCoords[i].sample1);
-      fprintf(dataFile, "%u ", esCoords[i].error1);
+      fprintf(dataFile, "%" PRIu64 " ", esCoords[i].sample0);
+      fprintf(dataFile, "%" PRIu64 " ", esCoords[i].error0);
+      fprintf(dataFile, "%" PRIu64 " ", esCoords[i].sample1);
+      fprintf(dataFile, "%" PRIu64 " ", esCoords[i].error1);
       fprintf(dataFile, "%u\n", esCoords[i].prescale);
     }
     fclose(dataFile);
@@ -585,31 +582,31 @@ void eyescan::scan_pixel(ApolloSM*SM){
   SM->RegWriteRegister(DRPBaseNode + "ES_PRESCALE",(*it).prescale);
   
   //horizontal
-  SM->RegWriteRegister(DRPBaseNode + "ES_HORZ_OFFSET",(*it).horzWriteVal);
+  SM->RegWriteRegister(DRPBaseNode + "ES_HORZ_OFFSET.REG",(*it).horzWriteVal);
 
-  //Vertical
+  //Vertical (special bitwise stuff is for the UT SIGN
   if(xcvrType == SERDES_t::GTH_USP || xcvrType == SERDES_t::GTY_USP){
     if(dfe_state == FIRST){
-      SM->RegWriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal & 0xFEFF);
+      SM->RegWriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal & 0xFF7F);
     }else if (dfe_state == SECOND){
-      SM->RegWriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal | 0x0100);
+      SM->RegWriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal | 0x0080);
     }else{
       SM->RegWriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal);
     }    
   }else if(xcvrType == SERDES_t::GTX_7S  || xcvrType == SERDES_t::GTH_7S ){
     if(dfe_state == FIRST){
-      SM->RegWriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal & 0xFEFF);
+      SM->RegWriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal & 0xFF7F);
     }else if (dfe_state == SECOND){
-      SM->RegWriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal | 0x0100);
+      SM->RegWriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal | 0x0080);
     }else{
       SM->RegWriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal);
     }    
   }
 
-  
-  SM->RegWriteRegister(DRPBaseNode + "RUN", STOP_RUN);
+  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.ARM", STOP_RUN);
+  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", STOP_RUN);
   int while_count = 0;
-  while(SM->RegReadRegister(DRPBaseNode+"RUN")!=STOP_RUN){
+  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL.RUN")!=STOP_RUN){
     usleep(100);
     if(while_count==10000){
       throwException("Base Node state machine stuck.");
@@ -619,8 +616,8 @@ void eyescan::scan_pixel(ApolloSM*SM){
   }
   while_count=0;
 
-  SM->RegWriteRegister(DRPBaseNode + "RUN", RUN);  
-  while(SM->RegReadRegister(DRPBaseNode+"RUN")!=RUN){
+  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", RUN);  
+  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL.RUN")!=RUN){
     usleep(100);
     if(while_count==10000){
       throwException("Base Node state machine stuck.");

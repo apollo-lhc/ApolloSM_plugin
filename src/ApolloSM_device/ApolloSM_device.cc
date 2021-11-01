@@ -464,13 +464,10 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
       }
     int num_of_nodes = (strArg.size()-3)/3;
 
-    std::deque<std::pair< eyescan , std::string > > eyescan;
+    std::deque<std::pair< eyescan , std::string > > eyescans;
 
-    int nXbins = atoi(strArg[0].c_str());
-    if(nXBins > (1<<11) || nXBinx < 1){
-      printf("nXBins out of range %d %d\n",nXBins,(1<<11));
-    }
-    int nYbins = atoi(strArg[1].c_str());
+    int binXStep = atoi(strArg[0].c_str());
+    int binYStep = atoi(strArg[1].c_str());
     int maxPrescale = atoi(strArg[2].c_str());
     printf("Progress:0/%d nodes.\n",num_of_nodes);
     int nodes_done=0;
@@ -478,62 +475,43 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 
     for (int i = 0; i < num_of_nodes; ++i)
       {
-	std::string baseNode=strArg[((i+1)*3)];
-	std::string lpmNode=strArg[((i+1)*3)+1];
-	std::string outputfile=strArg[((i+1)*3)+2];
-	eyescanVec.push_back(eyescan(SM, baseNode,lpmNode,nXbins,nYbins,maxPrescale));
-	outputfileVec.push_back(outputfile);
+	eyescans.push_back(std::make_pair(eyescan(SM,
+						  strArg[((i+1)*3)],    //baseNode
+						  strArg[((i+1)*3)+1],  //lpmNode
+						  binXStep,binYStep,
+						  maxPrescale),
+					  strArg[((i+1)*3)+2]));         //filename
       }
   
-    std::deque<int> eyescanDeque;
-    for (uint32_t i = 0; i < eyescanVec.size(); ++i)
+    for (auto itES = eyescans.begin(); itES != eyescans.end(); itES++)
       {
-	eyescanDeque.push_back(i);
-      }
-
-
-    for (std::vector<eyescan>::iterator i = eyescanVec.begin(); i != eyescanVec.end(); ++i)
-      {
-	//printf("b4 .update");
-	(*i).update(SM);
-	//printf("after .update");
-	usleep(1000);
-	if ((*i).check()==eyescan::SCAN_READY)
+	(*itES).first.update(SM);
+	if ((*itES).first.check()==eyescan::SCAN_READY)
 	  {
-	    //printf("b4 .start()");
-	    (*i).start();
+	    (*itES).first.start();
 	  } else{
-	  (*i).throwException("Scan not ready to start.");
+	  (*itES).first.throwException("Scan not ready to start.");
 	}
       }
 
-    //printf("printing deque initial\n");
-    //for(std::deque<int>::iterator j = eyescanDeque.begin(); j != eyescanDeque.end(); ++j){
-    //  printf("%u\n",*j);
-    // }
     eyescan::ES_state_t done_state;
     done_state= eyescan::SCAN_DONE;
-    while(eyescanDeque.size()!=0){
-      for (std::deque<int>::iterator i = eyescanDeque.begin(); i != eyescanDeque.end(); ++i)
-	{
-      
-	  if(eyescanVec[*i].check()==done_state){
-	    eyescanVec[*i].fileDump(outputfileVec[*i]);
-	    i = eyescanDeque.erase(eyescanDeque.begin()+*i);
+    while(eyescans.size()!=0){
+      for (auto itES = eyescans.begin(); itES != eyescans.end();)
+	{      
+	  if((*itES).first.check() == done_state){
+	    //we are done with this eyescan
+	    //write out the file for this eyescan
+	    (*itES).first.fileDump((*itES).second); 
+	    itES = eyescans.erase(itES,itES+1);
 	    nodes_done+=1;
 	    printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
-	    if(eyescanDeque.size()==0){
-	      break;
-	    }
-	    //goto LOOP;
-	    break;
+	    continue;
 	  }else{
-	    //usleep(1000);
-	    eyescanVec[*i].update(SM);
+	    (*itES).first.update(SM);
 	    num_updates+=1;
-	    //printf("Number updates=%d\n",num_updates);
-	    //}
-	  }      
+	    itES++;
+	  }
 	}
     }
     //clock end

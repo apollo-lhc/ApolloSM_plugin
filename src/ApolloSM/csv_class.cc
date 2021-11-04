@@ -3,11 +3,41 @@
 // #include "rapidcsv.h"
 // #include <fstream>
 // #include <vector>
-#include "csv_class.hh"
+#include <ApolloSM/csv_class.hh>
+
+
+// Does not need to be an ApolloSM function, only assertNode and confirmNode (below) will use this                                      
+void CSV::throwException(std::string message) {                                                                                     
+  //BUException::CSV_ERROR e;                                                                                                    
+  //e.Append(message);                                                                                                                  
+  throw message;                                                                                                              
+}
 
 
 CSV::CSV(){
   //maxPhase = input_maxPhase;
+  SW_version = "";
+  gt_type = "";
+  time_start = "";
+  time_end = "";
+  scan_name = "";
+  link_settings = "";
+  reset_rx = "";
+  open_area = 0;
+  horz_open = 0;
+  horz_percent = 0;
+  vert_open = 0;
+  vert_percent = 0;
+  dwell = "";
+  dwell_ber = 0 ;
+  dwell_time = 0;
+  horz_inc = 0;
+  horz_range = "";
+  vert_inc = 0;
+  vert_range ="";
+  misc_info ="";
+  dimension = 0;
+  maxPhase = 0;
 }
 CSV::~CSV(){}
 
@@ -56,6 +86,7 @@ void CSV::read(std::string filename){
 }
 
 void CSV::write(std::string filename){
+  //printf("begin write \n");
 	FILE * pfile;
   pfile = fopen (filename.c_str(),"w");
   fprintf(pfile,"SW Version,%s\n",SW_version.c_str());
@@ -78,17 +109,21 @@ void CSV::write(std::string filename){
   fprintf(pfile,"Vertical Increment,%d\n", vert_inc);
   fprintf(pfile,"Vertical Range,%s\n",vert_range.c_str());
   fprintf(pfile,"Misc Info,%s\n",misc_info.c_str());
-  fprintf(pfile,"Scan Start\n");	
+  fprintf(pfile,"Scan Start\n");
+  //printf("mid write \n");
   std::string fullphasestring = "2d statistical";
   for (std::vector<std::string>::iterator i = phase_string.begin(); i != phase_string.end(); ++i)
   {
   	fullphasestring= fullphasestring+","+(*i);
   }
   fprintf(pfile,"%s\n",fullphasestring.c_str());
-  for (int i = 0; i < BER.size(); ++i)
+  //printf("mid write 2 \n");
+  for (uint32_t i = 0; i < BER.size(); ++i)
   {
   	fprintf(pfile, "%s",volt_string[i].c_str());
+	//printf("volt is %s\n",volt_string[i].c_str());
   	//std::string BER_string = volt_string[i];
+	//printf("mid write 3 \n");
   	for (std::vector<double>::iterator j = BER[i].begin(); j != BER[i].end(); ++j)
   	{
   		fprintf(pfile, ",%g",(*j));
@@ -98,15 +133,15 @@ void CSV::write(std::string filename){
   	//myfile<<std::string(BER_string)+"\n";
   }
   fprintf(pfile,"Scan End\n");
-
+  //printf("end write\n");
 }
 
 std::vector<boost::tuple<double, double, double>> CSV::plot_out(){
 	std::vector<boost::tuple<double, double, double> > pts;
 
-	for (int i = 0; i < volt.size(); ++i)
+	for (uint32_t i = 0; i < volt.size(); ++i)
 	{
-		for (int j = 0; j < phaseint.size(); ++j)
+		for (uint32_t j = 0; j < phaseint.size(); ++j)
 		{
 			double ui;
 			double phasetoui = MAXUI/((double)maxPhase);
@@ -123,24 +158,25 @@ std::vector<boost::tuple<double, double, double>> CSV::plot_out(){
   
 
 void CSV::fill(std::vector<eyescan::eyescanCoords> Coords, std::string filename){
+  //printf("fill start\n");
   std::set<int> volt_set;
   std::set<int> phase_set;
   SW_version = "eyescan";
   scan_name = filename.c_str();
-  std::set<eyescanCoords> Coords_set;
+  //std::set<eyescan::eyescanCoords> Coords_set;
 
   for (std::vector<eyescan::eyescanCoords>::iterator i = Coords.begin(); i != Coords.end(); ++i)
     {
-      if (volt_set.find((*i).voltageInt)==volt_set.end();)
+      if (volt_set.find((*i).voltageInt)==volt_set.end())
 	{
 	  volt_set.insert((*i).voltageInt);
 	}
 
-      if (phase_set.find((*i).voltageInt)==volt_set.end();)
+      if (phase_set.find((*i).phaseInt)==phase_set.end())
 	{
 	  phase_set.insert((*i).phaseInt);
 	}
-      Coords_set.insert((*i));
+      //Coords_set.insert((*i));
     }
 
   for (std::set<int>::iterator i = volt_set.begin(); i != volt_set.end(); ++i)
@@ -155,11 +191,12 @@ void CSV::fill(std::vector<eyescan::eyescanCoords> Coords, std::string filename)
       phase_string.push_back(std::to_string(*i));
 
     }
-
-  for (int i = 0; i < volt.size(); ++i)
+  //printf("BER size before is %u\n",BER.size());
+  for (uint32_t i = 0; i < volt.size(); ++i)
     {
+      //printf("for loop number %u\n",i);
       std::vector<double> ber_vect;
-      for (int j = 0; j < phaseint.size(); ++j)
+      for (uint32_t j = 0; j < phaseint.size(); ++j)
 	{
 	  int item =  phaseint.size()*i+j;
 	  if (Coords[item].phaseInt == phaseint[j] && Coords[item].voltageInt == volt[i])
@@ -168,10 +205,14 @@ void CSV::fill(std::vector<eyescan::eyescanCoords> Coords, std::string filename)
 	    } else {
 	    throwException("Failed to convert Coords to csv");
 	  }
-	  BER.push_back(ber_vect);
-	}
 
+	}
+      //printf("BER size inside is %u\n",BER.size());
+      BER.push_back(ber_vect);
     }
+  //printf("BER size after is %u\n",BER.size());
+  //printf("volt string size is %u\n,", volt_string.size());
+  //printf("volt size is %u\n,", volt.size());
 }
 
 // }
@@ -179,7 +220,7 @@ void CSV::fill(std::vector<eyescan::eyescanCoords> Coords, std::string filename)
 bool CSV::isNumber(const std::string& str)
 {
 	if((str[0]=='+' || str[0]=='-') && str.length()>1){
-		for (int i = 1; i < str.length(); ++i)
+		for (uint32_t i = 1; i < str.length(); ++i)
 		{
 			if (std::isdigit(str[i])==false) return false;
 		}

@@ -49,7 +49,7 @@ class CSV{
 		void write(std::string filename);
                 void fill(std::vector<eyescan::eyescanCoords> Coords, std::string filename);
 		std::vector<boost::tuple<double, double, double>> plot_out();
-
+                void throwException(std::string message);  
 	private:
 		//CSV();
 		bool isNumber(const std::string& str);

@@ -604,8 +604,10 @@ CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, s
 	  parser.fill(eyescanVec[*i].dataout(), outputfileVec[*i]);
 	  parser.write(outputfileVec[*i]);
 	  //eyescanVec[*i].fileDump(outputfileVec[*i]);
+	  //printf("test1\n");
           eyescanDeque.erase(eyescanDeque.begin()+*i);
 	  nodes_done+=1;
+	  //printf("test2\n");
           printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
 	  if(eyescanDeque.size()==0){
 	    break;

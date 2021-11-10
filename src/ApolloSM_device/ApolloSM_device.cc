@@ -449,12 +449,14 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
     return CommandReturn::OK;						   
   }
 						 
+#define UPDATE_PERIOD 10
 
   CommandReturn::status ApolloSMDevice::EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>){
 
     //clock for timing
-    time_t start, end; // used to time execution
+    time_t start,updateTime, end; // used to time execution
     time(&start);      // recording start time
+    updateTime = start+UPDATE_PERIOD;
     if(6 > strArg.size()) {
       return CommandReturn::BAD_ARGS;
     }
@@ -469,7 +471,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
     int binXStep = atoi(strArg[0].c_str());
     int binYStep = atoi(strArg[1].c_str());
     int maxPrescale = atoi(strArg[2].c_str());
-    printf("Progress:0/%d nodes.\n",num_of_nodes);
+    //    printf("Progress:0/%d nodes.\n",num_of_nodes);
     int nodes_done=0;
     int num_updates = 0;
 
@@ -496,16 +498,35 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 
     eyescan::ES_state_t done_state;
     done_state= eyescan::SCAN_DONE;
+    
+    size_t pixelCountFinished =0;
+    size_t pixelCount,totalPixelCount,pixelsDone,totalPixelsDone;
     while(eyescans.size()!=0){
+      time_t currentTime = time(NULL);
+      if(difftime(currentTime,updateTime) > 0){
+	updateTime+=UPDATE_PERIOD;
+	pixelCount=totalPixelCount=pixelsDone=totalPixelsDone=0;
+	for (auto itES = eyescans.begin(); itES != eyescans.end();itES++){
+	  (*itES).first.GetProgress(pixelCount,pixelsDone);
+	  totalPixelCount += pixelCount;
+	  totalPixelsDone += pixelsDone;
+	}
+	totalPixelCount += pixelCountFinished;
+	totalPixelsDone += pixelCountFinished;
+	printf("Progress: % 3.2f%% of %zu points done\n",(100.0*totalPixelsDone)/double(totalPixelCount),totalPixelCount);
+      }
+
       for (auto itES = eyescans.begin(); itES != eyescans.end();)
 	{      
 	  if((*itES).first.check() == done_state){
 	    //we are done with this eyescan
 	    //write out the file for this eyescan
 	    (*itES).first.fileDump((*itES).second); 
+	    (*itES).first.GetProgress(pixelCount,pixelsDone);
+	    pixelCountFinished+=pixelCount;
 	    itES = eyescans.erase(itES,itES+1);
 	    nodes_done+=1;
-	    printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
+	    //	    printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
 	    continue;
 	  }else{
 	    (*itES).first.update(SM);

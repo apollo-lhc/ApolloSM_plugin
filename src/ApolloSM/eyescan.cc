@@ -150,13 +150,17 @@ eyescan::eyescan(ApolloSM*SM,
   
   //Determine the transceiver type
   if( (SM->myMatchRegex(DRPBaseNode+"TYPE_7S_GTX")).size()){
+    linkSpeedGbps = 5; //default to 30Gbps in 7s
     xcvrType=SERDES_t::GTX_7S;
   }else if( (SM->myMatchRegex(DRPBaseNode+"TYPE_7S_GTH")).size()){
+    linkSpeedGbps = 5; //default to 5 in 7s
     xcvrType=SERDES_t::GTH_7S;
   }else if( (SM->myMatchRegex(DRPBaseNode+"TYPE_USP_GTH")).size()){
     xcvrType=SERDES_t::GTH_USP;
+    linkSpeedGbps = 14; //default to 14 in USP GTH
   }else if( (SM->myMatchRegex(DRPBaseNode+"TYPE_USP_GTY")).size()){
     xcvrType=SERDES_t::GTY_USP;
+    linkSpeedGbps = 30; //default to 30Gbps in GTY
   }else{
     throwException("No transceiver type found for node "+DRPBaseNode+".\n");
   }
@@ -263,7 +267,7 @@ eyescan::eyescan(ApolloSM*SM,
   //Set ES bit masks
   //If in the future we want to only perform eyescans on specific special bit patterns,
   //Change Qalifier and QualMask appropriately
-  int qualSize = (xcvrType == SERDES_t::GTY_USP) ? 160  : 80;
+  int qualSize = (xcvrType == SERDES_t::GTY_USP || xcvrType == SERDES_t::GTH_USP ) ? 160  : 80;
 
   {
     uint16_t esQualifier,esQualMask,esSDataMask;
@@ -304,7 +308,7 @@ eyescan::eyescan(ApolloSM*SM,
 
   es_state=SCAN_INIT;
   
-  linkSpeedGbps = 10; //default to 10Gbps
+
   
 }
 
@@ -315,15 +319,15 @@ void eyescan::update(ApolloSM*SM){
   switch (es_state){
   case SCAN_INIT:
     initialize(SM);
+    pixelsDone = 0;
     es_state= SCAN_READY;
     break;
   case SCAN_READY://make reset a func; make this a READY state
     break;
   case SCAN_START:
-    SM->RegWriteRegister(DRPBaseNode + "ES_PRESCALE", 0x3);
     scan_pixel(SM);
   case SCAN_PIXEL:
-    if (END == SM->RegReadRegister(DRPBaseNode + "ES_CONTROL_STATUS")){
+    if (0x5 == SM->RegReadRegister(DRPBaseNode + "ES_CONTROL_STATUS")){
       if (rxlpmen==DFE){
 	es_state = EndPixelDFE(SM);
           
@@ -351,7 +355,7 @@ void eyescan::start(){
 void eyescan::initialize(ApolloSM* /*SM*/){
   for (int16_t iHorz   = -binXBoundary; iHorz <= binXBoundary; iHorz+=binXIncr){
     for (int16_t iVert = -binYBoundary; iVert <= binYBoundary; iVert+=binYIncr){
-      eyescan::eyescanCoords pixel;
+      eyescan::eyescanCoords pixel;      
       //Set this pixel up to be scanned.      
 
       //=====================================================
@@ -421,19 +425,7 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
   uint32_t sampleRawCount = SM->RegReadRegister(DRPBaseNode + "ES_SAMPLE_COUNT");
 
   uint64_t sampleCount;
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN",STOP_RUN);
-
-  //Make sure we get out of the run state
-  int while_count = 0;
-  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL.RUN")!=STOP_RUN){
-    usleep(100);
-    if(while_count==10000){
-      throwException("Base Node state machine stuck.");
-      break;
-    }
-    while_count++;
-  }
-
+  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN",0);
 
   //Update the sample count and error counts
   sampleCount = (1 << (1+(*it).prescale)) * sampleRawCount*BUS_WIDTH[rxDataWidth];
@@ -458,6 +450,7 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
     (*it).sample1=0;
     (*it).error1=0;
     //move to the next pixel
+    pixelsDone++;
     it++;
     if (it==Coords_vect.end()){
       return SCAN_DONE;
@@ -465,6 +458,17 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
       scan_pixel(SM);
       return SCAN_PIXEL;
     }
+  }
+  
+  //Make sure we get to the WAIT state
+  int while_count = 0;
+  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
+    usleep(100);
+    if(while_count==10000){
+      throwException("EndPixelLPM: Stuck waiting for RUN=0 to move ES_CNOTROL_STATUS to state 0x0 (WAIT).");
+      break;
+    }
+    while_count++;
   }
 }
 
@@ -474,14 +478,14 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
   uint32_t sampleRawCount = SM->RegReadRegister(DRPBaseNode + "ES_SAMPLE_COUNT");
 
   uint64_t sampleCount;
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN",STOP_RUN);
+  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN",0);
 
   //Make sure we get out of the run state
   int while_count = 0;
-  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL.RUN")!=STOP_RUN){
+  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
     usleep(100);
     if(while_count==10000){
-      throwException("Base Node state machine stuck.");
+      throwException("EndPixelDFE: Stuck waiting for RUN=0 to move ES_CNOTROL_STATUS to state 0x1. (WAIT)");
       break;
     }
     while_count++;
@@ -503,7 +507,6 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
   }else if (dfe_state == SECOND){
     (*it).error1 += errorRawCount;
     (*it).sample1 += sampleCount;
-
     //Compute total BER
     (*it).BER = ((*it).error0 / double((*it).sample0) +
 		 (*it).error1 / double((*it).sample1));
@@ -523,6 +526,7 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
       }
       //move to the next pixel
       it++;
+      pixelsDone++;
       //go to other side of DFE scan next time
       dfe_state=FIRST;
       if (it==Coords_vect.end()){
@@ -551,7 +555,6 @@ void eyescan::fileDump(std::string outputFile){
   
   FILE * dataFile = fopen(outputFile.c_str(), "w");
   if(dataFile!= NULL){
-    printf("\n\n\n\n\nThe size of esCoords is: %d\n", (int)esCoords.size());
     
     for(int i = 0; i < (int)esCoords.size(); i++) {
       fprintf(dataFile, "%0.9f ", esCoords[i].phase);
@@ -578,6 +581,7 @@ void eyescan::fileDump(std::string outputFile){
 void eyescan::scan_pixel(ApolloSM*SM){
   es_state = SCAN_PIXEL;
 
+
   //prescale
   SM->RegWriteRegister(DRPBaseNode + "ES_PRESCALE",(*it).prescale);
   
@@ -603,24 +607,26 @@ void eyescan::scan_pixel(ApolloSM*SM){
     }    
   }
 
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.ARM", STOP_RUN);
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", STOP_RUN);
+  //send the state back to WAIT
+  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.ARM", 0);
+  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 0);
   int while_count = 0;
-  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL.RUN")!=STOP_RUN){
+  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
     usleep(100);
     if(while_count==10000){
-      throwException("Base Node state machine stuck.");
+      throwException("ScanPixel: Stuck waiting for run to reset.");
       break;
     }
     while_count++;
   }
   while_count=0;
 
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", RUN);  
-  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL.RUN")!=RUN){
+  //Start the next run and wait for us to move out of the wait state
+  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 1);  
+  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS") == 0x1){
     usleep(100);
     if(while_count==10000){
-      throwException("Base Node state machine stuck.");
+      throwException("ScanPixel: Stuck waiting for the run to start (get out of WAIT).");
       break;
     }
     while_count++;

@@ -99,17 +99,19 @@ private:
   ES_state_t es_state;
   DFE_state_t dfe_state;
 
+  size_t  pixelsDone;
+
   //  uint8_t prescale;
   uint8_t maxPrescale;
 
   //access parameters
   std::string lpmNode;
   std::string DRPBaseNode;
-  double firstBER;
+//  double firstBER;
   std::vector<eyescanCoords> Coords_vect;
   std::vector<eyescanCoords>::iterator it;
-  std::vector<double> volt_vect;
-  std::vector<double> phase_vect;
+//  std::vector<double> volt_vect;
+//  std::vector<double> phase_vect;
 
 
 
@@ -128,6 +130,10 @@ public:
   void fileDump(std::string outputFile);
   void reset();
   void start();
+  void GetProgress(size_t & _pixelCount, size_t & _pixelsDone){
+    _pixelCount = Coords_vect.size();
+    _pixelsDone = pixelsDone;
+  };
 
 private:
   eyescan();

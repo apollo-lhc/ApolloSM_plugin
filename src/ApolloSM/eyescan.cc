@@ -1,4 +1,4 @@
-#include <ApolloSM/ApolloSM.hh>
+
 #include <ApolloSM/eyescan_class.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
 #include <BUTool/ToolException.hh>
@@ -16,12 +16,13 @@
 #define END 0x5
 #define RUN 0x1
 #define STOP_RUN 0x0
-#define PRECISION 0.00000001 // 10^-9
-#define PRESCALE_STEP 3
+#define PRECISION 0.00000001  //PK: 10^-8 not 10^-9
+#define PRESCALE_STEP 1  //PK: default from BU was 3
+#define MIN_ERROR_COUNT 3  //PK: default from Rui's MATLAB script
 
 #define assertNode(node, correctVal) do{				\
-    SM->RegWriteRegister(node, correctVal);				\
-    if(correctVal != SM->RegReadRegister(node)) {			\
+    SM->RegWriteRegister(node, correctVal);                            \
+    if(std::abs(correctVal) != std::abs(SM->RegReadRegister(node))) {			\
       throwException("Unable to set " + node + " correctly to: " + std::to_string(correctVal));	\
     }									\
   } while(0)
@@ -194,14 +195,15 @@ void eyescan::update(ApolloSM*SM){
     es_state= SCAN_READY;
     break;
   case SCAN_READY://make reset a func; make this a READY state
-    //printf("READY\n");
+    printf("READY\n");
     break;
   case SCAN_START:
-    //printf("START\n");
-    assertNode(baseNode + "PRESCALE", 0x0);
+    printf("START\n");
+    cur_prescale = SM->RegReadRegister(baseNode + "PRESCALE"); 
+    assertNode(baseNode + "PRESCALE", cur_prescale); 
     scan_pixel(SM);
   case SCAN_PIXEL:
-    //printf("PIXEL/n");
+    //printf("PIXEL\n");
     if (END == SM->RegReadRegister(baseNode + "CTRL_STATUS")){
       if (rxlpmen==DFE){
 	es_state = EndPixelDFE(SM);
@@ -326,44 +328,70 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
     while_count++;
   }
   while_count=0;
+ 
+  // PK: calculate BER (neighboring prescales)
+  // LPM
+  double BER = errorCount / ((1 << (1 + cur_prescale)) * sampleCount * (float)actualDataWidth);
 
-  // calculate BER
-  double BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
-  if((BER < PRECISION) && (cur_prescale != Max_prescale)) {
-    cur_prescale+=PRESCALE_STEP;
-      
-    if(cur_prescale > Max_prescale) {
-      cur_prescale = Max_prescale;
-         
-    }
-      
-    scan_pixel(SM);
-    return SCAN_PIXEL;
-  } else {
-    if (errorCount==0) //if scan found no errors default to BER floor
-      {
-        errorCount=1;
-        BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
-      }
-    actualsample0=((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
-    errorCount0=errorCount;
-    (*it).BER=BER;
-    (*it).sample0=actualsample0;
-    (*it).error0=errorCount0;
-    (*it).sample1=0;
-    (*it).error1=0;
-    (*it).voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
-    (*it).phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
-    it++;
-    if (it==Coords_vect.end())
-      {
-        return SCAN_DONE;
-      } else {
-      cur_prescale=0;
-      scan_pixel(SM);
-      return SCAN_PIXEL;
-    }
+  if (((BER < PRECISION) && (cur_prescale != Max_prescale)) || ((errorCount > 10 * MIN_ERROR_COUNT) && (cur_prescale != 0))) {
+	  if (cur_prescale < Max_prescale && errorCount < 10 * MIN_ERROR_COUNT) {
+		  cur_prescale = std::min(cur_prescale + PRESCALE_STEP, Max_prescale);
+		  if (errorCount < MIN_ERROR_COUNT) {
+			  assertNode(baseNode + "PRESCALE", cur_prescale);
+			  scan_pixel(SM);
+			  return SCAN_PIXEL;
+
+		  }
+	  }
+	  else if ((cur_prescale > 0 && errorCount > 10 * MIN_ERROR_COUNT)) {
+		  if (errorCount > 1000 * MIN_ERROR_COUNT) {
+			  cur_prescale = std::max((int)(cur_prescale - 2 * PRESCALE_STEP), 0);
+		  }
+		  else {
+			  cur_prescale = std::max((int)(cur_prescale - PRESCALE_STEP), 0);
+		  }
+		  assertNode(baseNode + "PRESCALE", std::max((int)cur_prescale, 0));
+		  scan_pixel(SM);
+		  return SCAN_PIXEL;
+
+
+
+	  }
+	  else {
+		  scan_pixel(SM);
+		  return SCAN_PIXEL;
+
+	  }
+	  scan_pixel(SM);
+	  return SCAN_PIXEL;
   }
+  else {
+	  if (errorCount == 0) //if scan found no errors default to BER floor
+	  {
+		  errorCount = 1;
+		  BER = errorCount / ((1 << (1 + cur_prescale)) * sampleCount * (float)actualDataWidth);
+	  }
+	  actualsample0 = ((1 << (1 + cur_prescale)) * sampleCount * (float)actualDataWidth);
+	  errorCount0 = errorCount;
+	  (*it).BER = BER;
+	  (*it).sample0 = actualsample0;
+	  (*it).error0 = errorCount0;
+	  (*it).sample1 = 0;					
+	  (*it).error1 = 0;
+	  (*it).voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7);
+	  (*it).phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG") & 0x0FFF;
+	  it++;
+	  if (it == Coords_vect.end())
+	  {
+		  return SCAN_DONE;
+	  }
+	  else {
+		  scan_pixel(SM); 
+		  return SCAN_PIXEL;
+	  }
+  }
+   
+
 }
 
 eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
@@ -390,67 +418,98 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
   }
   while_count=0;
   uint32_t actualsample =((1 << (1+cur_prescale))*sampleCount*actualDataWidth);
-  // calculate BER
-  double BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(double)actualDataWidth);
-  if((BER < PRECISION) && (cur_prescale != Max_prescale)) {
-    cur_prescale+=PRESCALE_STEP;
-      
-    if(cur_prescale > Max_prescale) {
-      cur_prescale = Max_prescale;
-    }
-    assertNode(baseNode + "PRESCALE", cur_prescale);
-    scan_pixel(SM);
-    return SCAN_PIXEL;
-  } else {
-    if (errorCount==0){
-      errorCount=1;
-      BER = errorCount/((1 << (1+cur_prescale))*sampleCount*(float)actualDataWidth);
-    }
-    switch (dfe_state){
-    case FIRST:
-      firstBER=BER;
-      (*it).sample0=actualsample;
-      (*it).error0=errorCount;
-      if(1 == (SM->RegReadRegister(baseNode + "UT_SIGN"))) {
-	SM->RegWriteRegister(baseNode + "UT_SIGN", 0);
-      } else {
-	SM->RegWriteRegister(baseNode + "UT_SIGN", 1);
-      }
-      BER=0;
-      cur_prescale=0;
-      dfe_state=SECOND;
-      scan_pixel(SM);
-      return SCAN_PIXEL;
-    case SECOND:
-	    
-      BER=firstBER+BER;
-	    
-      (*it).sample1=actualsample;
-      (*it).error1=errorCount;
-      (*it).BER=BER;
-      (*it).voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7); 
-      (*it).phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG")&0x0FFF;
-      firstBER=0;
-      it++;
-      if (it==Coords_vect.end())
-	{
-	      
-	  return SCAN_DONE;
-	} else {
-	cur_prescale=0;
-	dfe_state = FIRST;
-	scan_pixel(SM);
-	return SCAN_PIXEL;
-      }
-    case LPM_MODE:
-      throwException("DFE mode not LPM");
-      return UNINIT;
-    default:
-      throwException("Not DFE or LPM mode?");
-      return UNINIT;
-	 
-    }
+  
+   
+  // PK: calculate BER (neighboring prescales)
+  // DFE: Yes 
+  
+  double BER = errorCount / ((1 << (1 + cur_prescale)) * sampleCount * (float)actualDataWidth);
+  if(((BER < PRECISION) && (cur_prescale != Max_prescale)) || ((errorCount > 10*MIN_ERROR_COUNT) && (cur_prescale != 0))) {
+	  if (cur_prescale < Max_prescale && errorCount < 10 * MIN_ERROR_COUNT)  {
+		  cur_prescale = std::min(cur_prescale + PRESCALE_STEP, Max_prescale);
+		  if (errorCount < MIN_ERROR_COUNT) {
+			  assertNode(baseNode + "PRESCALE", cur_prescale);
+			  scan_pixel(SM);
+			  return SCAN_PIXEL;
+
+		  }
+	  }
+	  else if ((cur_prescale > 0 && errorCount > 10*MIN_ERROR_COUNT)) {
+		  if (errorCount > 1000 * MIN_ERROR_COUNT) {
+			  cur_prescale = std::max((int)(cur_prescale - 2 * PRESCALE_STEP), 0);
+		  }
+		  else {
+			  cur_prescale = std::max((int)(cur_prescale - PRESCALE_STEP), 0);
+		  }
+		  assertNode(baseNode + "PRESCALE", std::max((int)cur_prescale, 0));
+		  scan_pixel(SM);
+		  return SCAN_PIXEL;
+
+
+
+	  }
+	  else {
+          scan_pixel(SM);
+		  return SCAN_PIXEL;
+
+	  }
+          scan_pixel(SM);
+          return SCAN_PIXEL;
   }
+  else {
+          
+	  if (errorCount == 0) {
+                  
+		  errorCount = 1;
+		  BER = errorCount / ((1 << (1 + cur_prescale)) * sampleCount * (float)actualDataWidth);
+	  }
+	  switch (dfe_state) {
+	  case FIRST:
+		  firstBER = BER;
+		  (*it).sample0 = actualsample;
+		  (*it).error0 = errorCount;
+		  if (1 == (SM->RegReadRegister(baseNode + "UT_SIGN"))) {
+			  SM->RegWriteRegister(baseNode + "UT_SIGN", 0);
+		  }
+		  else {
+			  SM->RegWriteRegister(baseNode + "UT_SIGN", 1);
+		  }
+		  BER = 0;
+		  dfe_state = SECOND;
+		  scan_pixel(SM); 
+		  return SCAN_PIXEL;
+	  case SECOND:
+
+		  BER = firstBER + BER;
+
+		  (*it).sample1 = actualsample;
+		  (*it).error1 = errorCount;
+		  (*it).BER = BER;
+		  (*it).voltageReg = SM->RegReadRegister(baseNode + "VERT_OFFSET_MAG") | (SM->RegReadRegister(baseNode + "VERT_OFFSET_SIGN") << 7);
+                  (*it).phaseReg = SM->RegReadRegister(baseNode + "HORZ_OFFSET_MAG") & 0x0FFF;
+		  firstBER = 0;
+		  it++;
+		  if (it == Coords_vect.end())
+		  {
+
+			  return SCAN_DONE;
+		  }
+		  else {
+			  dfe_state = FIRST;
+			  scan_pixel(SM); 
+			  return SCAN_PIXEL;
+		  }
+	  case LPM_MODE:
+		  throwException("DFE mode not LPM");
+		  return UNINIT;
+	  default:
+		  throwException("Not DFE or LPM mode?");
+		  return UNINIT;
+
+	  }
+  }
+     
+  
 }
 
 void eyescan::SetEyeScanPhase(ApolloSM*SM, std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign) {
@@ -502,7 +561,7 @@ void eyescan::fileDump(std::string outputFile){
 
 void eyescan::scan_pixel(ApolloSM*SM){
   es_state = SCAN_PIXEL;
-  
+  //std::cout << __LINE__ << std::endl;  
   
   //SET VOLTAGE
   // https://www.xilinx.com/support/documentation/user_guides/ug476_7Series_Transceivers.pdf#page=300 go to ES_VERT_OFFSET description
@@ -512,8 +571,9 @@ void eyescan::scan_pixel(ApolloSM*SM){
   uint32_t NEGATIVE = 1;
   int32_t voltInt = (*it).voltageInt;
   int32_t phaseInt = (*it).phaseInt;
+  //printf("scan_pixel: prescale: %d \n", cur_prescale);
   assertNode(baseNode + "PRESCALE", cur_prescale);
-
+  
   //printf("Voltage= %f\n", volt);
   syslog(LOG_INFO, "%d\n", voltInt);
   //printf("We think volt is %d\n",voltInt);
@@ -563,8 +623,7 @@ void eyescan::scan_pixel(ApolloSM*SM){
     }
     while_count++;
   }
-  while_count=0;
-
+  while_count=0; 
   //printf("RUN after stop run write is %u\n",SM->RegReadRegister(baseNode+"RUN"));
   //printf("ctrl_status after stop run write is %u\n",SM->RegReadRegister(baseNode+"CTRL_STATUS"));
   // assert RUN

@@ -23,12 +23,12 @@ EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLL
 
 
 
-INCLUDE_PATH = \
+INCLUDE_PATH += \
 							-Iinclude  \
 							-I$(BUTOOL_PATH)/include \
 							-I$(IPBUS_REG_HELPER_PATH)/include
 
-LIBRARY_PATH = \
+LIBRARY_PATH += \
 							-Llib \
 							-L$(BUTOOL_PATH)/lib \
 							-L$(IPBUS_REG_HELPER_PATH)/lib

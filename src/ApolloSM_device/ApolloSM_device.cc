@@ -513,7 +513,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 	}
 	totalPixelCount += pixelCountFinished;
 	totalPixelsDone += pixelCountFinished;
-	printf("Progress: % 3.2f%% of %zu points done\n",(100.0*totalPixelsDone)/double(totalPixelCount),totalPixelCount);
+	printf("Progress: % 3.2f%% of %zu points done\r",(100.0*totalPixelsDone)/double(totalPixelCount),totalPixelCount);
       }
 
       for (auto itES = eyescans.begin(); itES != eyescans.end();)
@@ -541,7 +541,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 
     // Calculating total time taken by the program.
     double time_taken = double(end - start);
-    printf("Time taken by program is %f seconds.\n",time_taken);
+    printf("\nTime taken by program is %f seconds.\n",time_taken);
     return CommandReturn::OK;
   }
 

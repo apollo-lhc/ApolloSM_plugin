@@ -9,6 +9,7 @@ namespace BUException {
   ExceptionClassGenerator(FILE_ERROR, "File error.\n")
   ExceptionClassGenerator(JTAG_ERROR, "JTAG error.\n");
   ExceptionClassGenerator(EYESCAN_ERROR, "Eyescan error.\n");
+  ExceptionClassGenerator(BAD_PARAMETER, "Bad Parameter.\n");
 }
 
 #endif

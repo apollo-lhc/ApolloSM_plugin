@@ -16,10 +16,11 @@
 
 #include <IPBusRegHelper/IPBusRegHelper.hh>
 #include <ApolloSM/ApolloSM.hh>
+#include <ApolloSM/eyescan_class.hh>
 
 namespace BUTool{
   
-  class ApolloSMDevice: public CommandList<ApolloSMDevice>, private IPBusRegHelper{
+  class ApolloSMDevice: public CommandList<ApolloSMDevice>, public IPBusRegHelper{
   public:
     ApolloSMDevice(std::vector<std::string> arg); 
     ~ApolloSMDevice();
@@ -59,8 +60,14 @@ namespace BUTool{
     CommandReturn::status UART_Term(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status UART_CMD(std::vector<std::string>,std::vector<uint64_t>);
     CommandReturn::status GenerateHTMLStatus(std::vector<std::string>,std::vector<uint64_t>);
+
     CommandReturn::status unblockAXI(std::vector<std::string>,std::vector<uint64_t>);
-    
+
+    //CommandReturn::status EnableEyeScan(std::vector<std::string>,std::vector<uint64_t>);
+    //CommandReturn::status SetOffsets(std::vector<std::string>,std::vector<uint64_t>);
+    //CommandReturn::status SingleEyeScan(std::vector<std::string>,std::vector<uint64_t>);
+    CommandReturn::status EyeScan(std::vector<std::string> strArg, std::vector<uint64_t>);
+    //CommandReturn::status Bathtub(std::vector<std::string>,std::vector<uint64_t>);
     //Add new command (sub command) auto-complete files here
     std::string autoComplete_Help(std::vector<std::string> const &,std::string const &,int);
 
@@ -77,7 +84,7 @@ namespace BUTool{
 		 "file/SM_SN",
 		 "a",
 		 "ApolloSM",
-		 "\"connection file\"  or \"SM_SN\""
+		 "Connection file for creating an ApolloSM device"
 		 ); //Register ApolloSMDevice with the DeviceFactory  
 }
 

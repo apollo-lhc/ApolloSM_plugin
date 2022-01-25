@@ -8,6 +8,8 @@
 #include <unistd.h> // usleep, execl
 #include <signal.h>
 #include <time.h>
+#include <stdlib.h>     /* strtoul */
+
 
 #include <syslog.h>  ///for syslog
 
@@ -38,7 +40,7 @@ namespace po = boost::program_options; //Making life easier for boost
 // ====================================================================================================
 long us_difftime(struct timespec cur, struct timespec end){ 
   return ( (end.tv_sec  - cur.tv_sec )*SEC_IN_US + 
-	   (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
+     (end.tv_nsec - cur.tv_nsec)/NS_IN_US);
 }
 
 
@@ -86,7 +88,7 @@ temperatures sendAndParse(ApolloSM* SM) {
       allTokens.push_back(blankVec);
       // One vector per line
       for(tokenizer::iterator wordIt = wordTokens.begin(); wordIt != wordTokens.end(); ++wordIt) {
-	allTokens[vecCount].push_back(*wordIt);
+  allTokens[vecCount].push_back(*wordIt);
       }
       vecCount++;
     }
@@ -96,14 +98,14 @@ temperatures sendAndParse(ApolloSM* SM) {
     // Following lines follow the same concept
     std::vector<float> temp_values;
     for(size_t i = 0; 
-	i < allTokens.size() && i < 4;
-	i++){
+  i < allTokens.size() && i < 4;
+  i++){
       if(2 == allTokens[i].size()) {
-	float temp;
-	if( (temp = std::atof(allTokens[i][1].c_str())) < 0) {
-	  temp = 0;
-	}
-	temp_values.push_back(temp);
+  float temp;
+  if( (temp = std::atof(allTokens[i][1].c_str())) < 0) {
+    temp = 0;
+  }
+  temp_values.push_back(temp);
       }
     }
     switch (temp_values.size()){
@@ -155,6 +157,35 @@ void sendTemps(ApolloSM* SM, temperatures temps) {
   updateTemp(SM,"SLAVE_I2C.S5.VAL", temps.REGTemp);
 }
 
+std::vector<std::string> split_string(std::string str, std::string const & delimiter){
+  
+  size_t position = 0;
+  std::string token;
+  std::vector<std::string> split;
+  while( (position = str.find(delimiter)) != std::string::npos) {
+    token = str.substr(0, position);
+    if(token.size()){
+      split.push_back(token);
+      str.erase(0, position+delimiter.length());
+    }
+  }
+  if(str.size()){
+    split.push_back(str);
+  }
+  
+  return split;
+}
+
+bool isNumber(std::string const & str){
+  bool ret = true;
+  for(size_t iChar=0;iChar<str.size();iChar++){
+    if(!isxdigit(str[iChar]) && str[iChar] != 'x'){
+      ret=false;
+      break;
+    }
+  }   
+  return ret;
+}
 
 int main(int argc, char** argv) { 
 
@@ -176,6 +207,7 @@ int main(int argc, char** argv) {
     ("cm_powerup,P",         po::value<bool>(),        "Powerup CM")
     ("cm_powerup_time,t",    po::value<int>(),         "Powerup time in seconds")
     ("sensorsThroughZynq,s", po::value<bool>(),        "Read sensors through the Zynq")
+    ("regwrite,w",           po::value<std::string>(), "Reg write to perform on boot")
     ("config_file",          po::value<std::string>(), "config file"); // This is the only option not also in the file option (obviously); 
    
   po::options_description cfg_options("SM_boot options");
@@ -185,6 +217,7 @@ int main(int argc, char** argv) {
     ("polltime",           po::value<int>(),         "Polltime in seconds")
     ("cm_powerup",         po::value<bool>(),        "Powerup CM")
     ("cm_powerup_time",    po::value<int>(),         "Powerup time in seconds")
+    ("regwrite,w",         po::value<std::string>(), "Reg write to perform on boot")
     ("sensorsThroughZynq", po::value<bool>(),        "Read sensors through the Zynq"); // This means: by default, read the sensors through the zynq
 
   std::map<std::string,std::vector<std::string> > allOptions;
@@ -193,7 +226,7 @@ int main(int argc, char** argv) {
   //Get options from command line,
   try { 
     FillOptions(parse_command_line(argc, argv, cli_options),
-		allOptions);
+    allOptions);
   } catch (std::exception &e) {
     fprintf(stderr, "Error in BOOST parse_command_line: %s\n", e.what());
     return 0;
@@ -211,7 +244,7 @@ int main(int argc, char** argv) {
   if(configFile){
     try { 
       FillOptions(parse_config_file(configFile,cfg_options,true),
-		  allOptions);
+      allOptions);
     } catch (std::exception &e) {
       fprintf(stderr, "Error in BOOST parse_config_file: %s\n", e.what());
     }
@@ -267,6 +300,47 @@ int main(int argc, char** argv) {
     syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
   
 
+
+    // ====================================
+    // Do all of the reg writes we are asked to
+    auto regWrites = allOptions["regwrite"];
+    for(auto itRegWrite = regWrites.begin();
+	itRegWrite != regWrites.end();
+	itRegWrite++){      
+      //Loop over each regwrite line and split it into reg/value
+      std::vector<std::string> split = split_string(*itRegWrite," ");
+      if(split.size() == 2){
+	//validate the second argument (write value)
+	
+	if(!isNumber(split[1])){
+	  syslog(LOG_INFO,"Bad reg write value: %s",split[1].c_str());
+	  continue;
+	}	
+	uint32_t val = strtoul(split[1].c_str(),NULL,0);
+
+	try{
+	  //Must only be two strings from the split
+	  if(std::isdigit(split[0][0])){
+	    //If the first digit is a number, assume it is a number dec, 0x
+	    uint32_t addr = strtoul(split[0].c_str(),NULL,0);
+	    SM->RegWriteAddress(addr,val);
+	    syslog(LOG_INFO,"Wrote: 0x%08X to 0x%08X\n",val,addr);
+	  }else{
+	    SM->RegWriteRegister(split[0],val);
+	    syslog(LOG_INFO,"Wrote: 0x%08X to %s\n",val,split[0].c_str());
+	  }
+	}catch(BUException::IO_ERROR &e){
+	  syslog(LOG_INFO,"Bad reg write: %s",itRegWrite->c_str());
+	  continue;
+	}
+
+      }else{
+	syslog(LOG_INFO,"Bad reg write: %s",itRegWrite->c_str());
+      }
+	
+    }
+
+
     // ====================================
     // Turn on CM uC      
     if (powerupCMuC){
@@ -285,7 +359,6 @@ int main(int argc, char** argv) {
       syslog(LOG_INFO,"Reading out CM sensors via zynq\n");
     }
 
-
     // ==================================
     // Main DAEMON loop
     syslog(LOG_INFO,"Starting Monitoring loop\n");
@@ -302,52 +375,52 @@ int main(int argc, char** argv) {
 
       //Process CM temps
       if(sensorsThroughZynq) {
-	temperatures temps;  
-      	if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
-	  try{
-	    temps = sendAndParse(SM);
-	  }catch(std::exception & e){
-	    syslog(LOG_INFO,e.what());
-	    //ignoring any exception here for now
-	    temps = {0,0,0,0,false};
-	  }
-	  
-	  if(0 == CM_running ){
-	    //Drop the non uC temps
-	    temps.FIREFLYTemp = 0;
-	    temps.FPGATemp = 0;
-	    temps.REGTemp = 0;
-	  }
-	  CM_running = SM->RegReadRegister("CM.CM_1.CTRL.PWR_GOOD");
-	  
-	  sendTemps(SM, temps);
-	  if(!temps.validData){
-	    syslog(LOG_INFO,"Error in parsing data stream\n");
-	  }
-	}else{
-	  temps = {0,0,0,0,false};
-	  sendTemps(SM, temps);
-	}
+  temperatures temps;  
+        if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
+    try{
+      temps = sendAndParse(SM);
+    }catch(std::exception & e){
+      syslog(LOG_INFO,e.what());
+      //ignoring any exception here for now
+      temps = {0,0,0,0,false};
+    }
+    
+    if(0 == CM_running ){
+      //Drop the non uC temps
+      temps.FIREFLYTemp = 0;
+      temps.FPGATemp = 0;
+      temps.REGTemp = 0;
+    }
+    CM_running = SM->RegReadRegister("CM.CM_1.CTRL.PWR_GOOD");
+    
+    sendTemps(SM, temps);
+    if(!temps.validData){
+      syslog(LOG_INFO,"Error in parsing data stream\n");
+    }
+  }else{
+    temps = {0,0,0,0,false};
+    sendTemps(SM, temps);
+  }
       }
 
       //Check if we are shutting down
       if((!inShutdown) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
-	syslog(LOG_INFO,"Shutdown requested\n");
-	inShutdown = true;
-	//the IPMC requested a re-boot.
-	pid_t reboot_pid;
-	if(0 == (reboot_pid = fork())){
-	  //Shutdown the system
-	  execlp("/sbin/shutdown","/sbin/shutdown","-h","now",NULL);
-	  exit(1);
-	}
-	if(-1 == reboot_pid){
-	  inShutdown = false;
-	  syslog(LOG_INFO,"Error! fork to shutdown failed!\n");
-	}else{
-	  //Shutdown the command module (if up)
-	  SM->PowerDownCM(1,5);
-	}
+  syslog(LOG_INFO,"Shutdown requested\n");
+  inShutdown = true;
+  //the IPMC requested a re-boot.
+  pid_t reboot_pid;
+  if(0 == (reboot_pid = fork())){
+    //Shutdown the system
+    execlp("/sbin/shutdown","/sbin/shutdown","-h","now",NULL);
+    exit(1);
+  }
+  if(-1 == reboot_pid){
+    inShutdown = false;
+    syslog(LOG_INFO,"Error! fork to shutdown failed!\n");
+  }else{
+    //Shutdown the command module (if up)
+    SM->PowerDownCM(1,5);
+  }
       }
       //=================================
 
@@ -357,7 +430,7 @@ int main(int argc, char** argv) {
       // sleep for 10 seconds minus how long it took to read and send temperature    
       useconds_t sleep_us = update_period_us - us_difftime(startTS, stopTS);
       if(sleep_us > 0){
-	usleep(sleep_us);
+  usleep(sleep_us);
       }
     }
   }catch(BUException::exBase const & e){

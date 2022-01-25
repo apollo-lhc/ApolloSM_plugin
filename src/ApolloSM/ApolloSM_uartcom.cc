@@ -133,32 +133,32 @@ void ApolloSM::UART_Terminal(std::string const & ttyDev) {
     
     if(ret_psel > 0){
       if(FD_ISSET(fd,&rSetCopy) && FD_ISSET(STDOUT_FILENO,&wSetCopy)){
-      	char outChar;
-	int ret = read(fd,&outChar,1);
-	if(1 == ret){
-	  printf("%c",outChar);
-	  fflush(stdout);
-	}
+        char outChar;
+  int ret = read(fd,&outChar,1);
+  if(1 == ret){
+    printf("%c",outChar);
+    fflush(stdout);
+  }
       }else if(FD_ISSET(STDIN_FILENO,&rSetCopy) && FD_ISSET(fd,&wSetCopy)){
-	char userInput;
-	int ret;
-	ret = read(STDIN_FILENO,&userInput,1);
-	if(1 == ret){	
-	  if(29 == userInput){
-	    interactiveLoop = false;
-	    continue;	
-	  }else if (13 == userInput){
-	    write(fd,&userInput,1);
-	  }else if (10 == userInput){	
-	    write(fd,&userInput,1);
-	  }else if (127 == userInput){
-	    char const BS = 8;
-	    write(fd,&BS,1);
-	    printf("%c ",8); //Draw backspace by backspace, space, (backspace from remote echo)
-	  }else{
-	    write(fd,&userInput,1);
-	  }
-	}
+  char userInput;
+  int ret;
+  ret = read(STDIN_FILENO,&userInput,1);
+  if(1 == ret){ 
+    if(29 == userInput){
+      interactiveLoop = false;
+      continue; 
+    }else if (13 == userInput){
+      write(fd,&userInput,1);
+    }else if (10 == userInput){ 
+      write(fd,&userInput,1);
+    }else if (127 == userInput){
+      char const BS = 8;
+      write(fd,&BS,1);
+      printf("%c ",8); //Draw backspace by backspace, space, (backspace from remote echo)
+    }else{
+      write(fd,&userInput,1);
+    }
+  }
       }
     }else{
       interactiveLoop = false;
@@ -244,9 +244,9 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
     } else {
       // Do nothing with the character read
       if(read(fd, &readChar, sizeof(readChar)) < 0) {
-	BUException::IO_ERROR e;
-	e.Append("read error: error reading from " + ttyDev + "\n");
-	throw e;
+  BUException::IO_ERROR e;
+  e.Append("read error: error reading from " + ttyDev + "\n");
+  throw e;
       }
     }
   }
@@ -288,9 +288,9 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
       std::size_t writeCharLen = 1;
       writeChar[0] = sendline[i];
       if(write(fd, writeChar, writeCharLen) < 0) {
-	BUException::IO_ERROR e;
-	e.Append("write error: error writing to " + ttyDev + "\n");
-	throw e;
+  BUException::IO_ERROR e;
+  e.Append("write error: error writing to " + ttyDev + "\n");
+  throw e;
       }
 
       //wait for character to be echoed back
@@ -299,27 +299,27 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
       int returnValr;
       // Pselect returns 0 for time out, -1 for error, or number of file descriptors ready to be read
       if(0 == (returnValr = pselect(maxfdp1, &readSetCopy, NULL, NULL, &t, NULL)))  {
-	// If it takes longer than 5 seconds for a character to be echoed back something is probably wrong
-	BUException::IO_ERROR e;
-	e.Append("pselect timed out while polling " + ttyDev + " for echoed command\n");
-	throw e;
+  // If it takes longer than 5 seconds for a character to be echoed back something is probably wrong
+  BUException::IO_ERROR e;
+  e.Append("pselect timed out while polling " + ttyDev + " for echoed command\n");
+  throw e;
       } else if(-1 == returnValr) {
-	BUException::IO_ERROR e;
-	e.Append("read error: error from pselect polling " + ttyDev + " for echoed command\n");
-	throw e;
+  BUException::IO_ERROR e;
+  e.Append("read error: error from pselect polling " + ttyDev + " for echoed command\n");
+  throw e;
       } else {
-	// make sure echoed character is same as sent character
-	if(read(fd, &readChar, sizeof(readChar)) < 0) {
-	  BUException::IO_ERROR e;
-	  e.Append("read error: error reading echoed command from " + ttyDev + "\n");
-	  throw e;
-	}
+  // make sure echoed character is same as sent character
+  if(read(fd, &readChar, sizeof(readChar)) < 0) {
+    BUException::IO_ERROR e;
+    e.Append("read error: error reading echoed command from " + ttyDev + "\n");
+    throw e;
+  }
       }
       
       //if(sendline[i] != readChar){
-      //	printf("Error: mismatched character %c %c\n",sendline[i],readChar);
-      //	printf("Error: mismatched character %c %d\n",sendline[i],readChar);
-      //	return "Mismatched character\n";
+      //  printf("Error: mismatched character %c %c\n",sendline[i],readChar);
+      //  printf("Error: mismatched character %c %d\n",sendline[i],readChar);
+      //  return "Mismatched character\n";
       //}
 
     }
@@ -347,9 +347,9 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
     } else {
       // Do nothing with the character read
       if(read(fd, &readChar, sizeof(readChar)) < 0) {
-	BUException::IO_ERROR e;
-	e.Append("read error: error reading from " + ttyDev + "\n");
-	throw e;
+  BUException::IO_ERROR e;
+  e.Append("read error: error reading from " + ttyDev + "\n");
+  throw e;
       }
     }
   }
@@ -372,9 +372,9 @@ std::string ApolloSM::UART_CMD(std::string const & ttyDev, std::string sendline,
       throw e;
     } else {
       if(0 > read(fd, &readChar, sizeof(readChar))) {
-	BUException::IO_ERROR e;
-	e.Append("read error: error reading from " + ttyDev + " after command was sent and echoed\n");
-	throw e;
+  BUException::IO_ERROR e;
+  e.Append("read error: error reading from " + ttyDev + " after command was sent and echoed\n");
+  throw e;
       }
     }
     // Currently, we tell the difference between a regular '>' and the prompt character, also '>',

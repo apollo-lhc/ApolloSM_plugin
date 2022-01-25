@@ -11,14 +11,14 @@ namespace po = boost::program_options; //making life easier for boost
 
 //Remember to fill parsedOptions in order from highest to lowest priority
 void FillOptions(po::parsed_options Options,
-		 std::map<std::string,std::vector<std::string> > & parsedOptions);
+     std::map<std::string,std::vector<std::string> > & parsedOptions);
 
 //#include <standalone/optionParsing_bool.hh>
 
 template<typename T> 
 T GetFinalParameterValue(std::string const & option,
-			 std::map<std::string,std::vector<std::string> > const &map,
-			 T const & defaultValue){
+       std::map<std::string,std::vector<std::string> > const &map,
+       T const & defaultValue){
   T reg = defaultValue;
   auto optionVal = map.find(option);
   if(optionVal != map.end()){

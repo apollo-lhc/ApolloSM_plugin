@@ -270,21 +270,24 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
   int left_padding = (8 - (bd->len & 0x7)) & 0x7;
   int tdo_error = 0;
   int tms = 0;
+  bool displayProgress = false;
 
-  if(bd->len > 10000){
-    updateCount=80;
-    totalBitCount=bd->len;
-    printf("Programming FPGA.\n[");
-    for(size_t i = 0; i < totalBitCount/(totalBitCount/updateCount);i++){
-      printf("=");
+  if(displayProgress){
+    if(bd->len > 10000){
+      updateCount=80;
+      totalBitCount=bd->len;
+      printf("Programming FPGA.\n[");
+      for(size_t i = 0; i < totalBitCount/(totalBitCount/updateCount);i++){
+	printf("=");
+      }
+      printf("]\n[");
+      fflush(stdout);
+      currentBitCount=0;
+      updateBitCount = totalBitCount/updateCount; 
+    }else{
+      currentBitCount = 0;
+      updateBitCount  = 0;
     }
-    printf("]\n[");
-    fflush(stdout);
-    currentBitCount=0;
-    updateBitCount = totalBitCount/updateCount; 
-  }else{
-    currentBitCount = 0;
-    updateBitCount  = 0;
   }
 
   for (int i=bd->len+left_padding-1; i >= left_padding; i--) {
@@ -305,17 +308,21 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
     if(pulse_tck(tms, tdi, tdo, rmask, 0) < 0)
       tdo_error = 1;
     
-    //updates
-    if((updateBitCount != 0) && (currentBitCount > updateBitCount)){
-      printf(".");
-      fflush(stdout);
-      //      updateBitCount += totalBitCount/updateCount; 
-      currentBitCount=0;
+    if(displayProgress){
+      //updates
+      if((updateBitCount != 0) && (currentBitCount > updateBitCount)){
+	printf(".");
+	fflush(stdout);
+	//      updateBitCount += totalBitCount/updateCount; 
+	currentBitCount=0;
+      }
     }
   }
-  if(updateBitCount != 0){
-    printf(".]\n");
-    fflush(stdout);
+  if(displayProgress){
+    if(updateBitCount != 0){
+      printf(".]\n");
+      fflush(stdout);
+    }
   }
 
   // if (tms)

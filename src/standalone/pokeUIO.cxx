@@ -13,6 +13,7 @@ int main(int argc, char ** argv){
   std::string label;
   uint32_t address;
   uint32_t data = 1;
+  char* UIO_DEBUG = getenv("UIO_DEBUG");
 
   switch (argc){
   case 4:
@@ -32,9 +33,18 @@ int main(int argc, char ** argv){
   //Find UIO for label
   int uio = label2uio(argv[1]);
   if(uio < 0){
-    fprintf(stderr,"%s not found\n",argv[1]);
-    return 1;
-  }else{
+    // try the old version
+    if (NULL != UIO_DEBUG) {
+      printf("simple UIO finder failed, trying legacy\n");
+    }
+    uio = label2uio_old(argv[1]);
+    if (uio < 0) {
+      // at this point, old version has failed.
+      fprintf(stderr,"%s not found\n",argv[1]);
+      return 1;
+    }
+  }
+  else{
     printf("UIO: %d\n",uio);
   }
   char UIOFilename[] = "/dev/uioXXXXXXXX";

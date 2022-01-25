@@ -1,5 +1,8 @@
 BUTOOL_PATH?=../../
 
+UHAL_VER_MAJOR ?= 2
+UHAL_VER_MINOR ?= 7
+
 CXX?=g++
 
 IPBUS_REG_HELPER_PATH?=${BUTOOL_PATH}/plugins/BUTool-IPBUS-Helpers
@@ -20,12 +23,12 @@ EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLL
 
 
 
-INCLUDE_PATH = \
+INCLUDE_PATH += \
 							-Iinclude  \
 							-I$(BUTOOL_PATH)/include \
 							-I$(IPBUS_REG_HELPER_PATH)/include
 
-LIBRARY_PATH = \
+LIBRARY_PATH += \
 							-Llib \
 							-L$(BUTOOL_PATH)/lib \
 							-L$(IPBUS_REG_HELPER_PATH)/lib
@@ -41,6 +44,7 @@ LIBRARIES =    	-lcurses \
 		-lToolException	\
 		-lBUTool_IPBusIO \
 		-lBUTool_IPBusStatus \
+		-lBUTool_BUTextIO \
 		-lboost_regex \
 		-lboost_filesystem \
 		-lboost_program_options
@@ -50,7 +54,11 @@ INSTALL_PATH ?= ./install
 
 CXX_FLAGS = -std=c++11 -g -O3 -rdynamic -Wall -MMD -MP -fPIC ${INCLUDE_PATH} -Werror -Wno-literal-suffix
 
-CXX_FLAGS +=-fno-omit-frame-pointer -Wno-ignored-qualifiers -Werror=return-type -Wextra -Wno-long-long -Winit-self -Wno-unused-local-typedefs  -Woverloaded-virtual ${COMPILETIME_ROOT} ${FALLTHROUGH_FLAGS}
+CXX_FLAGS +=-fno-omit-frame-pointer -Wno-ignored-qualifiers -Werror=return-type -Wextra -Wno-long-long -Winit-self -Wno-unused-local-typedefs  -Woverloaded-virtual -DUHAL_VER_MAJOR=${UHAL_VER_MAJOR} -DUHAL_VER_MINOR=${UHAL_VER_MINOR} ${COMPILETIME_ROOT} ${FALLTHROUGH_FLAGS}
+
+ifdef MAP_TYPE
+CXX_FLAGS += ${MAP_TYPE}
+endif
 
 LINK_LIBRARY_FLAGS = -shared -fPIC -Wall -g -O3 -rdynamic ${LIBRARY_PATH} ${LIBRARIES} \
 			-Wl,-rpath=$(RUNTIME_LDPATH)/lib ${COMPILETIME_ROOT}
@@ -73,23 +81,27 @@ ifdef IPBUS_PATH
 UHAL_INCLUDE_PATH = \
 	         					-isystem$(IPBUS_PATH)/uhal/uhal/include \
 	         					-isystem$(IPBUS_PATH)/uhal/log/include \
-	         					-isystem$(IPBUS_PATH)/uhal/grammars/include \
-							-isystem$(IPBUS_PATH)/../UIOuHAL/include
+	         					-isystem$(IPBUS_PATH)/uhal/grammars/include 
 UHAL_LIBRARY_PATH = \
 							-L$(IPBUS_PATH)/uhal/uhal/lib \
 	         					-L$(IPBUS_PATH)/uhal/log/lib \
 	         					-L$(IPBUS_PATH)/uhal/grammars/lib \
-							-L$(IPBUS_PATH)/extern/pugixml/pugixml-1.2/ \
-							-L$(IPBUS_PATH)/../UIOuHAL/lib
+							-L$(IPBUS_PATH)/extern/pugixml/pugixml-1.2/ 
 else
 UHAL_INCLUDE_PATH = \
-	         					-isystem$(CACTUS_ROOT)/include \
-							-isystem$(CACTUS_ROOT)/../UIOuHAL/include
+	         					-isystem$(CACTUS_ROOT)/include 
 
 UHAL_LIBRARY_PATH = \
-							-L$(CACTUS_ROOT)/lib -Wl,-rpath=$(CACTUS_ROOT)/lib \
-							-L$(CACTUS_ROOT)/../UIOuHAL/lib  -Wl,-rpath=$(CACTUS_ROOT)/../UIOuHAL/lib
+							-L$(CACTUS_ROOT)/lib -Wl,-rpath=$(CACTUS_ROOT)/lib 
 endif
+
+ifdef UIO_UHAL_PATH
+UHAL_INCLUDE_PATH += -isystem$(UIO_UHAL_PATH)/include
+UHAL_LIBRARY_PATH += -Wl,-rpath=$(UIO_UHAL_PATH)/lib
+else
+$(error UIO_UHAL_PATH is not set!)
+endif
+
 
 UHAL_CXX_FLAGHS = ${UHAL_INCLUDE_PATH}
 

@@ -1,15 +1,19 @@
-#include <utmpx.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <inttypes.h>
+#include <string.h>
+#include <ctime>
+
+#include <vector> //for vectors
 #include <string>
-#include <vector>
+
 #include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/ApolloSM_Exceptions.hh>
-
-#include <standalone/userCount.hh>
-#include <standalone/lnxSysMon.hh>
-
-#include <errno.h>
-#include <string.h>
 
 //pselect stuff
 #include <sys/select.h>
@@ -32,16 +36,92 @@
 #include <fstream>
 #include <iostream>
 
+#include <boost/algorithm/string/predicate.hpp> //ieqals
+#include <boost/algorithm/string/case_conv.hpp> //to_upper
+#include <boost/filesystem.hpp>
+
+int GetSysFSValue(std::string filename){
+  int ret = -1;
+  FILE * inFile = fopen(filename.c_str(),"r");
+  if(NULL == inFile){
+    return ret;
+  }
+  fscanf(inFile,"%d",&ret);
+  fclose(inFile);
+  return ret;
+}
+
+float GetCurrent(std::string basePath,size_t iSensor){
+  float ret = -1;
+  if (iSensor == 0 || iSensor > 3){
+    BUException::BAD_PARAMETER e;
+    throw e;
+  }
+  basePath+="/curr"+std::to_string(iSensor)+"_input";
+  ret = GetSysFSValue(basePath);
+  return ret;
+}
+
+float GetVoltage(std::string basePath,size_t iSensor){
+  float ret = -1;
+  if (iSensor == 0 || iSensor > 3){
+    BUException::BAD_PARAMETER e;
+    throw e;
+  }
+  basePath+="/in"+std::to_string(iSensor)+"_input";
+  ret = GetSysFSValue(basePath);
+  return ret;
+}
+
+//Get the label from a path and an iSensor
+//iSensor goes from 1 to 3.
+//iSensor = 0 means use basePath as the full path
+std::string GetLabel(std::string basePath,size_t iSensor){
+  if ( iSensor > 3){
+    BUException::BAD_PARAMETER e;
+    throw e;
+  }else if (iSensor > 0){
+    basePath+="/in"+std::to_string(iSensor)+"_label";
+  }  
+  
+  size_t const strArgSize = 64;
+  char strArg[strArgSize+1];
+  memset(strArg,0,strArgSize+1);
+
+  FILE * inFile = fopen(basePath.c_str(),"r");
+  if(NULL == inFile){
+    return std::string("");
+  }
+
+  fscanf(inFile, "%20s", strArg);
+  fclose(inFile);
+  
+  return std::string(strArg);
+}
+
+void UpdateINA3221Sensor(ApolloSM * sm,
+			 std::string const & baseTablePath,
+			 std::string const & baseFilePath,
+			 size_t iSense){
+  std::string label = GetLabel(baseFilePath,iSense);
+  float voltage = GetVoltage(baseFilePath,iSense);
+  float current = GetCurrent(baseFilePath,iSense);
+  try{
+    sm->RegWriteRegister(baseTablePath+"."+label+".I",current);
+    sm->RegWriteRegister(baseTablePath+"."+label+".V",voltage);
+  }catch(BUException::exBase &e){
+  }    
+}
 
 #define SEC_IN_US 1000000
 #define NS_IN_US 1000
 
 // ================================================================================
-#define DEFAULT_CONFIG_FILE "/etc/ps_monitor"
+#define DEFAULT_CONFIG_FILE "/etc/pwr_monitor"
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_RUN_DIR "/opt/address_table"
-#define DEFAULT_PID_FILE "/var/run/ps_monitor.pid"
+#define DEFAULT_PID_FILE "/var/run/pwr_monitor.pid"
 namespace po = boost::program_options;
 
 
@@ -54,13 +134,11 @@ long us_difftime(struct timespec cur, struct timespec end){
 // ==================================================
 
 int main(int argc, char ** argv) {
-
-
   //=======================================================================
   // Set up program options
   //=======================================================================
   //Command Line options
-  po::options_description cli_options("ps_monitor options");
+  po::options_description cli_options("pwr_monitor options");
   cli_options.add_options()
     ("help,h",    "Help screen")
     ("POLLTIME_IN_SECONDS,s", po::value<int>(),         "polltime in seconds")
@@ -70,11 +148,13 @@ int main(int argc, char ** argv) {
 
 
   //Config File options
-  po::options_description cfg_options("ps_monitor options");
+  po::options_description cfg_options("pwr_monitor options");
   cfg_options.add_options()
     ("POLLTIME_IN_SECONDS", po::value<int>(),         "polltime in seconds")
     ("RUN_DIR",             po::value<std::string>(), "run path")
-    ("PID_FILE",            po::value<std::string>(), "pid file");
+    ("PID_FILE",            po::value<std::string>(), "pid file")
+    ("SESNOR_NAME",            po::value<std::string>(), "Sensor to read out")
+    ("TABLE_PATH_ROOT",            po::value<std::string>(), "Address table path");
 
 
   std::map<std::string,std::vector<std::string> > allOptions;
@@ -107,42 +187,75 @@ int main(int argc, char ** argv) {
     }
     configFile.close();
   }
-
-
+  
+  
   //Set polltime_in_seconds
   int polltime_in_seconds = GetFinalParameterValue(std::string("POLLTIME_IN_SECONDS"), allOptions, DEFAULT_POLLTIME_IN_SECONDS);
   //Set runPath
   std::string runPath     = GetFinalParameterValue(std::string("RUN_DIR"),             allOptions, std::string(DEFAULT_RUN_DIR));
   //set pidFileName
   std::string pidFileName = GetFinalParameterValue(std::string("PID_FILE"),            allOptions, std::string(DEFAULT_PID_FILE));
-
+  
   // ============================================================================
   // Deamon book-keeping
   Daemon daemon;
   daemon.daemonizeThisProgram(pidFileName, runPath);
-
+  
   // ============================================================================
   // Signal handling
   struct sigaction sa_INT,sa_TERM,old_sa;
-
+  
   daemon.changeSignal(&sa_INT , &old_sa, SIGINT);
   daemon.changeSignal(&sa_TERM, NULL   , SIGTERM);
   daemon.SetLoop(true);
 
 
-  // ==================================================
-  // If /var/run/utmp does not exist we are done
-  {
-    FILE * file = fopen("/var/run/utmp","r");
-    if(NULL == file) {
-      syslog(LOG_INFO,"Utmp file does not exist. Terminating countUsers\n");
-      return -1;
+  syslog(LOG_INFO,"Using \"%s\" for the table name base ",allOptions["TABLE_PATH_ROOT"][0].c_str());
+
+
+  // ==================================
+  // Find all the sensors we are looking for and save their paths
+  struct sSensor {std::string name; std::string filePath; size_t index;};
+  std::vector<sSensor> sensorList;
+  for(auto itSensor = allOptions["SENSOR_NAME"].begin();
+      itSensor != allOptions["SENSOR_NAME"].end();
+      itSensor++){
+    //Search for the current sensor
+    sSensor sen;
+    sen.name = *itSensor;
+    boost::algorithm::to_upper(sen.name);
+    syslog(LOG_INFO,"Looking for sensor %s\n",sen.name.c_str());
+    for (boost::filesystem::directory_iterator hwmonPath("/sys/class/hwmon/"); 
+	 hwmonPath!=boost::filesystem::directory_iterator(); ++hwmonPath) {
+      //loop over hwmon devices
+      if (boost::filesystem::is_directory(hwmonPath->path())) {
+	for (boost::filesystem::directory_iterator ihwmonPath(hwmonPath->path().string()); 
+	     ihwmonPath!=boost::filesystem::directory_iterator(); ++ihwmonPath) {
+	  //loop over files for each hwmonitor
+	  if (boost::filesystem::is_directory(ihwmonPath->path())) {
+	    continue;
+	  }else if(ihwmonPath->path().filename().string().find("_label") 
+		   != std::string::npos){
+	    //we found a label file, check if it is 
+	    std::string currentLabel = GetLabel(ihwmonPath->path().native(),0);	  
+	    if(boost::iequals(sen.name,currentLabel)){
+	      //correct sensor
+	      //get file path
+	      sen.filePath=ihwmonPath->path().parent_path().string();
+	      //determine the sensor number
+	      sen.index = ihwmonPath->path().filename().string()[2] - 48;   // '0' is ascii code 48
+	      syslog(LOG_INFO,"  Found sensor %s at %s:%zu\n",currentLabel.c_str(),sen.filePath.c_str(),sen.index);
+	      sensorList.push_back(sen);
+	      break;
+	    }
+	  }
+	}
+      }
     }
   }
 
-  //=======================================================================
-  // Start ps monitor
-  //=======================================================================
+
+
   ApolloSM * SM = NULL;
   try{
     // ==================================
@@ -158,93 +271,31 @@ int main(int argc, char ** argv) {
     arg.push_back("connections.xml");
     SM->Connect(arg);
 
+  
+    
     //vars for pselect
-    fd_set readSet,readSet_ret;
-    FD_ZERO(&readSet);
     struct timespec timeout = {polltime_in_seconds,0};
     int maxFDp1 = 0;
     
-    //Create a usercount process
-    userCount uCnt;
-    int fdUserCount = uCnt.initNotify();
-    syslog(LOG_INFO,"iNotify setup on FD %d\n",fdUserCount);
-    FD_SET(fdUserCount,&readSet);
-    if(fdUserCount >= maxFDp1){
-      maxFDp1 = fdUserCount+1;
-    }
-
-
     // ==================================
     // Main DAEMON loop
-    syslog(LOG_INFO,"Starting PS monitor\n");
-
+    syslog(LOG_INFO,"Starting PWR monitor\n");
+    
     // ==================================================
     // All the work
-
-    //Do one read of users file before we start our loop
-    uint32_t superUsers,normalUsers;
-    int inRate, outRate;
-    int networkMon_return = networkMonitor(inRate, outRate); //run once to burn invalid first values
-    uCnt.GetUserCounts(superUsers,normalUsers);
-    try {
-      SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
-      SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
-    }catch(std::exception const & e){
-      syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
-    }
     while(daemon.GetLoop()){
-      readSet_ret = readSet;
-      int pselRet = pselect(maxFDp1,&readSet_ret,NULL,NULL,&timeout,NULL);
+      int pselRet = pselect(maxFDp1,NULL,NULL,NULL,&timeout,NULL);
       if(0 == pselRet){
-	//timeout, do CPU/mem monitoring
-	uint32_t mon;
-	mon = MemUsage()*100; //Scale the value by 100 to get two decimal places for reg   
-	try {
-	  SM->RegWriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
-	}catch(std::exception const & e){
-	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
+	//timeout
+	for(auto itSensor = sensorList.begin();
+	    itSensor != sensorList.end();
+	    itSensor++){
+	  UpdateINA3221Sensor(SM,
+			      allOptions["TABLE_PATH_ROOT"][0],
+			      itSensor->filePath,
+			      itSensor->index);
+			      
 	}
-	mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
-	try {
-	  SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
-	}catch(std::exception const & e){
-	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
-	}
-	networkMon_return = networkMonitor(inRate, outRate);
-	if(!networkMon_return){ //networkMonitor was successful
-	  try {
-	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0.RX",uint32_t(inRate));
-	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0.TX",uint32_t(outRate));
-	  }catch(std::exception const & e){
-	    syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
-	  }
-	} else { //networkMonitor failed
-	  syslog(LOG_ERR, "Error in networkMonitor, return %d\n", networkMon_return);
-	}
-	float days,hours,minutes;
-	Uptime(days,hours,minutes);
-	try {
-	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.DAYS",uint32_t(100.0*days));
-	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.HOURS",uint32_t(100.0*hours));
-	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.MINS",uint32_t(100.0*minutes));
-	} catch(std::exception const & e){
-	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
-	}
-      }else if(pselRet > 0){
-	//a FD is readable. 
-	if(FD_ISSET(fdUserCount,&readSet_ret)){
-	  if(uCnt.ProcessWatchEvent()){
-	    uCnt.GetUserCounts(superUsers,normalUsers);
-	    try {
-	      SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
-	      SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);
-	    }catch(std::exception const & e){
-	      syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
-	    }
-	  }
-	}
-      }else{
-	syslog(LOG_ERR,"Error in pselect %d(%s)",errno,strerror(errno));
       }
     }
   }catch(BUException::exBase const & e){
@@ -252,7 +303,7 @@ int main(int argc, char ** argv) {
   }catch(std::exception const & e){
     syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
   }
-
+  
   // ==================================================
   // Clean up. Close and delete everything.
 
@@ -263,7 +314,6 @@ int main(int argc, char ** argv) {
 
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
-  syslog(LOG_INFO,"PS Monitor Daemon ended\n");
+  syslog(LOG_INFO,"PWR Monitor Daemon ended\n");
   return 0;
-
 }

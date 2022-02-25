@@ -22,14 +22,16 @@ namespace BUTool{
   
   class ApolloSMDevice: public CommandList<ApolloSMDevice>, public IPBusRegHelper{
   public:
-    ApolloSMDevice(std::vector<std::string> arg); 
+    ApolloSMDevice(std::vector<std::string> arg);
+    ApolloSMDevice(std::shared_ptr<ApolloSM> apolloSM);
     ~ApolloSMDevice();
 
 
 
 
   private:
-    ApolloSM * SM;
+    // ApolloSM * SM;
+    std::shared_ptr<ApolloSM> SM;
     
     std::ofstream* stream;
     std::string fileName;

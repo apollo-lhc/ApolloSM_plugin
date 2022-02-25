@@ -28,7 +28,7 @@ ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
     IPBusRegHelper(),
     stream(NULL){
   
-  SM = new ApolloSM();
+  SM = std::make_shared<ApolloSM>();
   SM->Connect(arg);
   SetHWInterface(SM->GetHWInterface()); //Pass the inherited version of IPBusIO inside of IPBusREgHelper a pointer to the real hw interface
   
@@ -39,10 +39,23 @@ ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   LoadCommandList();
 }
 
-ApolloSMDevice::~ApolloSMDevice(){
-  if(NULL != SM){
-    delete SM;
-  }
+ApolloSMDevice::ApolloSMDevice(std::shared_ptr<ApolloSM> apolloSM)
+  : CommandList<ApolloSMDevice>("ApolloSM"),
+    IPBusRegHelper(),
+    stream(NULL){
+  
+  SM = apolloSM; 
+  SetHWInterface(SM->GetHWInterface()); //Pass the inherited version of IPBusIO inside of IPBusREgHelper a pointer to the real hw interface
+  
+  // setup RegisterHelper's BUTextIO pointer
+  SetupTextIO();
+
+  //setup commands
+  LoadCommandList();
+}
+
+ApolloSMDevice::~ApolloSMDevice()
+{
 }
 
   

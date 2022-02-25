@@ -117,13 +117,13 @@ private:
 
 
 public:
-  eyescan(ApolloSM*SM, 
+  eyescan(std::shared_ptr<ApolloSM> SM, 
 	  std::string const & DRPBaseNode_set, 
 	  std::string const & lpmNode_set, 
 	  int nBinsX_set, int nBinsY_set, int max_prescale);
   ES_state_t check();
   //void check();
-  void update(ApolloSM*SM);
+  void update(std::shared_ptr<ApolloSM> SM);
   std::vector<eyescanCoords>const & dataout();
   void throwException(std::string message);
   //make function to dump to file
@@ -137,15 +137,15 @@ public:
 
 private:
   eyescan();
-  void scan_pixel(ApolloSM*SM);
-  void initialize(ApolloSM*SM);
+  void scan_pixel(std::shared_ptr<ApolloSM> SM);
+  void initialize(std::shared_ptr<ApolloSM> SM);
 
-  ES_state_t EndPixelLPM(ApolloSM*SM);
-  ES_state_t EndPixelDFE(ApolloSM*SM);
+  ES_state_t EndPixelLPM(std::shared_ptr<ApolloSM> SM);
+  ES_state_t EndPixelDFE(std::shared_ptr<ApolloSM> SM);
 
-  void SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign);
+  void SetEyeScanVoltage(std::shared_ptr<ApolloSM> SM, std::string baseNode, uint8_t vertOffset, uint32_t sign);
 
-  void SetEyeScanPhase(ApolloSM*SM, std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
+  void SetEyeScanPhase(std::shared_ptr<ApolloSM> SM, std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
 
 };
 

@@ -130,7 +130,7 @@ void eyescan::throwException(std::string message) {
   throw e;
 }
 
-eyescan::eyescan(ApolloSM*SM, 
+eyescan::eyescan(std::shared_ptr<ApolloSM> SM, 
 		 std::string const & _DRPBaseNode, 
 		 std::string const & _lpmNode, 
 		 int _binXIncr,  //positive value
@@ -315,7 +315,7 @@ eyescan::eyescan(ApolloSM*SM,
 eyescan::ES_state_t eyescan::check(){  //checks es_state
   return es_state;
 }
-void eyescan::update(ApolloSM*SM){
+void eyescan::update(std::shared_ptr<ApolloSM> SM){
   switch (es_state){
   case SCAN_INIT:
     initialize(SM);
@@ -353,7 +353,7 @@ void eyescan::start(){
   }
 }
 
-void eyescan::initialize(ApolloSM* /*SM*/){
+void eyescan::initialize(std::shared_ptr<ApolloSM>  /*SM*/){
   for (int16_t iHorz   = -1*binXBoundary; iHorz <= binXBoundary; iHorz+=binXIncr){
     for (int16_t iVert = -1*binYBoundary; iVert <= binYBoundary; iVert+=binYIncr){
       eyescan::eyescanCoords pixel;      
@@ -420,7 +420,7 @@ void eyescan::reset(){
   es_state=SCAN_READY;
 }
 
-eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
+eyescan::ES_state_t eyescan::EndPixelLPM(std::shared_ptr<ApolloSM> SM){
   // read error and sample count
   
   uint32_t errorRawCount  = SM->RegReadRegister(DRPBaseNode + "ES_ERROR_COUNT");
@@ -474,7 +474,7 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
 //  }
 }
 
-eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
+eyescan::ES_state_t eyescan::EndPixelDFE(std::shared_ptr<ApolloSM> SM){
   
   uint32_t errorRawCount  = SM->RegReadRegister(DRPBaseNode + "ES_ERROR_COUNT");
   uint32_t sampleRawCount = SM->RegReadRegister(DRPBaseNode + "ES_SAMPLE_COUNT");
@@ -580,7 +580,7 @@ void eyescan::fileDump(std::string outputFile){
 }
 
 
-void eyescan::scan_pixel(ApolloSM*SM){
+void eyescan::scan_pixel(std::shared_ptr<ApolloSM> SM){
   //send the state back to WAIT
   SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.ARM", 0);
   SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 0);

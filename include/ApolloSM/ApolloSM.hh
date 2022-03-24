@@ -2,6 +2,7 @@
 #define __APOLLO_SM_HH__
 
 #include <IPBusIO/IPBusConnection.hh>
+#include <IPBusIO/IPBusIO.hh>
 #include <IPBusStatus/IPBusStatus.hh>
 #include <BUException/ExceptionBase.hh>
 //#include <ApolloSM/eyescan.hh>
@@ -16,9 +17,9 @@ namespace BUException{
 
 #include <stdint.h>
 
-class ApolloSM : public IPBusConnection{
+class ApolloSM : public IPBusConnection,public IPBusIO{
 public:
-  ApolloSM(); //User should call Connect inhereted from IPBusConnection
+  ApolloSM(std::vector<std::string> const & args); //User should call Connect inhereted from IPBusConnection
   ~ApolloSM();
 
   //The IPBus connection and read/write functions come from the IPBusConnection class.
@@ -56,7 +57,7 @@ public:
   uint32_t GetIPMCIP();
 
 private:  
-  IPBusStatus * statusDisplay;
+  IPBusStatus statusDisplay;
 
   void assertNode(std::string node, uint32_t correctVal);
   void confirmNode(std::string node, uint32_t correctVal);

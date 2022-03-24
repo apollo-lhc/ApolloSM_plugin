@@ -25,12 +25,9 @@ using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   : CommandList<ApolloSMDevice>("ApolloSM"),
-    IPBusRegHelper(),
+    Holder(arg),
+    IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM)),
     stream(NULL){
-  
-  SM = new ApolloSM();
-  SM->Connect(arg);
-  SetHWInterface(SM->GetHWInterface()); //Pass the inherited version of IPBusIO inside of IPBusREgHelper a pointer to the real hw interface
   
   // setup RegisterHelper's BUTextIO pointer
   SetupTextIO();
@@ -40,9 +37,6 @@ ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
 }
 
 ApolloSMDevice::~ApolloSMDevice(){
-  if(NULL != SM){
-    delete SM;
-  }
 }
 
   
@@ -477,7 +471,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 
     for (int i = 0; i < num_of_nodes; ++i)
       {
-	eyescans.push_back(std::make_pair(eyescan(SM,
+	eyescans.push_back(std::make_pair(eyescan(std::static_pointer_cast<IPBusIO>(SM),
 						  strArg[((i+1)*3)],    //baseNode
 						  strArg[((i+1)*3)+1],  //lpmNode
 						  binXStep,binYStep,
@@ -487,7 +481,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
   
     for (auto itES = eyescans.begin(); itES != eyescans.end(); itES++)
       {
-	(*itES).first.update(SM);
+	(*itES).first.update();
 	if ((*itES).first.check()==eyescan::SCAN_READY)
 	  {
 	    (*itES).first.start();
@@ -529,7 +523,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 	    //	    printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
 	    continue;
 	  }else{
-	    (*itES).first.update(SM);
+	    (*itES).first.update();
 	    num_updates+=1;
 	    itES++;
 	  }

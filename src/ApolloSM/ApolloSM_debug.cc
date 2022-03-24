@@ -18,7 +18,7 @@ void ApolloSM::DebugDump(std::ostream & output){
     output << std::setw(60) << std::setfill(' ') << std::right << *itReg;
     output << " : ";
     try{
-      val = RegReadRegister(*itReg);
+      val = ReadRegister(*itReg);
       output << "0x" << std::setfill('0') << std::setw(8) << std::hex << val << std::endl;
     }catch(uhal::exception::UIOBusError & e){
       output << "BusErr" << std::endl;
@@ -40,7 +40,7 @@ void ApolloSM::DebugDump(std::ostream & output){
     output << std::setw(60) << std::setfill(' ') << std::right << *itReg;
     output << " : ";
     try{
-      val = RegReadRegister(*itReg);
+      val = ReadRegister(*itReg);
       output << "0x" << std::setfill('0') << std::setw(8) << std::hex << val << std::endl;
     }catch(uhal::exception::UIOBusError & e){
       output << std::string("BusErr") << std::endl;

@@ -19,8 +19,21 @@
 #include <ApolloSM/eyescan_class.hh>
 
 namespace BUTool{
+
+  class Holder{
+  public:
+    Holder(std::vector<std::string> const & arg){
+      SM = std::make_shared<ApolloSM>(arg);
+    };
+  protected:
+    std::shared_ptr<ApolloSM> SM;
+  private:
+    Holder();
+  };
   
-  class ApolloSMDevice: public CommandList<ApolloSMDevice>, public IPBusRegHelper{
+  class ApolloSMDevice: public CommandList<ApolloSMDevice>,
+			public Holder,
+			public IPBusRegHelper{
   public:
     ApolloSMDevice(std::vector<std::string> arg); 
     ~ApolloSMDevice();
@@ -29,7 +42,6 @@ namespace BUTool{
 
 
   private:
-    ApolloSM * SM;
     
     std::ofstream* stream;
     std::string fileName;

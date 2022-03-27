@@ -471,7 +471,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 
     for (int i = 0; i < num_of_nodes; ++i)
       {
-	eyescans.push_back(std::make_pair(eyescan(std::static_pointer_cast<IPBusIO>(SM),
+	eyescans.push_back(std::make_pair(eyescan(std::static_pointer_cast<BUTool::RegisterHelperIO>(SM),
 						  strArg[((i+1)*3)],    //baseNode
 						  strArg[((i+1)*3)+1],  //lpmNode
 						  binXStep,binYStep,

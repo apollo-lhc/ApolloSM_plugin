@@ -130,14 +130,16 @@ void eyescan::throwException(std::string message) {
   throw e;
 }
 
-eyescan::eyescan(ApolloSM*SM, 
+eyescan::eyescan(std::shared_ptr<BUTool::RegisterHelperIO> _IO, 
 		 std::string const & _DRPBaseNode, 
 		 std::string const & _lpmNode, 
 		 int _binXIncr,  //positive value
-		 int _binYIncr, int _maxPrescale):es_state(UNINIT){
+		 int _binYIncr, int _maxPrescale):
+  es_state(UNINIT),
+  IO(_IO){
   //Set the node that tells us the LPM / DFE mode enabled
   lpmNode=_lpmNode;
-  if(!SM->myMatchRegex(lpmNode).size()){
+  if(!IO->myMatchRegex(lpmNode).size()){
     throwException("Bad LPMEN node "+lpmNode+"\n");
   }
 
@@ -149,16 +151,16 @@ eyescan::eyescan(ApolloSM*SM,
   }
   
   //Determine the transceiver type
-  if( (SM->myMatchRegex(DRPBaseNode+"TYPE_7S_GTX")).size()){
+  if( (IO->myMatchRegex(DRPBaseNode+"TYPE_7S_GTX")).size()){
     linkSpeedGbps = 5; //default to 30Gbps in 7s
     xcvrType=SERDES_t::GTX_7S;
-  }else if( (SM->myMatchRegex(DRPBaseNode+"TYPE_7S_GTH")).size()){
+  }else if( (IO->myMatchRegex(DRPBaseNode+"TYPE_7S_GTH")).size()){
     linkSpeedGbps = 5; //default to 5 in 7s
     xcvrType=SERDES_t::GTH_7S;
-  }else if( (SM->myMatchRegex(DRPBaseNode+"TYPE_USP_GTH")).size()){
+  }else if( (IO->myMatchRegex(DRPBaseNode+"TYPE_USP_GTH")).size()){
     xcvrType=SERDES_t::GTH_USP;
     linkSpeedGbps = 5; //default to 14 in USP GTH
-  }else if( (SM->myMatchRegex(DRPBaseNode+"TYPE_USP_GTY")).size()){
+  }else if( (IO->myMatchRegex(DRPBaseNode+"TYPE_USP_GTY")).size()){
     xcvrType=SERDES_t::GTY_USP;
     linkSpeedGbps = 30; //default to 30Gbps in GTY
   }else{
@@ -169,7 +171,7 @@ eyescan::eyescan(ApolloSM*SM,
   for(auto itCheck= REQUIRED_TABLE_ELEMENTS[int(xcvrType)].begin();
       itCheck != REQUIRED_TABLE_ELEMENTS[int(xcvrType)].end();
       itCheck++){
-    if(SM->myMatchRegex(DRPBaseNode+(*itCheck)).size() == 0){
+    if(IO->myMatchRegex(DRPBaseNode+(*itCheck)).size() == 0){
       throwException("Missing "+DRPBaseNode+(*itCheck)+".\n");
     }
   }
@@ -182,7 +184,7 @@ eyescan::eyescan(ApolloSM*SM,
 
   
   //Determin parameters for the horizontal axis
-  rxOutDiv = SM->RegReadRegister(DRPBaseNode + "RXOUT_DIV");
+  rxOutDiv = IO->ReadRegister(DRPBaseNode + "RXOUT_DIV");
   if(rxOutDiv >= MAX_HORIZONTAL_VALUE_MAG_SIZE){
     throwException("RXOUT_DIV is outside of range.\n");
   }
@@ -203,7 +205,7 @@ eyescan::eyescan(ApolloSM*SM,
   if(xcvrType == SERDES_t::GTX_7S || xcvrType == SERDES_t::GTH_7S){
     binYdV = -1;
   }else{
-    uint8_t indexV = SM->RegReadRegister(DRPBaseNode + "RX_EYESCAN_VS.RANGE");
+    uint8_t indexV = IO->ReadRegister(DRPBaseNode + "RX_EYESCAN_VS.RANGE");
     if(indexV >= 4){
       throwException("RX_EYESCAN_VX_RANGE invalid");
     }
@@ -232,28 +234,28 @@ eyescan::eyescan(ApolloSM*SM,
   
   
   // Check ES_EYE_SCAN_EN 
-  if(SM->RegReadRegister(DRPBaseNode+"ES_EYE_SCAN_EN") != 1){
+  if(IO->ReadRegister(DRPBaseNode+"ES_EYE_SCAN_EN") != 1){
     throwException("ES_EYE_SCAN_EN is not '1'.\n Enabling it requires a PMA reset.\n");
   }
-  if( (xcvrType == SERDES_t::GTX_7S) && ((SM->RegReadRegister(DRPBaseNode+"PMA_RSV2")&0x20) != 0x20)){
+  if( (xcvrType == SERDES_t::GTX_7S) && ((IO->ReadRegister(DRPBaseNode+"PMA_RSV2")&0x20) != 0x20)){
     throwException("PMA_RSV2 bit 5 must be '1' for GTX_7S SERDES. Enabling it requires a PMA reset.\n");
   }
 
 
   // Set ES_ERRDET_EN to 1 so that we have stastical mode, not waveform mode.
-  SM->RegWriteRegister(DRPBaseNode+"ES_ERRDET_EN",1);
+  IO->WriteRegister(DRPBaseNode+"ES_ERRDET_EN",1);
 
 
   // ** ES_PRESCALE set prescale
-  SM->RegWriteRegister(DRPBaseNode + "ES_PRESCALE",maxPrescale);
+  IO->WriteRegister(DRPBaseNode + "ES_PRESCALE",maxPrescale);
 
   
   //Get the values of RX_INT_DATAWIDTH and RX_DATA_WIDTH
-  rxDataWidth = SM->RegReadRegister(DRPBaseNode+"RX_DATA_WIDTH");
+  rxDataWidth = IO->ReadRegister(DRPBaseNode+"RX_DATA_WIDTH");
   if(rxDataWidth >= BUS_WIDTH_SIZE){
     throwException("RX_DATA_WIDTH is larger than 9\n");
   }
-  rxIntDataWidth = SM->RegReadRegister(DRPBaseNode+"RX_INT_DATAWIDTH");
+  rxIntDataWidth = IO->ReadRegister(DRPBaseNode+"RX_INT_DATAWIDTH");
   if(rxIntDataWidth >= 3){
     throwException("RX_INT_DATAWIDTH is larger than 2\n");
   }
@@ -291,15 +293,15 @@ eyescan::eyescan(ApolloSM*SM,
 
       if((iBit & 0xF) == 0xF){
 	//we've filled 16 bits, let'w write it. 
-	SM->RegWriteRegister(DRPBaseNode+"ES_SDATA_MASK"+std::to_string(((iBit&0xF0)>>4)),esSDataMask);
-	SM->RegWriteRegister(DRPBaseNode+"ES_QUALIFIER" +std::to_string(((iBit&0xF0)>>4)),esQualifier);
-	SM->RegWriteRegister(DRPBaseNode+"ES_QUAL_MASK" +std::to_string(((iBit&0xF0)>>4)),esQualMask);
+	IO->WriteRegister(DRPBaseNode+"ES_SDATA_MASK"+std::to_string(((iBit&0xF0)>>4)),esSDataMask);
+	IO->WriteRegister(DRPBaseNode+"ES_QUALIFIER" +std::to_string(((iBit&0xF0)>>4)),esQualifier);
+	IO->WriteRegister(DRPBaseNode+"ES_QUAL_MASK" +std::to_string(((iBit&0xF0)>>4)),esQualMask);
 	//Shifts will remove old values
       }
     }
   }
 
-  rxlpmen = SM->RegReadRegister(lpmNode);
+  rxlpmen = IO->ReadRegister(lpmNode);
   if(rxlpmen==DFE){
     dfe_state=FIRST;
   }else{
@@ -315,25 +317,25 @@ eyescan::eyescan(ApolloSM*SM,
 eyescan::ES_state_t eyescan::check(){  //checks es_state
   return es_state;
 }
-void eyescan::update(ApolloSM*SM){
+void eyescan::update(){
   switch (es_state){
   case SCAN_INIT:
-    initialize(SM);
+    initialize();
     pixelsDone = 0;
     es_state= SCAN_READY;
     break;
   case SCAN_READY://make reset a func; make this a READY state
     break;
   case SCAN_START:
-    scan_pixel(SM);
+    scan_pixel();
     break;
   case SCAN_PIXEL:
-    if (0x5 == SM->RegReadRegister(DRPBaseNode + "ES_CONTROL_STATUS")){
+    if (0x5 == IO->ReadRegister(DRPBaseNode + "ES_CONTROL_STATUS")){
       if (rxlpmen==DFE){
-	es_state = EndPixelDFE(SM);
+	es_state = EndPixelDFE();
           
       } else {
-	es_state = EndPixelLPM(SM);
+	es_state = EndPixelLPM();
       }
     }
     break;
@@ -353,7 +355,7 @@ void eyescan::start(){
   }
 }
 
-void eyescan::initialize(ApolloSM* /*SM*/){
+void eyescan::initialize(){
   for (int16_t iHorz   = -1*binXBoundary; iHorz <= binXBoundary; iHorz+=binXIncr){
     for (int16_t iVert = -1*binYBoundary; iVert <= binYBoundary; iVert+=binYIncr){
       eyescan::eyescanCoords pixel;      
@@ -420,14 +422,14 @@ void eyescan::reset(){
   es_state=SCAN_READY;
 }
 
-eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
+eyescan::ES_state_t eyescan::EndPixelLPM(){
   // read error and sample count
   
-  uint32_t errorRawCount  = SM->RegReadRegister(DRPBaseNode + "ES_ERROR_COUNT");
-  uint32_t sampleRawCount = SM->RegReadRegister(DRPBaseNode + "ES_SAMPLE_COUNT");
+  uint32_t errorRawCount  = IO->ReadRegister(DRPBaseNode + "ES_ERROR_COUNT");
+  uint32_t sampleRawCount = IO->ReadRegister(DRPBaseNode + "ES_SAMPLE_COUNT");
 
   uint64_t sampleCount;
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN",0);
+  IO->WriteRegister(DRPBaseNode + "ES_CONTROL.RUN",0);
 
   //Update the sample count and error counts
   sampleCount = (1 << (1+(*it).prescale)) * sampleRawCount*BUS_WIDTH[rxDataWidth];
@@ -443,7 +445,7 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
       (*it).prescale = maxPrescale;         
     }      
     //keep scanning pixel to get BER
-    scan_pixel(SM);
+    scan_pixel();
     return SCAN_PIXEL;
   } else {
     if ((*it).error0==0){ //if scan found no errors default to BER floor
@@ -457,14 +459,14 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
     if (it==Coords_vect.end()){
       return SCAN_DONE;
     } else {
-      scan_pixel(SM);
+      scan_pixel();
       return SCAN_PIXEL;
     }
   }
   
 //  //Make sure we get to the WAIT state
 //  int while_count = 0;
-//  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
+//  while(IO->ReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
 //    usleep(100);
 //    if(while_count==10000){
 //      throwException("EndPixelLPM: Stuck waiting for RUN=0 to move ES_CNOTROL_STATUS to state 0x0 (WAIT).");
@@ -474,17 +476,17 @@ eyescan::ES_state_t eyescan::EndPixelLPM(ApolloSM*SM){
 //  }
 }
 
-eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
+eyescan::ES_state_t eyescan::EndPixelDFE(){
   
-  uint32_t errorRawCount  = SM->RegReadRegister(DRPBaseNode + "ES_ERROR_COUNT");
-  uint32_t sampleRawCount = SM->RegReadRegister(DRPBaseNode + "ES_SAMPLE_COUNT");
+  uint32_t errorRawCount  = IO->ReadRegister(DRPBaseNode + "ES_ERROR_COUNT");
+  uint32_t sampleRawCount = IO->ReadRegister(DRPBaseNode + "ES_SAMPLE_COUNT");
 
   uint64_t sampleCount;
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN",0);
+  IO->WriteRegister(DRPBaseNode + "ES_CONTROL.RUN",0);
 
   //Make sure we get out of the run state
   int while_count = 0;
-  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
+  while(IO->ReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
     usleep(100);
     if(while_count==10000){
       throwException("EndPixelDFE: Stuck waiting for RUN=0 to move ES_CNOTROL_STATUS to state 0x1. (WAIT)");
@@ -503,7 +505,7 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
     //keep scanning pixel to get BER
     //go to other side of DFE scan next time
     dfe_state=SECOND;
-    scan_pixel(SM);
+    scan_pixel();
     return SCAN_PIXEL;
 
   }else if (dfe_state == SECOND){
@@ -520,7 +522,7 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
       //keep scanning pixel to get BER
       //go to other side of DFE scan next time
       dfe_state=FIRST;
-      scan_pixel(SM);
+      scan_pixel();
       return SCAN_PIXEL;
     } else {
       if ((*it).error1==0 && (*it).error0==0){ //if scan found no errors default to BER floor
@@ -534,7 +536,7 @@ eyescan::ES_state_t eyescan::EndPixelDFE(ApolloSM*SM){
       if (it==Coords_vect.end()){
 	return SCAN_DONE;
       } else {
-	scan_pixel(SM);
+	scan_pixel();
 	return SCAN_PIXEL;
       }
     }
@@ -580,12 +582,12 @@ void eyescan::fileDump(std::string outputFile){
 }
 
 
-void eyescan::scan_pixel(ApolloSM*SM){
+void eyescan::scan_pixel(){
   //send the state back to WAIT
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.ARM", 0);
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 0);
+  IO->WriteRegister(DRPBaseNode + "ES_CONTROL.ARM", 0);
+  IO->WriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 0);
   int while_count = 0;
-  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
+  while(IO->ReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
     usleep(100);
     if(while_count==10000){
       throwException("ScanPixel: Stuck waiting for run to reset.");
@@ -598,35 +600,35 @@ void eyescan::scan_pixel(ApolloSM*SM){
   es_state = SCAN_PIXEL;
 
   //prescale
-  SM->RegWriteRegister(DRPBaseNode + "ES_PRESCALE",(*it).prescale);
+  IO->WriteRegister(DRPBaseNode + "ES_PRESCALE",(*it).prescale);
   
   //horizontal
-  SM->RegWriteRegister(DRPBaseNode + "ES_HORZ_OFFSET.REG",(*it).horzWriteVal);
+  IO->WriteRegister(DRPBaseNode + "ES_HORZ_OFFSET.REG",(*it).horzWriteVal);
 
   //Vertical (special bitwise stuff is for the UT SIGN
   if(xcvrType == SERDES_t::GTH_USP || xcvrType == SERDES_t::GTY_USP){
     if(dfe_state == FIRST){
-      SM->RegWriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal & 0xFF7F);
+      IO->WriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal & 0xFF7F);
     }else if (dfe_state == SECOND){
-      SM->RegWriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal | 0x0080);
+      IO->WriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal | 0x0080);
     }else{
-      SM->RegWriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal);
+      IO->WriteRegister(DRPBaseNode + "RX_EYESCAN_VS.REG",(*it).vertWriteVal);
     }    
   }else if(xcvrType == SERDES_t::GTX_7S  || xcvrType == SERDES_t::GTH_7S ){
     if(dfe_state == FIRST){
-      SM->RegWriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal & 0xFF7F);
+      IO->WriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal & 0xFF7F);
     }else if (dfe_state == SECOND){
-      SM->RegWriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal | 0x0080);
+      IO->WriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal | 0x0080);
     }else{
-      SM->RegWriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal);
+      IO->WriteRegister(DRPBaseNode + "ES_VERT_OFFSET.REG",(*it).vertWriteVal);
     }    
   }
 
 //  //send the state back to WAIT
-//  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.ARM", 0);
-//  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 0);
+//  IO->WriteRegister(DRPBaseNode + "ES_CONTROL.ARM", 0);
+//  IO->WriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 0);
 //  int while_count = 0;
-//  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
+//  while(IO->ReadRegister(DRPBaseNode+"ES_CONTROL_STATUS")!=0x1){
 //    usleep(100);
 //    if(while_count==10000){
 //      throwException("ScanPixel: Stuck waiting for run to reset.");
@@ -637,8 +639,8 @@ void eyescan::scan_pixel(ApolloSM*SM){
 //  while_count=0;
 
   //Start the next run and wait for us to move out of the wait state
-  SM->RegWriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 1);  
-  while(SM->RegReadRegister(DRPBaseNode+"ES_CONTROL_STATUS") == 0x1){
+  IO->WriteRegister(DRPBaseNode + "ES_CONTROL.RUN", 1);  
+  while(IO->ReadRegister(DRPBaseNode+"ES_CONTROL_STATUS") == 0x1){
     usleep(100);
     if(while_count==10000){
       throwException("ScanPixel: Stuck waiting for the run to start (get out of WAIT).");

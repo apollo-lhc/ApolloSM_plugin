@@ -6,7 +6,9 @@
 ApolloSM::ApolloSM(std::vector<std::string> const & args):
   IPBusConnection("ApolloSM", args),
   IPBusIO(      ((IPBusConnection*)this)->GetHWInterface()),
-  statusDisplay((IPBusIO*)this){  
+  statusDisplay((IPBusIO*)this){
+  //Set case sensistive
+  SetCase(RegisterHelperIO::RegisterNameCase::CASE_SENSITIVE);
 }
 
 ApolloSM::~ApolloSM(){

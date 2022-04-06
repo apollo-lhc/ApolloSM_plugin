@@ -25,8 +25,9 @@ using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   : CommandList<ApolloSMDevice>("ApolloSM"),
-    Holder(arg),
-    IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM),BUTool::RegisterHelper::TextIO),
+    ApolloSMHolder(arg),
+    IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM),
+		   BUTool::RegisterHelper::TextIO),
     stream(NULL){
   
   //setup commands

@@ -14,9 +14,10 @@ namespace BUException{
 
 #include <stdint.h>
 
-class ApolloSM : public IPBusConnection,public IPBusIO{
+class ApolloSM : public IPBusConnection,
+		 public IPBusIO{
 public:
-  ApolloSM(std::vector<std::string> const & args); //User should call Connect inhereted from IPBusConnection
+  ApolloSM(std::vector<std::string> const & args);
   ~ApolloSM();
 
   //The IPBus connection and read/write functions come from the IPBusConnection class.

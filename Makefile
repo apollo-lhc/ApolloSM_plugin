@@ -45,6 +45,7 @@ endif
 LIBRARIES =    	-lcurses \
 		-lToolException	\
 		-lBUTool_IPBusIO \
+		-lBUTool_IPBusRegHelpers \
 		-lBUTool_IPBusStatus \
 		-lBUTool_BUTextIO \
 		-lboost_regex \
@@ -139,7 +140,7 @@ endif
 # ------------------------
 # ApolloSM library
 # ------------------------
-${LIBRARY_APOLLO_SM_DEVICE}: ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusIO.so ${LIBRARY_APOLLO_SM}
+${LIBRARY_APOLLO_SM_DEVICE}: ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES}  ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusRegHelpers.so ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusIO.so ${LIBRARY_APOLLO_SM}
 	${CXX} ${LINK_LIBRARY_FLAGS} -lBUTool_ApolloSM ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES} -o $@
 	@echo "export BUTOOL_AUTOLOAD_LIBRARY_LIST=\$$BUTOOL_AUTOLOAD_LIBRARY_LIST:$(RUNTIME_LDPATH)/${LIBRARY_APOLLO_SM_DEVICE}" > env.sh
 

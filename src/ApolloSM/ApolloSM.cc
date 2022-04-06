@@ -5,8 +5,8 @@
 
 ApolloSM::ApolloSM(std::vector<std::string> const & args):
   IPBusConnection("ApolloSM", args),
-  IPBusIO(((IPBusConnection*)this)->GetHWInterface()),
-  statusDisplay(this){  
+  IPBusIO(      ((IPBusConnection*)this)->GetHWInterface()),
+  statusDisplay((IPBusIO*)this){  
 }
 
 ApolloSM::~ApolloSM(){

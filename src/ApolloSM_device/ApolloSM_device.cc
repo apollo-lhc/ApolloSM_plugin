@@ -26,12 +26,9 @@ using namespace BUTool;
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   : CommandList<ApolloSMDevice>("ApolloSM"),
     Holder(arg),
-    IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM)),
+    IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM),BUTool::RegisterHelper::TextIO),
     stream(NULL){
   
-  // setup RegisterHelper's BUTextIO pointer
-  SetupTextIO();
-
   //setup commands
   LoadCommandList();
 }
@@ -347,16 +344,15 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
 
   // so the output from a uart_cmd consists of, foremost, a bunch of control sequences, then a new line, then the actual
   // output of what we want, version or help menu, etc. What we will do is throw away everything before the first new line
-  int const firstNewLine = 10;
   //  bool firstNewLineReached = false;
-  size_t firstNewLineIndex;
+  size_t firstNewLineIndex = 0;
 
   // send the command
   std::string recvline = SM->UART_CMD(ttyDev, sendline, promptChar);  
   
   // find the first new line
   for(size_t i = 0; i < recvline.size(); i++) {
-    if(firstNewLine == (int)recvline[i]) {
+    if(char(10) == recvline[i]) {
       firstNewLineIndex = i;
       break;
     }

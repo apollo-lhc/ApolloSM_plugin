@@ -52,7 +52,7 @@ int main(int argc, char ** argv){
     }
   }
 
-  char UIOFilename[] = "/dev/uioXXXXXXXX";
+  char UIOFilename[] = "/dev/uioXXXXXXXXXX ";
   snprintf(UIOFilename,strlen(UIOFilename),
 	   "/dev/uio%d",uio);
 

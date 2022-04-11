@@ -27,7 +27,7 @@ ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   : CommandList<ApolloSMDevice>("ApolloSM"),
     ApolloSMHolder(arg),
     IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM),
-		   BUTool::RegisterHelper::TextIO),
+		   BUTool::CommandListBase::TextIO),
     stream(NULL){
   
   //setup commands

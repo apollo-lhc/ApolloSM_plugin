@@ -6,7 +6,7 @@
 
 void ApolloSM::DebugDump(std::ostream & output){
   //Get all the register names
-  std::vector<std::string> registers = myMatchRegex("*");
+  std::vector<std::string> registers = GetRegsRegex("*");
   int sleepLength=1;
   
   //read out each

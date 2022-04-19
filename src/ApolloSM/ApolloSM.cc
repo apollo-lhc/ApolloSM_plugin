@@ -164,7 +164,7 @@ bool ApolloSM::PowerDownCM(int CM_ID, int wait /*seconds*/){
 }
 
 void ApolloSM::unblockAXI(std::string unblockName) {
-  std::vector<std::string> Names = myMatchRegex("*");
+  std::vector<std::string> Names = GetRegsRegex("*");
   uMap::iterator unblockNode;
   for(auto it = Names.begin();it != Names.end();it++){
     //Get the list of parameters for this node

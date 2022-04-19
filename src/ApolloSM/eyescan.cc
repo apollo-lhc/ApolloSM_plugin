@@ -139,7 +139,7 @@ eyescan::eyescan(std::shared_ptr<BUTool::RegisterHelperIO> _IO,
   IO(_IO){
   //Set the node that tells us the LPM / DFE mode enabled
   lpmNode=_lpmNode;
-  if(!IO->myMatchRegex(lpmNode).size()){
+  if(!IO->GetRegsRegex(lpmNode).size()){
     throwException("Bad LPMEN node "+lpmNode+"\n");
   }
 
@@ -151,16 +151,16 @@ eyescan::eyescan(std::shared_ptr<BUTool::RegisterHelperIO> _IO,
   }
   
   //Determine the transceiver type
-  if( (IO->myMatchRegex(DRPBaseNode+"TYPE_7S_GTX")).size()){
+  if( (IO->GetRegsRegex(DRPBaseNode+"TYPE_7S_GTX")).size()){
     linkSpeedGbps = 5; //default to 30Gbps in 7s
     xcvrType=SERDES_t::GTX_7S;
-  }else if( (IO->myMatchRegex(DRPBaseNode+"TYPE_7S_GTH")).size()){
+  }else if( (IO->GetRegsRegex(DRPBaseNode+"TYPE_7S_GTH")).size()){
     linkSpeedGbps = 5; //default to 5 in 7s
     xcvrType=SERDES_t::GTH_7S;
-  }else if( (IO->myMatchRegex(DRPBaseNode+"TYPE_USP_GTH")).size()){
+  }else if( (IO->GetRegsRegex(DRPBaseNode+"TYPE_USP_GTH")).size()){
     xcvrType=SERDES_t::GTH_USP;
     linkSpeedGbps = 5; //default to 14 in USP GTH
-  }else if( (IO->myMatchRegex(DRPBaseNode+"TYPE_USP_GTY")).size()){
+  }else if( (IO->GetRegsRegex(DRPBaseNode+"TYPE_USP_GTY")).size()){
     xcvrType=SERDES_t::GTY_USP;
     linkSpeedGbps = 30; //default to 30Gbps in GTY
   }else{
@@ -171,7 +171,7 @@ eyescan::eyescan(std::shared_ptr<BUTool::RegisterHelperIO> _IO,
   for(auto itCheck= REQUIRED_TABLE_ELEMENTS[int(xcvrType)].begin();
       itCheck != REQUIRED_TABLE_ELEMENTS[int(xcvrType)].end();
       itCheck++){
-    if(IO->myMatchRegex(DRPBaseNode+(*itCheck)).size() == 0){
+    if(IO->GetRegsRegex(DRPBaseNode+(*itCheck)).size() == 0){
       throwException("Missing "+DRPBaseNode+(*itCheck)+".\n");
     }
   }

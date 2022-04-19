@@ -28,14 +28,16 @@ std::vector<std::string> grabLine(FILE * file){
 }
 
 float MemUsage(){
-  uint64_t totalMem,freeMem;
-  //Open meminfo file
+  // Computes and returns the % memory usage by comparing the 
+  // available and total memory values, read from /proc/meminfo
+  uint64_t totalMem,freeMem,availableMem;
+  // Open meminfo file
   FILE * memFile = fopen("/proc/meminfo","r");
   if(NULL == memFile){
     return -1;
   }
 
-  //read in the first line the total line
+  // Read in the first line: Total memory
   char line[100];
   char line2[100];
   fscanf(memFile,"%s %" SCNu64 " %s",line,&totalMem,line2);
@@ -43,15 +45,22 @@ float MemUsage(){
     return -1;
   }
 
-  //read in the second line the total line
+  // Read in the second line: Free memory
   fscanf(memFile,"%s %" SCNu64 " %s",line,&freeMem,line2);
   if(strncmp("MemFree:",line,8)){
+    return -1;
+  }
+  
+  // Read in the third line: Available memory
+  fscanf(memFile,"%s %" SCNu64 " %s",line,&availableMem,line2);
+  if(strncmp("MemAvailable:",line,13)){
     return -1;
   }
 
   fclose(memFile);
   
-  float ret = 100.0*((double)(totalMem-freeMem))/((double) totalMem);
+  // Compute the memory usage by comparing the available memory and total memory
+  float ret = 100.0*((double)(totalMem-availableMem))/((double) totalMem);
   return ret;
 }
 

@@ -70,8 +70,12 @@ void ApolloSMDevice::LoadCommandList(){
 	     "  readstring reg\n",
 	     &ApolloSMDevice::RegisterAutoComplete);
 
-
-
+  AddCommand("readconvert",&ApolloSMDevice::ReadConvert,
+	     "Read and convert register\n" \
+	     "Usage: \n"                           \
+	     "  readconvert reg\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+  
   AddCommand("write",&ApolloSMDevice::Write,
 	     "Write to ApolloSM\n"           \
 	     "Usage: \n"                     \
@@ -92,7 +96,6 @@ void ApolloSMDevice::LoadCommandList(){
 	     "  writeoffset addr offset data count\n",
 	     &ApolloSMDevice::RegisterAutoComplete);
   AddCommandAlias("wo","writeoffset");
-
 
   AddCommand("nodes", &ApolloSMDevice::ListRegs, 
 	     "List matching address table items\n",

@@ -161,7 +161,7 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
   int nUIO = label2uio(XVCLabel);
   // Fall back to the legacy method if we can't find anything
   if (nUIO == -1) {
-    nUIO == label2uio_old(XVCLabel);
+    nUIO = label2uio_old(XVCLabel);
   }
 
   // If we still can't find anything, throw an exception

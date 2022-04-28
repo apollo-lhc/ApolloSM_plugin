@@ -166,7 +166,7 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
 
   // If we still can't find anything, throw an exception
   if (nUIO == -1) {
-    throw std::runtime_error("Failed to open UIO device");    
+    throw std::runtime_error("Failed to find a UIO device");    
   }
 
   size_t const uioFileNameLength = 1024;
@@ -177,6 +177,9 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
   //Run setup
   fdUIO = open(uioFileName,O_RDWR);
   delete [] uioFileName;
+  if (fdUIO < 0) {
+    throw std::runtime_error("Failed to open UIO device");    
+  }
   
   jtag_reg = (sXVC volatile*) mmap(NULL, sizeof(sXVC) + offset*sizeof(uint32_t),
 				    PROT_READ|PROT_WRITE, MAP_SHARED,

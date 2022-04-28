@@ -33,6 +33,16 @@ ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   //setup commands
   LoadCommandList();
 }
+ApolloSMDevice::ApolloSMDevice(std::shared_ptr<ApolloSM> apolloSM)
+  : CommandList<ApolloSMDevice>("ApolloSM"),
+    ApolloSMHolder(apolloSM),
+    IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM),
+		   BUTool::CommandListBase::TextIO),
+    stream(NULL){
+  
+  //setup commands
+  LoadCommandList();
+}
 
 ApolloSMDevice::~ApolloSMDevice(){
 }

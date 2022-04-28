@@ -28,6 +28,9 @@ namespace BUTool{
     ApolloSMHolder(std::vector<std::string> const & arg){
       SM = std::make_shared<ApolloSM>(arg);
     };
+    ApolloSMHolder(std::shared_ptr<ApolloSM> apolloSM){
+      SM = apolloSM;
+    }
   protected:
     std::shared_ptr<ApolloSM> SM;
   private:

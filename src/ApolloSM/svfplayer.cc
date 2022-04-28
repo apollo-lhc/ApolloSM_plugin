@@ -159,6 +159,15 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
   tap_state = LIBXSVF_TAP_INIT;
 
   int nUIO = label2uio(XVCLabel);
+  // Fall back to the legacy method if we can't find anything
+  if (nUIO == -1) {
+    nUIO = label2uio_old(XVCLabel);
+  }
+
+  // If we still can't find anything, throw an exception
+  if (nUIO == -1) {
+    throw std::runtime_error("Failed to find a UIO device");    
+  }
 
   size_t const uioFileNameLength = 1024;
   char * uioFileName = new char[uioFileNameLength+1];

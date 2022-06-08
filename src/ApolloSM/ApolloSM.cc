@@ -40,7 +40,7 @@ std::string ApolloSM::GenerateHTMLStatus(std::string filename,
   if (type == "HTML") {statusDisplay.SetHTML();}
   else if(type == "Bare") {}
   else {
-    fprintf(stderr, "ERROR: invalid HTML type %s\n", type);
+    fprintf(stderr, "ERROR: invalid HTML type %s\n", type.c_str());
     fprintf(stderr, "Valid HTML types are; 'HTML', 'Bare', or '' for HTML\n");
     return "ERROR";
   }

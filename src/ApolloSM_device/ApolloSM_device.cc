@@ -139,7 +139,7 @@ void ApolloSMDevice::LoadCommandList(){
   AddCommand("GenerateHTMLStatus",&ApolloSMDevice::GenerateHTMLStatus,
 	     "Creates a status table as an html file\n" \
 	     "Usage: \n" \
-	     "  GenerateHTMLStatus filename <level> <type>\n");
+	     "  GenerateHTMLStatus filename <type> <level>\n");
 
   AddCommand("uart_term",&ApolloSMDevice::UART_Term,
 	     "The function used for communicating with the command module uart\n"\

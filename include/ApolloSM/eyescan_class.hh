@@ -117,13 +117,13 @@ private:
 
 
 public:
-  eyescan(ApolloSM*SM, 
+  eyescan(std::shared_ptr<BUTool::RegisterHelperIO> _IO, 
 	  std::string const & DRPBaseNode_set, 
 	  std::string const & lpmNode_set, 
 	  int nBinsX_set, int nBinsY_set, int max_prescale);
   ES_state_t check();
   //void check();
-  void update(ApolloSM*SM);
+  void update();
   std::vector<eyescanCoords>const & dataout();
   void throwException(std::string message);
   //make function to dump to file
@@ -136,16 +136,17 @@ public:
   };
 
 private:
+  std::shared_ptr<BUTool::RegisterHelperIO> IO;
   eyescan();
-  void scan_pixel(ApolloSM*SM);
-  void initialize(ApolloSM*SM);
+  void scan_pixel();
+  void initialize();
 
-  ES_state_t EndPixelLPM(ApolloSM*SM);
-  ES_state_t EndPixelDFE(ApolloSM*SM);
+  ES_state_t EndPixelLPM();
+  ES_state_t EndPixelDFE();
 
-  void SetEyeScanVoltage(ApolloSM*SM, std::string baseNode, uint8_t vertOffset, uint32_t sign);
+  void SetEyeScanVoltage(std::string baseNode, uint8_t vertOffset, uint32_t sign);
 
-  void SetEyeScanPhase(ApolloSM*SM, std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
+  void SetEyeScanPhase(std::string baseNode, /*uint16_t*/ int horzOffset, uint32_t sign);
 
 };
 

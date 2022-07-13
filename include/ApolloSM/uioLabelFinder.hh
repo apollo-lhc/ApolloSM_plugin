@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <string.h>
+
 #include <boost/filesystem.hpp>
 
 using namespace boost::filesystem;
@@ -31,18 +32,15 @@ uint64_t SearchDeviceTree(std::string const & dvtPath,std::string const & name){
   char label[128];
   // traverse through the device-tree   
   for (directory_iterator x(dvtPath); x!=directory_iterator(); ++x){
-    if (!is_directory(x->path()) ||
-	!exists(x->path()/"label")) {
-      continue;
-    }
-    labelfile = fopen((x->path().native()+"/label").c_str(),"r");
+    if (x->path().filename().native() != "label") { continue; }
+    labelfile = fopen((x->path().native()).c_str(),"r");
     fgets(label,128,labelfile);
     fclose(labelfile);
 
     if(!strcmp(label, name.c_str())){
       //Get endpoint AXI address from path           
       // looks something like LABEL@DEADBEEFXX       
-      std::string stringAddr=x->path().filename().native();
+      std::string stringAddr=x->path().parent_path().native();
 
       //Check if we find the @          
       size_t addrStart = stringAddr.find("@");
@@ -95,7 +93,7 @@ int label2uio_old(std::string ilabel)
       continue;
     }
     
-    if (!exists(itDir->path()/"label")) {
+    if (!exists(itDir->path().native()+"/label")) {
       //This directory does not contain a file named "label"
       continue;
     }

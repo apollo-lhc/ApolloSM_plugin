@@ -6,23 +6,23 @@ int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabe
   SVFPlayer SVF;
   //std::string lock = "PL_MEM.XVC_LOCK."+XVCLabel;
   std::string lock = XVCLabel+".LOCK";
-  RegWriteRegister(lock,1);
+  WriteRegister(lock,1);
   sleep(1);
   //Make sure any previous JTAG commands finished
-  while(RegReadRegister(XVCLabel+".BUSY")){}
+  while(ReadRegister(XVCLabel+".BUSY")){}
   //Make sure we are in reset
   //send 32 TMS '1's
-  RegWriteRegister(XVCLabel+".TDI_VECTOR",0x0);
-  RegWriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
-  RegWriteRegister(XVCLabel+".LENGTH",32);
-  RegWriteAction(XVCLabel+".GO");//,1);
-  while(RegReadRegister(XVCLabel+".BUSY")){}
+  WriteRegister(XVCLabel+".TDI_VECTOR",0x0);
+  WriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
+  WriteRegister(XVCLabel+".LENGTH",32);
+  WriteAction(XVCLabel+".GO");//,1);
+  while(ReadRegister(XVCLabel+".BUSY")){}
   //send 32 TMS '1's
-  RegWriteRegister(XVCLabel+".TDI_VECTOR",0x0);
-  RegWriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
-  RegWriteRegister(XVCLabel+".LENGTH",32);
-  RegWriteAction(XVCLabel+".GO");//,1);
-  while(RegReadRegister(XVCLabel+".BUSY")){}
+  WriteRegister(XVCLabel+".TDI_VECTOR",0x0);
+  WriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
+  WriteRegister(XVCLabel+".LENGTH",32);
+  WriteAction(XVCLabel+".GO");//,1);
+  while(ReadRegister(XVCLabel+".BUSY")){}
 
   //uint32_t in 32bit words
   uint32_t offset = GetRegAddress(XVCLabel) - GetRegAddress(XVCLabel.substr(0,XVCLabel.find('.')));
@@ -30,18 +30,18 @@ int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabe
 
   //Make sure we are in reset
   //send 32 TMS '1's
-  RegWriteRegister(XVCLabel+".TDI_VECTOR",0x0);
-  RegWriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
-  RegWriteRegister(XVCLabel+".LENGTH",32);
-  RegWriteAction(XVCLabel+".GO");//,1);
-  while(RegReadRegister(XVCLabel+".BUSY")){}
+  WriteRegister(XVCLabel+".TDI_VECTOR",0x0);
+  WriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
+  WriteRegister(XVCLabel+".LENGTH",32);
+  WriteAction(XVCLabel+".GO");//,1);
+  while(ReadRegister(XVCLabel+".BUSY")){}
   //send 32 TMS '1's
-  RegWriteRegister(XVCLabel+".TDI_VECTOR",0x0);
-  RegWriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
-  RegWriteRegister(XVCLabel+".LENGTH",32);
-  RegWriteAction(XVCLabel+".GO");//,1);
-  while(RegReadRegister(XVCLabel+".BUSY")){}
+  WriteRegister(XVCLabel+".TDI_VECTOR",0x0);
+  WriteRegister(XVCLabel+".TMS_VECTOR",0xFFFFFFFF);
+  WriteRegister(XVCLabel+".LENGTH",32);
+  WriteAction(XVCLabel+".GO");//,1);
+  while(ReadRegister(XVCLabel+".BUSY")){}
 
-  RegWriteRegister(lock,0);
+  WriteRegister(lock,0);
   return rc;
 } 

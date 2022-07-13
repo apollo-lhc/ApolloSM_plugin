@@ -5,7 +5,7 @@
 int ApolloSM::GetSerialNumber(){
   int ret = -1; //default value
   try{
-    ret = RegReadRegister("SLAVE_I2C.S1.SM.INFO.SN");
+    ret = ReadRegister("SLAVE_I2C.S1.SM.INFO.SN");
   }catch(BUException::BAD_REG_NAME & e2){
     //eat this exception and just return -1;
   }
@@ -14,7 +14,7 @@ int ApolloSM::GetSerialNumber(){
 int ApolloSM::GetRevNumber(){
   int ret = -1; //default value
   try{
-    ret = RegReadRegister("SLAVE_I2C.S1.SM.INFO.RN");
+    ret = ReadRegister("SLAVE_I2C.S1.SM.INFO.RN");
   }catch(BUException::BAD_REG_NAME & e2){
     //eat this exception and just return -1;
   }
@@ -23,7 +23,7 @@ int ApolloSM::GetRevNumber(){
 int ApolloSM::GetShelfID(){
   int ret = -1; //default value
   try{
-    ret = RegReadRegister("SLAVE_I2C.S1.SM.INFO.SLOT");
+    ret = ReadRegister("SLAVE_I2C.S1.SM.INFO.SLOT");
   }catch(BUException::BAD_REG_NAME & e2){
     //eat this exception and just return -1;
   }
@@ -37,7 +37,7 @@ uint32_t ApolloSM::GetZynqIP(){
 uint32_t ApolloSM::GetIPMCIP(){
   uint32_t ret = 0; //default value
   try{
-    ret = RegReadRegister("SLAVE_I2C.S8.IPMC_IP");
+    ret = ReadRegister("SLAVE_I2C.S8.IPMC_IP");
   }catch(BUException::BAD_REG_NAME & e2){
     //eat this exception and just return -1;
   }

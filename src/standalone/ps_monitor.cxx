@@ -147,16 +147,15 @@ int main(int argc, char ** argv) {
   try{
     // ==================================
     // Initialize ApolloSM
-    SM = new ApolloSM();
+    std::vector<std::string> arg;
+    arg.push_back("connections.xml");
+    SM = new ApolloSM(arg);
     if(NULL == SM){
       syslog(LOG_ERR,"Failed to create new ApolloSM\n");
       exit(EXIT_FAILURE);
     }else{
       syslog(LOG_INFO,"Created new ApolloSM\n");      
     }
-    std::vector<std::string> arg;
-    arg.push_back("connections.xml");
-    SM->Connect(arg);
 
     //vars for pselect
     fd_set readSet,readSet_ret;
@@ -187,8 +186,8 @@ int main(int argc, char ** argv) {
     int networkMon_return = networkMonitor(inRate, outRate); //run once to burn invalid first values
     uCnt.GetUserCounts(superUsers,normalUsers);
     try {
-      SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
-      SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
+      SM->WriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
+      SM->WriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);	  
     }catch(std::exception const & e){
       syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
     }
@@ -200,21 +199,21 @@ int main(int argc, char ** argv) {
 	uint32_t mon;
 	mon = MemUsage()*100; //Scale the value by 100 to get two decimal places for reg   
 	try {
-	  SM->RegWriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
+	  SM->WriteRegister("PL_MEM.ARM.MEM_USAGE",mon);
 	}catch(std::exception const & e){
 	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	}
 	mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
 	try {
-	  SM->RegWriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
+	  SM->WriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
 	}catch(std::exception const & e){
 	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	}
 	networkMon_return = networkMonitor(inRate, outRate);
 	if(!networkMon_return){ //networkMonitor was successful
 	  try {
-	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0.RX",uint32_t(inRate));
-	    SM->RegWriteRegister("PL_MEM.NETWORK.ETH0.TX",uint32_t(outRate));
+	    SM->WriteRegister("PL_MEM.NETWORK.ETH0.RX",uint32_t(inRate));
+	    SM->WriteRegister("PL_MEM.NETWORK.ETH0.TX",uint32_t(outRate));
 	  }catch(std::exception const & e){
 	    syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	  }
@@ -224,9 +223,9 @@ int main(int argc, char ** argv) {
 	float days,hours,minutes;
 	Uptime(days,hours,minutes);
 	try {
-	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.DAYS",uint32_t(100.0*days));
-	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.HOURS",uint32_t(100.0*hours));
-	  SM->RegWriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.MINS",uint32_t(100.0*minutes));
+	  SM->WriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.DAYS",uint32_t(100.0*days));
+	  SM->WriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.HOURS",uint32_t(100.0*hours));
+	  SM->WriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.MINS",uint32_t(100.0*minutes));
 	} catch(std::exception const & e){
 	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	}
@@ -236,8 +235,8 @@ int main(int argc, char ** argv) {
 	  if(uCnt.ProcessWatchEvent()){
 	    uCnt.GetUserCounts(superUsers,normalUsers);
 	    try {
-	      SM->RegWriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
-	      SM->RegWriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);
+	      SM->WriteRegister("PL_MEM.USERS_INFO.SUPER_USERS.COUNT",superUsers);
+	      SM->WriteRegister("PL_MEM.USERS_INFO.USERS.COUNT",normalUsers);
 	    }catch(std::exception const & e){
 	      syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	    }

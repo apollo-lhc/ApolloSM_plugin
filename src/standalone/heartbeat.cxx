@@ -146,16 +146,15 @@ int main(int argc, char** argv) {
   try{
     // ==================================
     // Initialize ApolloSM
-    SM = new ApolloSM();
+    std::vector<std::string> arg;
+    arg.push_back("connections.xml");
+    SM = new ApolloSM(arg);
     if(NULL == SM){
       syslog(LOG_ERR,"Failed to create new ApolloSM\n");
       exit(EXIT_FAILURE);
     }else{
       syslog(LOG_INFO,"Created new ApolloSM\n");      
     }
-    std::vector<std::string> arg;
-    arg.push_back("connections.xml");
-    SM->Connect(arg);
 
     // ==================================
     // Main DAEMON loop
@@ -172,8 +171,8 @@ int main(int argc, char** argv) {
       //=================================
 
       //PS heartbeat
-      SM->RegReadRegister("SLAVE_I2C.HB_SET1");
-      SM->RegReadRegister("SLAVE_I2C.HB_SET2");
+      SM->ReadRegister("SLAVE_I2C.HB_SET1");
+      SM->ReadRegister("SLAVE_I2C.HB_SET2");
 
       //=================================
 
@@ -192,8 +191,8 @@ int main(int argc, char** argv) {
   }
   
   //PS heartbeat
-  SM->RegReadRegister("SLAVE_I2C.HB_SET1");
-  SM->RegReadRegister("SLAVE_I2C.HB_SET2");
+  SM->ReadRegister("SLAVE_I2C.HB_SET1");
+  SM->ReadRegister("SLAVE_I2C.HB_SET2");
 
   //Clean up
   if(NULL != SM) {

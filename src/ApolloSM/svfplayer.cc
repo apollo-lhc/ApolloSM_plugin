@@ -15,9 +15,16 @@
 #include <fcntl.h>  //for fd consts
 #include <stdexcept> //runtime_error
 #include <ApolloSM/uioLabelFinder.hh> 
+#include <exception>
 
+
+#include <setjmp.h> //for BUS_ERROR signal handling
+//Signal handling for sigbus
+sigjmp_buf static env;
 void static signal_handler(int sig){
- 
+  if(SIGBUS == sig){
+    siglongjmp(env,sig);    //jump back to the point in the stack described by env (set by sigsetjmp) and act like the value "sig" was returned in that context
+  }
 }
 
 void SVFPlayer::SetupSignalHandler(){
@@ -37,32 +44,37 @@ uint32_t tms32, tdi32, length32, tdo32;
 int tmsval, tdival, indx;
 
 void SVFPlayer::tck() {
-  //write tms & tdi, then update length
-  tms32 ^= (-tmsval ^ tms32) & (1UL << indx);
-  tdi32 ^= (-tdival ^ tdi32) & (1UL << indx);
-  length32 = indx + 1;
+  if(SIGBUS == sigsetjmp(env,1)){    
+    std::exception * e = new std::runtime_error("Caught SIGBUS in svp player");
+    throw *e;
+  }else{ 
 
-  //if tms and tdi full
-  if(indx == 31) {
-    
-    //assign registers
-    
-    jtag_reg->length_offset = length32;
-    jtag_reg->tms_offset    = tms32;
-    jtag_reg->tdi_offset    = tdi32;
-    jtag_reg->ctrl_offset   = 1;
+    //write tms & tdi, then update length
+    tms32 ^= (-tmsval ^ tms32) & (1UL << indx);
+    tdi32 ^= (-tdival ^ tdi32) & (1UL << indx);
+    length32 = indx + 1;
 
-    //wait for read
-    while(jtag_reg->ctrl_offset) {}
+    //if tms and tdi full
+    if(indx == 31) {
     
-    //reset local registers
-    length32 = 0UL;
-    tms32 = 0UL;
-    tdi32 = 0UL;
-    //reset indx
-    indx = 0;
-  } else {indx++;}
+      //assign registers
+    
+      jtag_reg->length_offset = length32;
+      jtag_reg->tms_offset    = tms32;
+      jtag_reg->tdi_offset    = tdi32;
+      jtag_reg->ctrl_offset   = 1;
 
+      //wait for read
+      while(jtag_reg->ctrl_offset) {}
+    
+      //reset local registers
+      length32 = 0UL;
+      tms32 = 0UL;
+      tdi32 = 0UL;
+      //reset indx
+      indx = 0;
+    } else {indx++;}
+  }
 }
 
 //Empty definitions,
@@ -87,23 +99,27 @@ int SVFPlayer::setup() {
 
 int SVFPlayer::shutdown() {
 
-  
-  //assign registers
-  jtag_reg->length_offset = length32;
-  jtag_reg->tms_offset    = tms32;
-  jtag_reg->tdi_offset    = tdi32;
-  jtag_reg->ctrl_offset   = 1;
+  if(SIGBUS == sigsetjmp(env,1)){    
+    std::exception * e = new std::runtime_error("Caught SIGBUS in svp player");
+    throw *e;
+  }else{ 
+    //assign registers
+    jtag_reg->length_offset = length32;
+    jtag_reg->tms_offset    = tms32;
+    jtag_reg->tdi_offset    = tdi32;
+    jtag_reg->ctrl_offset   = 1;
     
-  //wait for read
-  while(jtag_reg->ctrl_offset) {}
+    //wait for read
+    while(jtag_reg->ctrl_offset) {}
   
-  //reset local registers
-  length32 = 0UL;
-  tms32 = 0UL;
-  tdi32 = 0UL;
-  tmsval = 0;
-  tdival =0;
-  indx = 0;
+    //reset local registers
+    length32 = 0UL;
+    tms32 = 0UL;
+    tdi32 = 0UL;
+    tmsval = 0;
+    tdival =0;
+    indx = 0;
+  }
   return 0;
 }
 

@@ -4,6 +4,9 @@
 #include <string>
 #include <stdint.h>
 
+#include <signal.h> //for handling of SIG_BUS signals
+
+
 class SVFPlayer {
 public:
   SVFPlayer();  

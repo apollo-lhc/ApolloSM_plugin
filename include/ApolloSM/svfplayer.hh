@@ -11,6 +11,8 @@ class SVFPlayer {
 public:
   SVFPlayer();  
   int play(std::string const & svfFile , std::string const & XVCLabel, uint32_t offset);
+  void EnableDisplayProgress(){displayProgress = true;};
+  void DisableDisplayProgress(){displayProgress = false;};
 private:
   typedef struct  {
     uint32_t length_offset;
@@ -26,6 +28,9 @@ private:
   void RemoveSignalHandler();
   struct sigaction saBusError;
   struct sigaction saBusError_old;
+
+  //Print to the screen control
+  bool displayProgress;
 
 
   /* Defined in svfplayer.cc */

@@ -389,7 +389,7 @@ CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string> strArg,
     return CommandReturn::BAD_ARGS;
   }
 
-  SM->svfplayer(strArg[0],XVC_basenode);
+  SM->svfplayer(strArg[0],XVC_basenode,true);
   
   return CommandReturn::OK;
 }

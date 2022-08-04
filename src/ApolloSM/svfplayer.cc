@@ -1,17 +1,7 @@
 #include <ApolloSM/svfplayer.hh>
-//#include <stdio.h>
-//#include <string>
 #include <sys/time.h> //get time of day
 #include <unistd.h> //usleep
-//#include <string.h>
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include <errno.h>
-//#include <stdint.h>
 #include <sys/mman.h> //memmap
-//#include <sys/types.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
 #include <fcntl.h>  //for fd consts
 #include <stdexcept> //runtime_error
 #include <ApolloSM/uioLabelFinder.hh> 
@@ -231,7 +221,9 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
   SetupSignalHandler();
   
   //Run svf player
-  printf("Reading svf file...\n");
+  if(displayProgress){
+    printf("Reading svf file...\n");
+  }
   int rc = svf_reader();
   tap_walk(LIBXSVF_TAP_RESET); //Reset tap
   
@@ -247,5 +239,5 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
 SVFPlayer::SVFPlayer() {
   jtag_reg = NULL;
   svfFile = NULL;
-  
+  displayProgress = false;
 }

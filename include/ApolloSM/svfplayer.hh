@@ -4,10 +4,15 @@
 #include <string>
 #include <stdint.h>
 
+#include <signal.h> //for handling of SIG_BUS signals
+
+
 class SVFPlayer {
 public:
   SVFPlayer();  
   int play(std::string const & svfFile , std::string const & XVCLabel, uint32_t offset);
+  void EnableDisplayProgress(){displayProgress = true;};
+  void DisableDisplayProgress(){displayProgress = false;};
 private:
   typedef struct  {
     uint32_t length_offset;
@@ -17,6 +22,16 @@ private:
     uint32_t ctrl_offset;
     uint32_t lock;
   } sXVC;
+
+  // Signal handler
+  void SetupSignalHandler();
+  void RemoveSignalHandler();
+  struct sigaction saBusError;
+  struct sigaction saBusError_old;
+
+  //Print to the screen control
+  bool displayProgress;
+
 
   /* Defined in svfplayer.cc */
   int  setup();

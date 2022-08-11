@@ -316,7 +316,7 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
 	//      updateBitCount += totalBitCount/updateCount; 
 	currentBitCount=0;
       }
-    }
+    }   
   }
   if(displayProgress){
     if(updateBitCount != 0){

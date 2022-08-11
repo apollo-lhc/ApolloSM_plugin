@@ -1,9 +1,12 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/svfplayer.hh>
 
-int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabel) {
+int ApolloSM::svfplayer(std::string const & svfFile, std::string const & XVCLabel,bool displayProgress) {
 
   SVFPlayer SVF;
+  if(displayProgress){
+    SVF.EnableDisplayProgress();
+  }
   //std::string lock = "PL_MEM.XVC_LOCK."+XVCLabel;
   std::string lock = XVCLabel+".LOCK";
   WriteRegister(lock,1);

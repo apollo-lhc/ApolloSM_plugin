@@ -1,52 +1,71 @@
 #include <ApolloSM/svfplayer.hh>
-//#include <stdio.h>
-//#include <string>
 #include <sys/time.h> //get time of day
 #include <unistd.h> //usleep
-//#include <string.h>
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include <errno.h>
-//#include <stdint.h>
 #include <sys/mman.h> //memmap
-//#include <sys/types.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
 #include <fcntl.h>  //for fd consts
 #include <stdexcept> //runtime_error
 #include <ApolloSM/uioLabelFinder.hh> 
+#include <exception>
+
+
+#include <setjmp.h> //for BUS_ERROR signal handling
+//Signal handling for sigbus
+sigjmp_buf static env;
+void static signal_handler(int sig){
+  if(SIGBUS == sig){
+    siglongjmp(env,sig);    //jump back to the point in the stack described by env (set by sigsetjmp) and act like the value "sig" was returned in that context
+  }
+}
+
+void SVFPlayer::SetupSignalHandler(){
+  //this is here so the signal_handler can stay static
+  memset(&saBusError,0,sizeof(saBusError)); //Clear struct
+  saBusError.sa_handler = signal_handler; //assign signal handler
+  sigemptyset(&saBusError.sa_mask);
+  sigaction(SIGBUS, &saBusError,&saBusError_old);  //install new signal handler (save the old one)
+}
+void SVFPlayer::RemoveSignalHandler(){    
+  sigaction(SIGBUS,&saBusError_old,NULL); //restore the signal handler from before creation for SIGBUS
+}
+
 
 //Defining variables for AXI
 uint32_t tms32, tdi32, length32, tdo32;
 int tmsval, tdival, indx;
 
 void SVFPlayer::tck() {
-  //write tms & tdi, then update length
-  tms32 ^= (-tmsval ^ tms32) & (1UL << indx);
-  tdi32 ^= (-tdival ^ tdi32) & (1UL << indx);
-  length32 = indx + 1;
+  if(SIGBUS == sigsetjmp(env,1)){    
+    RemoveSignalHandler();
+    std::exception * e = new std::runtime_error("Caught SIGBUS in svp player");
+    throw *e;
+  }else{ 
 
-  //if tms and tdi full
-  if(indx == 31) {
-    
-    //assign registers
-    
-    jtag_reg->length_offset = length32;
-    jtag_reg->tms_offset    = tms32;
-    jtag_reg->tdi_offset    = tdi32;
-    jtag_reg->ctrl_offset   = 1;
+    //write tms & tdi, then update length
+    tms32 ^= (-tmsval ^ tms32) & (1UL << indx);
+    tdi32 ^= (-tdival ^ tdi32) & (1UL << indx);
+    length32 = indx + 1;
 
-    //wait for read
-    while(jtag_reg->ctrl_offset) {}
+    //if tms and tdi full
+    if(indx == 31) {
     
-    //reset local registers
-    length32 = 0UL;
-    tms32 = 0UL;
-    tdi32 = 0UL;
-    //reset indx
-    indx = 0;
-  } else {indx++;}
+      //assign registers
+    
+      jtag_reg->length_offset = length32;
+      jtag_reg->tms_offset    = tms32;
+      jtag_reg->tdi_offset    = tdi32;
+      jtag_reg->ctrl_offset   = 1;
 
+      //wait for read
+      while(jtag_reg->ctrl_offset) {}
+    
+      //reset local registers
+      length32 = 0UL;
+      tms32 = 0UL;
+      tdi32 = 0UL;
+      //reset indx
+      indx = 0;
+    } else {indx++;}
+  }
 }
 
 //Empty definitions,
@@ -71,23 +90,28 @@ int SVFPlayer::setup() {
 
 int SVFPlayer::shutdown() {
 
-  
-  //assign registers
-  jtag_reg->length_offset = length32;
-  jtag_reg->tms_offset    = tms32;
-  jtag_reg->tdi_offset    = tdi32;
-  jtag_reg->ctrl_offset   = 1;
+  if(SIGBUS == sigsetjmp(env,1)){    
+    RemoveSignalHandler();
+    std::exception * e = new std::runtime_error("Caught SIGBUS in svp player");
+    throw *e;
+  }else{ 
+    //assign registers
+    jtag_reg->length_offset = length32;
+    jtag_reg->tms_offset    = tms32;
+    jtag_reg->tdi_offset    = tdi32;
+    jtag_reg->ctrl_offset   = 1;
     
-  //wait for read
-  while(jtag_reg->ctrl_offset) {}
+    //wait for read
+    while(jtag_reg->ctrl_offset) {}
   
-  //reset local registers
-  length32 = 0UL;
-  tms32 = 0UL;
-  tdi32 = 0UL;
-  tmsval = 0;
-  tdival =0;
-  indx = 0;
+    //reset local registers
+    length32 = 0UL;
+    tms32 = 0UL;
+    tdi32 = 0UL;
+    tmsval = 0;
+    tdival =0;
+    indx = 0;
+  }
   return 0;
 }
 
@@ -193,12 +217,18 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
   }
 
 
+  // Take back control of the signal handler
+  SetupSignalHandler();
   
   //Run svf player
-  printf("Reading svf file...\n");
+  if(displayProgress){
+    printf("Reading svf file...\n");
+  }
   int rc = svf_reader();
   tap_walk(LIBXSVF_TAP_RESET); //Reset tap
   
+  RemoveSignalHandler();
+
   //Run shutdown
   if (shutdown() < 0) {
     throw std::runtime_error("Shutdown of JTAG interface failed.");
@@ -209,5 +239,5 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
 SVFPlayer::SVFPlayer() {
   jtag_reg = NULL;
   svfFile = NULL;
-  
+  displayProgress = false;
 }

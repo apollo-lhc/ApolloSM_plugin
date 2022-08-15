@@ -210,7 +210,7 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
 				    fdUIO, 0x0);// + (offset*sizeof(uint32_t)));
 
 
-  jtag_reg += (offset * 4) / sizeof(sXVC);
+  jtag_reg += (offset * sizeof(int32_t)) / sizeof(sXVC);
 
   if(MAP_FAILED == jtag_reg){
     throw std::runtime_error("mem map failed");

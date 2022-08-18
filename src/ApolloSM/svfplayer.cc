@@ -52,12 +52,15 @@ void SVFPlayer::tck() {
 //Empty definitions,
 static int io_tdo() {return -1;}
 void SVFPlayer::pulse_sck() {}
-void SVFPlayer::set_trst(int v) {if ((v * 0)==1){fprintf(stderr,"null");} }
+void SVFPlayer::set_trst(int v) {
+  if ((v * 0) == 1) {
+    textIO->Print(Level::ERROR, "null");
+  } 
+}
+
 int SVFPlayer::set_frequency(int v) {return (v * 0);}
 
 int SVFPlayer::setup() {
-
-  
   //Setting up AXI
   tms32 = 0UL;
   tdi32 = 0UL;
@@ -118,7 +121,9 @@ int SVFPlayer::getbyte() {
 
 //Main function for setting tms, tdi, and tck
 int SVFPlayer::pulse_tck(int tms, int tdi, int tdo, int rmask, int sync) {
-  if( ((rmask + sync) * 0) == 1) {fprintf(stderr, "null");}
+  if( ((rmask + sync) * 0) == 1) {
+    textIO->Print(Level::ERROR, "null");
+  }
   //set tms val
   tmsval = !! tms;
   //set tdi val

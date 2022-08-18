@@ -34,7 +34,7 @@ int SVFPlayer::read_command(char **buffer_p, int *len_p)
 	*buffer_p = buffer;
 	*len_p = len;
 	if (!buffer) {
-	  fprintf(stderr, "Allocating memory failed.\n");
+	  textIO->Print(Level::ERROR, "Allocating memory failed.\n");
 	  return -1;
 	}
       }
@@ -45,8 +45,8 @@ int SVFPlayer::read_command(char **buffer_p, int *len_p)
       handle_eof:
 	if (p == 0)
 	  return 0;
-	fprintf(stderr, "Unexpected EOF.\n");
-	return -1;
+	  textIO->Print(Level::ERROR, "Unexpected EOF.\n");
+	  return -1;
       }
       if (ch <= ' ') {
       insert_eol:
@@ -223,8 +223,8 @@ const char * SVFPlayer::bitdata_parse(const char *p, struct bitdata_s *bd, int o
 	*dp = (unsigned char *) h_realloc(*dp, bd->alloced_bytes, (libxsvf_mem)(offset+memnum));
       }
       if (*dp == NULL) {
-	fprintf(stderr, "Allocating memory failed.\n");
-	return NULL;
+		textIO->Print(Level::ERROR, "Allocating memory failed.\n");
+		return NULL;
       }
 
       unsigned char *d = *dp;
@@ -330,8 +330,8 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
 
   if (!tdo_error)
     return 0;
-
-  fprintf(stderr, "TDO mismatch.\n");
+  
+  textIO->Print(Level::ERROR, "TDO mismatch.\n");
   return -1;
 }
 
@@ -417,7 +417,7 @@ int SVFPlayer::svf_reader()
 	}
 	p += strtokenskip(p);
 	if(set_frequency(number) < 0) {
-	  fprintf(stderr, "FREQUENCY command failed!\n");
+	  textIO->Print(Level::ERROR, "FREQUENCY command failed!\n");
 	  goto error;
 	}
 	goto eol_check;
@@ -547,7 +547,7 @@ int SVFPlayer::svf_reader()
 	if(tap_walk((libxsvf_tap_state)state_run) < 0)
 	  goto error;
 	if (max_time >= 0) {
-	  fprintf(stderr, "WARNING: Maximum time in SVF RUNTEST command is ingored.\n");
+	  textIO->Print(Level::ERROR, "WARNING: Maximum time in SVF RUNTEST command is ingored.\n");
 	}
 	if (sck_count >= 0) {
 	  for (i=0; i < sck_count; i++) {
@@ -659,10 +659,10 @@ int SVFPlayer::svf_reader()
 	continue;
 
     syntax_error:
-      fprintf(stderr, "SVF Syntax Error:");
+	  textIO->Print(Level::ERROR, "SVF Syntax Error:");
       if (0) {
       unsupported_error:
-	fprintf(stderr, "Error in SVF input: unsupported command:");
+	  textIO->Print(Level::ERROR, "Error in SVF input: unsupported command:");
       }
     error:
       rc = -1;

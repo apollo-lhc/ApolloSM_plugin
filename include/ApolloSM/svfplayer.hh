@@ -2,6 +2,7 @@
 #define __SVF_PLAYER_HH__
 #include <ApolloSM/svplayer_consts.hh>
 #include <string>
+#include <memory> // std::shared_ptr
 #include <stdint.h>
 
 #include "BUTextIO/BUTextIO.hh"

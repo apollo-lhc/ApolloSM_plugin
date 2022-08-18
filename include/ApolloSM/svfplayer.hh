@@ -4,9 +4,12 @@
 #include <string>
 #include <stdint.h>
 
+#include "BUTextIO/BUTextIO.hh"
+
 class SVFPlayer {
 public:
-  SVFPlayer();  
+  SVFPlayer();
+  SVFPlayer(std::shared_ptr<BUTextIO> _textIO);  
   int play(std::string const & svfFile , std::string const & XVCLabel, uint32_t offset);
 private:
   typedef struct  {
@@ -60,6 +63,8 @@ private:
   int bitcount_tdo;
   int retval_i;
   int retval[256];
+
+  std::shared_ptr<BUTextIO> textIO;
 
 };
 

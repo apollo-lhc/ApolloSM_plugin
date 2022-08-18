@@ -173,7 +173,7 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
   char * uioFileName = new char[uioFileNameLength+1];
   memset(uioFileName,0x0,uioFileNameLength+1);
   snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",nUIO);
-  printf("Found UIO labeled %s @ %s\n",XVCLabel.c_str(),uioFileName);
+  textIO->Print(Level::INFO, "Found UIO labeled %s @ %s\n",XVCLabel.c_str(),uioFileName);
   //Run setup
   fdUIO = open(uioFileName,O_RDWR);
   delete [] uioFileName;
@@ -195,7 +195,7 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
 
   
   //Run svf player
-  printf("Reading svf file...\n");
+  textIO->Print(Level::INFO, "Reading svf file...\n");
   int rc = svf_reader();
   tap_walk(LIBXSVF_TAP_RESET); //Reset tap
   
@@ -209,5 +209,13 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
 SVFPlayer::SVFPlayer() {
   jtag_reg = NULL;
   svfFile = NULL;
-  
+  // Initialize textIO class member pointer for printing use
+  textIO = std::make_shared<BUTextIO>();
+}
+
+SVFPlayer::SVFPlayer(std::shared_ptr<BUTextIO> _textIO) {
+  jtag_reg = NULL;
+  svfFile = NULL;
+  // Initialize textIO class member pointer for printing use
+  textIO = _textIO;
 }

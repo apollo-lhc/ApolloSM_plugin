@@ -270,7 +270,6 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
   int left_padding = (8 - (bd->len & 0x7)) & 0x7;
   int tdo_error = 0;
   int tms = 0;
-  bool displayProgress = false;
 
   if(displayProgress){
     if(bd->len > 10000){
@@ -316,7 +315,7 @@ int SVFPlayer::bitdata_play(struct bitdata_s *bd, enum libxsvf_tap_state estate)
 	//      updateBitCount += totalBitCount/updateCount; 
 	currentBitCount=0;
       }
-    }
+    }   
   }
   if(displayProgress){
     if(updateBitCount != 0){

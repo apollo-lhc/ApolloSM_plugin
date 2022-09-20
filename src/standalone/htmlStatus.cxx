@@ -159,16 +159,15 @@ int main(int argc, char** argv) {
   try{
     // ==================================
     // Initialize ApolloSM
-    SM = new ApolloSM();
+    std::vector<std::string> arg;
+    arg.push_back("connections.xml");
+    SM = new ApolloSM(arg);
     if(NULL == SM){
       syslog(LOG_ERR,"Failed to create new ApolloSM\n");
       exit(EXIT_FAILURE);
     }else{
       syslog(LOG_INFO,"Created new ApolloSM\n");      
     }
-    std::vector<std::string> arg;
-    arg.push_back("connections.xml");
-    SM->Connect(arg);
 
     // ==================================
     // Main DAEMON loop

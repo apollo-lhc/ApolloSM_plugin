@@ -25,24 +25,26 @@ using namespace BUTool;
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   : CommandList<ApolloSMDevice>("ApolloSM"),
-    IPBusRegHelper(),
+    ApolloSMHolder(arg),
+    IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM),
+		   BUTool::CommandListBase::TextIO),
     stream(NULL){
   
-  SM = new ApolloSM();
-  SM->Connect(arg);
-  SetHWInterface(SM->GetHWInterface()); //Pass the inherited version of IPBusIO inside of IPBusREgHelper a pointer to the real hw interface
+  //setup commands
+  LoadCommandList();
+}
+ApolloSMDevice::ApolloSMDevice(std::shared_ptr<ApolloSM> apolloSM)
+  : CommandList<ApolloSMDevice>("ApolloSM"),
+    ApolloSMHolder(apolloSM),
+    IPBusRegHelper(std::static_pointer_cast<IPBusIO>(SM),
+		   BUTool::CommandListBase::TextIO),
+    stream(NULL){
   
-  // setup RegisterHelper's BUTextIO pointer
-  SetupTextIO();
-
   //setup commands
   LoadCommandList();
 }
 
 ApolloSMDevice::~ApolloSMDevice(){
-  if(NULL != SM){
-    delete SM;
-  }
 }
 
   
@@ -78,8 +80,12 @@ void ApolloSMDevice::LoadCommandList(){
 	     "  readstring reg\n",
 	     &ApolloSMDevice::RegisterAutoComplete);
 
-
-
+  AddCommand("readconvert",&ApolloSMDevice::ReadConvert,
+	     "Read and convert register\n" \
+	     "Usage: \n"                           \
+	     "  readconvert reg\n",
+	     &ApolloSMDevice::RegisterAutoComplete);
+  
   AddCommand("write",&ApolloSMDevice::Write,
 	     "Write to ApolloSM\n"           \
 	     "Usage: \n"                     \
@@ -100,7 +106,6 @@ void ApolloSMDevice::LoadCommandList(){
 	     "  writeoffset addr offset data count\n",
 	     &ApolloSMDevice::RegisterAutoComplete);
   AddCommandAlias("wo","writeoffset");
-
 
   AddCommand("nodes", &ApolloSMDevice::ListRegs, 
 	     "List matching address table items\n",
@@ -134,7 +139,7 @@ void ApolloSMDevice::LoadCommandList(){
   AddCommand("GenerateHTMLStatus",&ApolloSMDevice::GenerateHTMLStatus,
 	     "Creates a status table as an html file\n" \
 	     "Usage: \n" \
-	     "  GenerateHTMLStatus filename <level> <type>\n");
+	     "  GenerateHTMLStatus filename <type> <level>\n");
 
   AddCommand("uart_term",&ApolloSMDevice::UART_Term,
 	     "The function used for communicating with the command module uart\n"\
@@ -353,16 +358,15 @@ CommandReturn::status ApolloSMDevice::UART_CMD(std::vector<std::string> strArg,s
 
   // so the output from a uart_cmd consists of, foremost, a bunch of control sequences, then a new line, then the actual
   // output of what we want, version or help menu, etc. What we will do is throw away everything before the first new line
-  int const firstNewLine = 10;
   //  bool firstNewLineReached = false;
-  size_t firstNewLineIndex;
+  size_t firstNewLineIndex = 0;
 
   // send the command
   std::string recvline = SM->UART_CMD(ttyDev, sendline, promptChar);  
   
   // find the first new line
   for(size_t i = 0; i < recvline.size(); i++) {
-    if(firstNewLine == (int)recvline[i]) {
+    if(char(10) == recvline[i]) {
       firstNewLineIndex = i;
       break;
     }
@@ -385,32 +389,45 @@ CommandReturn::status ApolloSMDevice::svfplayer(std::vector<std::string> strArg,
     return CommandReturn::BAD_ARGS;
   }
 
-  SM->svfplayer(strArg[0],XVC_basenode);
+  SM->svfplayer(strArg[0],XVC_basenode,true);
   
   return CommandReturn::OK;
 }
 
-CommandReturn::status ApolloSMDevice::GenerateHTMLStatus(std::vector<std::string> strArg, std::vector<uint64_t> level) {
-  if (strArg.size() < 1) {
+CommandReturn::status ApolloSMDevice::GenerateHTMLStatus(std::vector<std::string> strArg, std::vector<uint64_t> intArg) {
+  size_t numArgs = strArg.size();
+  
+  // At least one command line argument is required for the filename
+  if (numArgs < 1) {
     return CommandReturn::BAD_ARGS;
   }
 
-  std::string strOut;
+  // The filename to save the HTML tables
+  std::string filename = strArg[0];
 
-  //Grab a possible level
-  size_t verbosity;
-  if (level.size() == 1) {
-    verbosity = level[0];
-  }else {
-    verbosity = 1;
+  // Grab a possible verbosity level (default is 1, least verbosity)
+  size_t verbosity = 1;
+
+  // HTML document type, default is full HTML (specified as "HTML")
+  std::string type = "HTML";
+
+  switch (numArgs) {
+    // Both the HTML type and verbosity are specified in the command line
+    case 3:
+      type = strArg[1];
+      verbosity = intArg[2];
+      break;
+    // Just the HTML type is specified
+    case 2:
+      type = strArg[1];
+      break;
   }
 
-  if (strArg.size() == 1) {
-    strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,"HTML");
-  }else{
-    strOut = SM->GenerateHTMLStatus(strArg[0],verbosity,strArg[1]);
-  }
+  // Call the dedicated function of ApolloSM class to generate the HTML table
+  // and return a string
+  std::string strOut = SM->GenerateHTMLStatus(filename,verbosity,type);
 
+  // Something has gone wrong while generating the table
   if (strOut == "ERROR") {
     return CommandReturn::BAD_ARGS;
   }
@@ -477,7 +494,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 
     for (int i = 0; i < num_of_nodes; ++i)
       {
-	eyescans.push_back(std::make_pair(eyescan(SM,
+	eyescans.push_back(std::make_pair(eyescan(std::static_pointer_cast<BUTool::RegisterHelperIO>(SM),
 						  strArg[((i+1)*3)],    //baseNode
 						  strArg[((i+1)*3)+1],  //lpmNode
 						  binXStep,binYStep,
@@ -487,7 +504,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
   
     for (auto itES = eyescans.begin(); itES != eyescans.end(); itES++)
       {
-	(*itES).first.update(SM);
+	(*itES).first.update();
 	if ((*itES).first.check()==eyescan::SCAN_READY)
 	  {
 	    (*itES).first.start();
@@ -529,7 +546,7 @@ CommandReturn::status ApolloSMDevice::unblockAXI(std::vector<std::string> strArg
 	    //	    printf("Progress:%d/%d nodes.\n",nodes_done,num_of_nodes);
 	    continue;
 	  }else{
-	    (*itES).first.update(SM);
+	    (*itES).first.update();
 	    num_updates+=1;
 	    itES++;
 	  }

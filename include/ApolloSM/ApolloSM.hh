@@ -2,11 +2,9 @@
 #define __APOLLO_SM_HH__
 
 #include <IPBusIO/IPBusConnection.hh>
+#include <IPBusIO/IPBusIO.hh>
 #include <IPBusStatus/IPBusStatus.hh>
 #include <BUException/ExceptionBase.hh>
-//#include <ApolloSM/eyescan.hh>
-//#include <ApolloSM/eyescan_class.hh>
-
 
 #include <iostream>
 
@@ -16,9 +14,10 @@ namespace BUException{
 
 #include <stdint.h>
 
-class ApolloSM : public IPBusConnection{
+class ApolloSM : public IPBusConnection,
+		 public IPBusIO{
 public:
-  ApolloSM(); //User should call Connect inhereted from IPBusConnection
+  ApolloSM(std::vector<std::string> const & args);
   ~ApolloSM();
 
   //The IPBus connection and read/write functions come from the IPBusConnection class.
@@ -33,7 +32,7 @@ public:
 
   std::string UART_CMD(std::string const & ttyDev, std::string sendline, char const promptChar = '%');
 
-  int svfplayer(std::string const & svfFile, std::string const & XVCReg);
+  int svfplayer(std::string const & svfFile, std::string const & XVCReg,bool displayProgress=false);
   
   bool PowerUpCM(int CM_ID,int wait = -1);
   bool PowerDownCM(int CM_ID,int wait = -1);
@@ -42,11 +41,6 @@ public:
 
   void unblockAXI(std::string name ="");
   
-  //void EnableEyeScan(std::string baseNode, uint32_t prescale);
-  //void SetOffsets(std::string baseNode, uint8_t vertOffset, uint16_t horzOffset);
-  //SESout SingleEyeScan(std::string baseNode, std::string lpmNode, uint32_t maxPrescale);
-  void EyeScan();
-  //std::vector<eyescanCoords> Bathtub(std::string baseNode, std::string lpmNode, double horzIncrement, uint32_t maxPrescale);
   void restartCMuC(std::string CM_ID);
 
   int GetSerialNumber();
@@ -56,7 +50,7 @@ public:
   uint32_t GetIPMCIP();
 
 private:  
-  IPBusStatus * statusDisplay;
+  IPBusStatus statusDisplay;
 
   void assertNode(std::string node, uint32_t correctVal);
   void confirmNode(std::string node, uint32_t correctVal);

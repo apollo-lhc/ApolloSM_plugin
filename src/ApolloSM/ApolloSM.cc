@@ -3,27 +3,30 @@
 
 #include <boost/algorithm/string/predicate.hpp> //for iequals
 
-ApolloSM::ApolloSM():IPBusConnection("ApolloSM"),statusDisplay(NULL){  
-  statusDisplay= new IPBusStatus(GetHWInterface());
+ApolloSM::ApolloSM(std::vector<std::string> const & args):
+  IPBusConnection("ApolloSM", args),
+  IPBusIO(      ((IPBusConnection*)this)->GetHWInterface()),
+  statusDisplay((IPBusIO*)this){
+  //Set case sensistive
+  SetCase(RegisterHelperIO::RegisterNameCase::CASE_SENSITIVE);
 }
 
 ApolloSM::~ApolloSM(){
-  if(statusDisplay != NULL){
-    delete statusDisplay;
-  }
 }
 
 void ApolloSM::GenerateStatusDisplay(size_t level,
 				     std::ostream & stream=std::cout,
 				     std::string const & singleTable = std::string("")){
-  statusDisplay->Clear();
-  statusDisplay->Report(level,stream,singleTable);
-  statusDisplay->Clear();
+  statusDisplay.Clear();
+  statusDisplay.Report(level,stream,singleTable);
+  statusDisplay.Clear();
 }
 
 
-std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = size_t(1), std::string type = std::string("HTML")) {
-  statusDisplay->Clear();
+std::string ApolloSM::GenerateHTMLStatus(std::string filename,
+					 size_t level = size_t(1),
+					 std::string type = std::string("HTML")) {
+  statusDisplay.Clear();
   //SETUP
   std::ofstream HTML;
   HTML.open(filename);
@@ -34,43 +37,43 @@ std::string ApolloSM::GenerateHTMLStatus(std::string filename, size_t level = si
   std::string BareReport; //For ReportBare
 
   //Setting Status Display
-  if (type == "HTML") {statusDisplay->SetHTML();}
+  if (type == "HTML") {statusDisplay.SetHTML();}
   else if(type == "Bare") {}
   else {
-    fprintf(stderr, "ERROR: invalid HTML type\n");
-    fprintf(stderr, "Valid HTML types are; HTML, Bare, or "" for HTML\n");
+    fprintf(stderr, "ERROR: invalid HTML type %s\n", type.c_str());
+    fprintf(stderr, "Valid HTML types are; 'HTML', 'Bare', or '' for HTML\n");
     return "ERROR";
   }
 
   //Get report
-  if (type == "HTML") {statusDisplay->Report(level, HTML, "");}
+  if (type == "HTML") {statusDisplay.Report(level, HTML, "");}
   else {
-    BareReport = statusDisplay->ReportBare(level, "");
+    BareReport = statusDisplay.ReportBare(level, "");
     HTML.write(BareReport.c_str(),BareReport.size());
     HTML.close();
   }
 
   //END
   HTML.close();
-  statusDisplay->UnsetHTML();
-  statusDisplay->Clear();
+  statusDisplay.UnsetHTML();
+  statusDisplay.Clear();
   return "GOOD";
 }
 
 std::string ApolloSM::GenerateGraphiteStatus(size_t level = size_t(1), std::string table="") {
-  statusDisplay->Clear();
+  statusDisplay.Clear();
   //SETUP
   std::stringstream output;
 
   //Setting Status Display
-  statusDisplay->SetGraphite();
+  statusDisplay.SetGraphite();
 
   //Get report
-  statusDisplay->Report(level,output,table);
+  statusDisplay.Report(level,output,table);
 
   //END
-  statusDisplay->UnsetGraphite();
-  statusDisplay->Clear();
+  statusDisplay.UnsetGraphite();
+  statusDisplay.Clear();
   return output.str();
 }
 
@@ -94,16 +97,16 @@ bool ApolloSM::PowerUpCM(int CM_ID, int wait /*seconds*/){
   CM_CTRL+=".CTRL.";
 
   //Check that the uC is powered up, power up if needed
-  if(!RegReadRegister(CM_CTRL+"ENABLE_UC")){
-    RegWriteRegister(CM_CTRL+"ENABLE_UC",1);
+  if(!ReadRegister(CM_CTRL+"ENABLE_UC")){
+    WriteRegister(CM_CTRL+"ENABLE_UC",1);
   }
   //Power up the CM 
-  RegWriteRegister(CM_CTRL+"ENABLE_PWR",1);
+  WriteRegister(CM_CTRL+"ENABLE_PWR",1);
   usleep(10000); //Wait 10ms
   
   wait*=1000000; //convert wait time to us from s
   do{
-    if(RegReadRegister(CM_CTRL+"STATE") == RUNNING_STATE){
+    if(ReadRegister(CM_CTRL+"STATE") == RUNNING_STATE){
       return true;
      }
     int dt = 10000;//10ms
@@ -111,7 +114,7 @@ bool ApolloSM::PowerUpCM(int CM_ID, int wait /*seconds*/){
     wait-=dt;
   }while(wait >= 0);
 
-  RegWriteRegister(CM_CTRL+"ENABLE_PWR",0);
+  WriteRegister(CM_CTRL+"ENABLE_PWR",0);
   
   return false;
 }
@@ -135,12 +138,12 @@ bool ApolloSM::PowerDownCM(int CM_ID, int wait /*seconds*/){
   }
   CM_CTRL+=".CTRL.";
 
-  RegWriteRegister(CM_CTRL+"ENABLE_PWR",0);
+  WriteRegister(CM_CTRL+"ENABLE_PWR",0);
   usleep(10000); //Wait 10ms
   
   wait*=1000000; //convert wait time to us from s
   do{
-    if( RegReadRegister(CM_CTRL+"STATE") == RESET_STATE ){
+    if( ReadRegister(CM_CTRL+"STATE") == RESET_STATE ){
       //PWR GOOD went off
       break;
     }
@@ -149,7 +152,7 @@ bool ApolloSM::PowerDownCM(int CM_ID, int wait /*seconds*/){
     wait-=dt;
   }while(wait >= 0);  
 
-  uint32_t state = RegReadRegister(CM_CTRL+"STATE");
+  uint32_t state = ReadRegister(CM_CTRL+"STATE");
 
   if(PWR_DOWN_STATE == state){
     //We just shut off the uC before power good went down.  
@@ -161,7 +164,7 @@ bool ApolloSM::PowerDownCM(int CM_ID, int wait /*seconds*/){
 }
 
 void ApolloSM::unblockAXI(std::string unblockName) {
-  std::vector<std::string> Names = myMatchRegex("*");
+  std::vector<std::string> Names = GetRegsRegex("*");
   uMap::iterator unblockNode;
   for(auto it = Names.begin();it != Names.end();it++){
     //Get the list of parameters for this node
@@ -169,10 +172,10 @@ void ApolloSM::unblockAXI(std::string unblockName) {
     if( (unblockNode = parameters.find("Unblock")) != parameters.end()){
       if(unblockName.size() == 0){	
 	//The unblockName is empty, so every node with unblock gets a write
-	RegWriteAction(*it);
+	WriteAction(*it);
       }else{
 	if(boost::iequals(unblockName,unblockNode->second)){
-	  RegWriteAction(*it);
+	  WriteAction(*it);
 	}
       }
     }
@@ -183,7 +186,7 @@ void ApolloSM::unblockAXI(std::string unblockName) {
 
 void ApolloSM::restartCMuC(std::string CM_ID) {
   std::string command_string = "CM.CM_" + CM_ID + ".CTRL.ENABLE_UC";
-  RegWriteRegister(command_string,1);
+  WriteRegister(command_string,1);
   usleep(10000); //Wait 10ms
-  RegWriteRegister(command_string,0);
+  WriteRegister(command_string,0);
 }

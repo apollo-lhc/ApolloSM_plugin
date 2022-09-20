@@ -47,7 +47,7 @@ int main(int argc, char ** argv){
   else{
     printf("UIO: %d\n",uio);
   }
-  char UIOFilename[] = "/dev/uioXXXXXXXX";
+  char UIOFilename[] = "/dev/uioXXXXXXXXXX ";
   snprintf(UIOFilename,strlen(UIOFilename),
 	   "/dev/uio%d",uio);
 

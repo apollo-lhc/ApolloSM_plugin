@@ -131,10 +131,10 @@ temperatures sendAndParse(ApolloSM* SM) {
 
 // ====================================================================================================
 void updateTemp(ApolloSM * SM, std::string const & base,uint8_t temp){
-  uint32_t oldValues = SM->RegReadRegister(base);
+  uint32_t oldValues = SM->ReadRegister(base);
   oldValues = (oldValues & 0xFFFFFF00) | ((temp)&0x000000FF);
   if(0 == temp){    
-    SM->RegWriteRegister(base,oldValues);
+    SM->WriteRegister(base,oldValues);
     return;
   }
 
@@ -147,7 +147,7 @@ void updateTemp(ApolloSM * SM, std::string const & base,uint8_t temp){
      (0 == (0xFF&(oldValues>>16)))){
     oldValues = (oldValues & 0xFF00FFFF) | ((temp<<16)&0x00FF0000);
   }
-  SM->RegWriteRegister(base,oldValues);
+  SM->WriteRegister(base,oldValues);
 }
 
 void sendTemps(ApolloSM* SM, temperatures temps) {
@@ -285,18 +285,18 @@ int main(int argc, char** argv) {
   try{
     // ==================================
     // Initialize ApolloSM
-    SM = new ApolloSM();
+    std::vector<std::string> arg;
+    arg.push_back("connections.xml");
+    
+    SM = new ApolloSM(arg);
     if(NULL == SM){
       syslog(LOG_ERR,"Failed to create new ApolloSM\n");
       exit(EXIT_FAILURE);
     }else{
       syslog(LOG_INFO,"Created new ApolloSM\n");      
     }
-    std::vector<std::string> arg;
-    arg.push_back("connections.xml");
-    SM->Connect(arg);
     //Set the power-up done bit to 1 for the IPMC to read
-    SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
+    SM->WriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",1);    
     syslog(LOG_INFO,"Set STATUS.DONE to 1\n");
   
 
@@ -304,11 +304,11 @@ int main(int argc, char** argv) {
     // ====================================
     // Do all of the reg writes we are asked to
     auto regWrites = allOptions["regwrite"];
-    for(auto itRegWrite = regWrites.begin();
-	itRegWrite != regWrites.end();
-	itRegWrite++){      
+    for(auto itWrite = regWrites.begin();
+	itWrite != regWrites.end();
+	itWrite++){      
       //Loop over each regwrite line and split it into reg/value
-      std::vector<std::string> split = split_string(*itRegWrite," ");
+      std::vector<std::string> split = split_string(*itWrite," ");
       if(split.size() == 2){
 	//validate the second argument (write value)
 	
@@ -323,19 +323,19 @@ int main(int argc, char** argv) {
 	  if(std::isdigit(split[0][0])){
 	    //If the first digit is a number, assume it is a number dec, 0x
 	    uint32_t addr = strtoul(split[0].c_str(),NULL,0);
-	    SM->RegWriteAddress(addr,val);
+	    SM->WriteAddress(addr,val);
 	    syslog(LOG_INFO,"Wrote: 0x%08X to 0x%08X\n",val,addr);
 	  }else{
-	    SM->RegWriteRegister(split[0],val);
+	    SM->WriteRegister(split[0],val);
 	    syslog(LOG_INFO,"Wrote: 0x%08X to %s\n",val,split[0].c_str());
 	  }
 	}catch(BUException::IO_ERROR &e){
-	  syslog(LOG_INFO,"Bad reg write: %s",itRegWrite->c_str());
+	  syslog(LOG_INFO,"Bad reg write: %s",itWrite->c_str());
 	  continue;
 	}
 
       }else{
-	syslog(LOG_INFO,"Bad reg write: %s",itRegWrite->c_str());
+	syslog(LOG_INFO,"Bad reg write: %s",itWrite->c_str());
       }
 	
     }
@@ -344,7 +344,7 @@ int main(int argc, char** argv) {
     // ====================================
     // Turn on CM uC      
     if (powerupCMuC){
-      SM->RegWriteRegister("CM.CM_1.CTRL.ENABLE_UC",1);
+      SM->WriteRegister("CM.CM_1.CTRL.ENABLE_UC",1);
       syslog(LOG_INFO,"Powering up CM uC\n");
       sleep(powerupTime);
     }
@@ -376,7 +376,7 @@ int main(int argc, char** argv) {
       //Process CM temps
       if(sensorsThroughZynq) {
   temperatures temps;  
-        if(SM->RegReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
+        if(SM->ReadRegister("CM.CM_1.CTRL.ENABLE_UC")){
     try{
       temps = sendAndParse(SM);
     }catch(std::exception & e){
@@ -391,7 +391,7 @@ int main(int argc, char** argv) {
       temps.FPGATemp = 0;
       temps.REGTemp = 0;
     }
-    CM_running = SM->RegReadRegister("CM.CM_1.CTRL.PWR_GOOD");
+    CM_running = SM->ReadRegister("CM.CM_1.CTRL.PWR_GOOD");
     
     sendTemps(SM, temps);
     if(!temps.validData){
@@ -404,7 +404,7 @@ int main(int argc, char** argv) {
       }
 
       //Check if we are shutting down
-      if((!inShutdown) && SM->RegReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
+      if((!inShutdown) && SM->ReadRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN_REQ")){
   syslog(LOG_INFO,"Shutdown requested\n");
   inShutdown = true;
   //the IPMC requested a re-boot.
@@ -445,20 +445,20 @@ int main(int argc, char** argv) {
   //make sure the CM is off
   //Shutdown the command module (if up)
   SM->PowerDownCM(1,5);
-  SM->RegWriteRegister("CM.CM_1.CTRL.ENABLE_UC",0);
+  SM->WriteRegister("CM.CM_1.CTRL.ENABLE_UC",0);
 
   
   //If we are shutting down, do the handshanking.
   if(inShutdown){
     syslog(LOG_INFO,"Tell IPMC we have shut-down\n");
     //We are no longer booted
-    SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
+    SM->WriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
     //we are shut down
-    //    SM->RegWriteRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN",1);
+    //    SM->WriteRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN",1);
     // one last HB
     //PS heartbeat
-    SM->RegReadRegister("SLAVE_I2C.HB_SET1");
-    SM->RegReadRegister("SLAVE_I2C.HB_SET2");
+    SM->ReadRegister("SLAVE_I2C.HB_SET1");
+    SM->ReadRegister("SLAVE_I2C.HB_SET2");
 
   }
 

@@ -1,3 +1,5 @@
+SHELL = bash
+
 BUTOOL_PATH?=../../
 
 UHAL_VER_MAJOR ?= 2
@@ -43,6 +45,7 @@ endif
 LIBRARIES =    	-lcurses \
 		-lToolException	\
 		-lBUTool_IPBusIO \
+		-lBUTool_IPBusRegHelpers \
 		-lBUTool_IPBusStatus \
 		-lBUTool_BUTextIO \
 		-lboost_regex \
@@ -137,7 +140,7 @@ endif
 # ------------------------
 # ApolloSM library
 # ------------------------
-${LIBRARY_APOLLO_SM_DEVICE}: ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusIO.so ${LIBRARY_APOLLO_SM}
+${LIBRARY_APOLLO_SM_DEVICE}: ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES}  ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusRegHelpers.so ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusIO.so ${LIBRARY_APOLLO_SM}
 	${CXX} ${LINK_LIBRARY_FLAGS} -lBUTool_ApolloSM ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES} -o $@
 	@echo "export BUTOOL_AUTOLOAD_LIBRARY_LIST=\$$BUTOOL_AUTOLOAD_LIBRARY_LIST:$(RUNTIME_LDPATH)/${LIBRARY_APOLLO_SM_DEVICE}" > env.sh
 
@@ -168,18 +171,21 @@ obj/%.o : src/%.cxx
 	mkdir -p {lib,obj}
 	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
 
-#specific rule for peek and pokeUIO since we want them free of dynamic linking
+#specific rule for peek and pokeUIO since we want them free of dynamic linking to other libraries
 bin/peekUIO : src/standalone/peekUIO.cxx
 	mkdir -p bin
 	${CXX} ${CXX_FLAGS} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system $^ -o $@
 bin/pokeUIO : src/standalone/pokeUIO.cxx
 	mkdir -p bin
 	${CXX} ${CXX_FLAGS} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system $^ -o $@
+bin/findUIO : src/standalone/findUIO.cxx
+	mkdir -p bin
+	${CXX} ${CXX_FLAGS} -Wall -g -O3 -rdynamic -lboost_filesystem -lboost_system  $^ -o $@
 
 
 bin/% : obj/standalone/%.o ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} ${LIBRARY_APOLLO_SM}
 	mkdir -p bin
-	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $< ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} -o $@
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM  -lboost_system -lpugixml  $< ${EXE_APOLLO_SM_STANDALONE_OBJECT_FILES} -o $@
 
 bin/SM_boot : obj/standalone/SM_boot.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
 	mkdir -p bin

@@ -107,8 +107,8 @@ void UpdateINA3221Sensor(ApolloSM * sm,
   float voltage = GetVoltage(baseFilePath,iSense);
   float current = GetCurrent(baseFilePath,iSense);
   try{
-    sm->RegWriteRegister(baseTablePath+"."+label+".I",current);
-    sm->RegWriteRegister(baseTablePath+"."+label+".V",voltage);
+    sm->WriteRegister(baseTablePath+"."+label+".I",current);
+    sm->WriteRegister(baseTablePath+"."+label+".V",voltage);
   }catch(BUException::exBase &e){
   }    
 }
@@ -260,16 +260,15 @@ int main(int argc, char ** argv) {
   try{
     // ==================================
     // Initialize ApolloSM
-    SM = new ApolloSM();
+    std::vector<std::string> arg;
+    arg.push_back("connections.xml");
+    SM = new ApolloSM(arg);
     if(NULL == SM){
       syslog(LOG_ERR,"Failed to create new ApolloSM\n");
       exit(EXIT_FAILURE);
     }else{
       syslog(LOG_INFO,"Created new ApolloSM\n");      
     }
-    std::vector<std::string> arg;
-    arg.push_back("connections.xml");
-    SM->Connect(arg);
 
   
     

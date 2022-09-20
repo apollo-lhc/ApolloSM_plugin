@@ -19,18 +19,36 @@
 #include <ApolloSM/eyescan_class.hh>
 
 namespace BUTool{
-  
-  class ApolloSMDevice: public CommandList<ApolloSMDevice>, public IPBusRegHelper{
+
+  //This holder class is used to force the ApolloSM class that would normally
+  //be in the ApolloSMDevice class to be initialized before the IPBusRegHelper
+  //so that it can be past to the IPBusRegHelper's constructor. 
+  class ApolloSMHolder{
   public:
-    ApolloSMDevice(std::vector<std::string> arg); 
+    ApolloSMHolder(std::vector<std::string> const & arg){
+      SM = std::make_shared<ApolloSM>(arg);
+    };
+    ApolloSMHolder(std::shared_ptr<ApolloSM> apolloSM){
+      SM = apolloSM;
+    }
+  protected:
+    std::shared_ptr<ApolloSM> SM;
+  private:
+    ApolloSMHolder();
+  };
+  
+  class ApolloSMDevice: public CommandList<ApolloSMDevice>,
+			public ApolloSMHolder,
+			public IPBusRegHelper{
+  public:
+    ApolloSMDevice(std::vector<std::string> arg);
+    ApolloSMDevice(std::shared_ptr<ApolloSM> apolloSM);
     ~ApolloSMDevice();
 
 
 
 
-  private:
-    ApolloSM * SM;
-    
+  private: 
     std::ofstream* stream;
     std::string fileName;
 

@@ -71,12 +71,15 @@ void SVFPlayer::tck() {
 //Empty definitions,
 static int io_tdo() {return -1;}
 void SVFPlayer::pulse_sck() {}
-void SVFPlayer::set_trst(int v) {if ((v * 0)==1){fprintf(stderr,"null");} }
+void SVFPlayer::set_trst(int v) {
+  if ((v * 0) == 1) {
+    textIO->Print(Level::ERROR, "null");
+  } 
+}
+
 int SVFPlayer::set_frequency(int v) {return (v * 0);}
 
 int SVFPlayer::setup() {
-
-  
   //Setting up AXI
   tms32 = 0UL;
   tdi32 = 0UL;
@@ -142,7 +145,9 @@ int SVFPlayer::getbyte() {
 
 //Main function for setting tms, tdi, and tck
 int SVFPlayer::pulse_tck(int tms, int tdi, int tdo, int rmask, int sync) {
-  if( ((rmask + sync) * 0) == 1) {fprintf(stderr, "null");}
+  if( ((rmask + sync) * 0) == 1) {
+    textIO->Print(Level::ERROR, "null");
+  }
   //set tms val
   tmsval = !! tms;
   //set tdi val
@@ -197,7 +202,7 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
   char * uioFileName = new char[uioFileNameLength+1];
   memset(uioFileName,0x0,uioFileNameLength+1);
   snprintf(uioFileName,uioFileNameLength,"/dev/uio%d",nUIO);
-  printf("Found UIO labeled %s @ %s\n",XVCLabel.c_str(),uioFileName);
+  textIO->Print(Level::INFO, "Found UIO labeled %s @ %s\n",XVCLabel.c_str(),uioFileName);
   //Run setup
   fdUIO = open(uioFileName,O_RDWR);
   delete [] uioFileName;
@@ -221,9 +226,11 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
   SetupSignalHandler();
   
   //Run svf player
+
   if(displayProgress){
-    printf("Reading svf file...\n");
+    textIO->Print(Level::INFO, "Reading svf file...\n");
   }
+
   int rc = svf_reader();
   tap_walk(LIBXSVF_TAP_RESET); //Reset tap
   
@@ -239,5 +246,15 @@ int SVFPlayer::play(std::string const & svfFileName , std::string const & XVCLab
 SVFPlayer::SVFPlayer() {
   jtag_reg = NULL;
   svfFile = NULL;
+  // Initialize textIO class member pointer for printing use
+  textIO = std::make_shared<BUTextIO>();
+  displayProgress = false;
+}
+
+SVFPlayer::SVFPlayer(std::shared_ptr<BUTextIO> _textIO) {
+  jtag_reg = NULL;
+  svfFile = NULL;
+  // Initialize textIO class member pointer for printing use
+  textIO = _textIO;
   displayProgress = false;
 }

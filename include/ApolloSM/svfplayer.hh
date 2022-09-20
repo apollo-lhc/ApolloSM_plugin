@@ -2,14 +2,20 @@
 #define __SVF_PLAYER_HH__
 #include <ApolloSM/svplayer_consts.hh>
 #include <string>
+#include <memory> // std::shared_ptr
 #include <stdint.h>
+
+
+#include "BUTextIO/BUTextIO.hh"
 
 #include <signal.h> //for handling of SIG_BUS signals
 
 
+
 class SVFPlayer {
 public:
-  SVFPlayer();  
+  SVFPlayer();
+  SVFPlayer(std::shared_ptr<BUTextIO> _textIO);  
   int play(std::string const & svfFile , std::string const & XVCLabel, uint32_t offset);
   void EnableDisplayProgress(){displayProgress = true;};
   void DisableDisplayProgress(){displayProgress = false;};
@@ -75,6 +81,8 @@ private:
   int bitcount_tdo;
   int retval_i;
   int retval[256];
+
+  std::shared_ptr<BUTextIO> textIO;
 
 };
 

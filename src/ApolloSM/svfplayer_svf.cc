@@ -47,7 +47,7 @@ int SVFPlayer::read_command(char **buffer_p, int *len_p)
             return 0;
           textIO->Print(Level::ERROR, "Unexpected EOF.\n");
           return -1;
-		}
+        }
       if (ch <= ' ') {
       insert_eol:
 	if (!braket_mode && p > 0 && buffer[p-1] != ' ')

@@ -42,11 +42,11 @@ int SVFPlayer::read_command(char **buffer_p, int *len_p)
 
       int ch = getbyte();
       if (ch < 0) {
-		handle_eof:
-			if (p == 0)
-				return 0;
-			textIO->Print(Level::ERROR, "Unexpected EOF.\n");
-			return -1;
+        handle_eof:
+          if (p == 0)
+            return 0;
+          textIO->Print(Level::ERROR, "Unexpected EOF.\n");
+          return -1;
 		}
       if (ch <= ' ') {
       insert_eol:

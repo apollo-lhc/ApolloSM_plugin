@@ -7,28 +7,17 @@ for BUTool that wraps the hw class.
 =================================================================================
 == Basic Build instructions
 =================================================================================
-To build this code, you will need Xilinx Petalinux 2018.2 ,UIO uHAL, 
-  BUTool, and the BUTool IPBUS helpers. 
+To build this code, you will need uhal, UIO uHAL,BUTool, and the BUTool IPBUS helpers. 
 
-Getting and building uHAL UIO (requires petalinux)
-Clone https://github.com/apollo-lhc/ipbus-software.git (cross-compilation branch)
-Set the following enviornment variable
-  export IPBUS_PATH=/PATH/TO/IPBUS
-  export CACTUS_ROOT=/PATH/TO/IPBUS
-Build with make.sh
-Modify and run coplibs.sh to copy the uHAL libraries to the zynq
+It is easiest to build this repo when it is in the plugins dir of BUTool.
 
-Now check-out BUTool (http://gauss.bu.edu/svn/butool/trunk)
-  Then put this (ApolloSM) code and butool-ipbus-helpers in the plugins directory.
-  check out http://gauss.bu.edu/svn/butool-ipbus-helpers/trunk as butool-ipbus-helpers
+If you are re-building this on a machine with BUTool already installed (aka an Apollo blade),
+you can use the following command to figure out the env variables you need to build it alone.
 
-Then type "make"
-Then update and run ./make/zynqCopy.sh to copy all the needed libraries to the zynq
+IPBUS_REG_HELPER_PATH=/opt/BUTool/ BUTOOL_PATH=/opt/BUTool/ CACTUS_ROOT=/opt/cactus/ UIO_UHAL_PATH=/opt/UIOuHAL/ make
+INSTALL_PATH=/opt/BUTool/ IPBUS_REG_HELPER_PATH=/opt/BUTool/ BUTOOL_PATH=/opt/BUTool/ CACTUS_ROOT=/opt/cactus/ UIO_UHAL_PATH=/opt/UIOuHAL/ make install
 
-=================================================================================
-== Basic run instructions
-=================================================================================
-TODO: Example connections.xml and apollo_table.xml
+
 
 =================================================================================
 == Basic run instructions

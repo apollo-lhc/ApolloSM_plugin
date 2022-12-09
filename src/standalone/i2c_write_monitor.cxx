@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
     bool didSuccessfulRead = false;
 
     // Set up ApolloSM instance
-    ApolloSM * SM;
+    ApolloSM * SM = NULL;
     try {
         // Initialize ApolloSM
         std::vector<std::string> arg;

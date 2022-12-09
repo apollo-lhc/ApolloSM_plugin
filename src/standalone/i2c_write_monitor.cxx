@@ -19,13 +19,14 @@
 #include <fstream>
 #include <iostream>
 
-#define SEC_IN_US  1000000
-#define NS_IN_US 1000
+#define SEC_IN_US 1000000
+#define NS_IN_US  1000
 
 // ================================================================================
 // Setup for boost program_options
 #define DEFAULT_CONFIG_FILE "/etc/i2c_write_monitor"
 
+// Define defaults for the daemon
 #define DEFAULT_POLLTIME_IN_SECONDS 0.5
 #define DEFAULT_TIMEOUT_IN_SECONDS 60
 #define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
@@ -33,6 +34,17 @@
 #define DEFAULT_PID_FILE "/var/run/i2c_write_monitor.pid"
 
 namespace po = boost::program_options;
+
+
+long us_difftime(struct timespec cur, struct timespec end) { 
+    /*
+     * Helper function to compute the time difference between
+     * cur and end in microseconds.
+     */
+    return ( (end.tv_sec  - cur.tv_sec ) * SEC_IN_US + 
+	   (end.tv_nsec - cur.tv_nsec) / NS_IN_US);
+}
+
 
 int main(int argc, char** argv) { 
 

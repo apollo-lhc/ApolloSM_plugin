@@ -57,6 +57,9 @@ int main(int argc, char** argv) {
     // Set timeout
     int timeout_in_seconds = DEFAULT_TIMEOUT_IN_SECONDS;
 
+    // Set connection file
+    std::string connectionFile = DEFAULT_CONN_FILE;
+
     // Set running directory
     std::string runPath = DEFAULT_RUN_DIR;
 

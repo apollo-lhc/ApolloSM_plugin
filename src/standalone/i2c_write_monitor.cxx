@@ -11,6 +11,8 @@
 
 #include <syslog.h>  ///for syslog
 
+#include <systemd/sd-daemon.h> // for sd_notify
+
 #include <boost/program_options.hpp>
 #include <standalone/optionParsing.hh>
 #include <standalone/optionParsing_bool.hh>
@@ -141,11 +143,15 @@ int main(int argc, char** argv) {
     daemon.SetLoop(true);
 
     // For counting time
-    struct timespec startTS;
-    struct timespec stopTS;
+    struct timespec daemonStartTS;
+    struct timespec loopStartTS;
+    struct timespec loopStopTS;
 
-    // Poll time in microseconds
-    long poll_time_in_us = polltime_in_seconds * SEC_IN_US; 
+    // Poll time and timeout in microseconds
+    long polltime_in_us = polltime_in_seconds * SEC_IN_US; 
+    long timeout_in_us  = timeout_in_seconds * SEC_IN_US; 
+
+    bool didSuccessfulRead = false;
 
     // Set up ApolloSM instance
     ApolloSM * SM;
@@ -164,14 +170,24 @@ int main(int argc, char** argv) {
         }
 
         /*
-         * Main daemon loop.
+         * Go into the main daemon loop.
          */
         syslog(LOG_INFO,"Starting I2C write monitor\n");
+
+        // Get initial time
+        clock_gettime(CLOCK_REALTIME, &daemonStartTS);
 
         while(daemon.GetLoop()) {
             
             // Get loop starting time
-            clock_gettime(CLOCK_REALTIME, &startTS);
+            clock_gettime(CLOCK_REALTIME, &loopStartTS);
+
+            // Check for timeout
+            long time_since_start = us_difftime(daemonStartTS, loopStartTS);
+            // Timeout, break out of the loop
+            if (time_since_start > timeout_in_us) {
+                daemon.SetLoop(false);
+            }
 
             // Read the register
             // If this value is 0x1, we know that I2C writes are complete
@@ -179,9 +195,15 @@ int main(int argc, char** argv) {
             
             uint32_t writesDone = SM->ReadRegister(registerName);
 
+            // We've read a 0x1, notify systemd that startup is complete
+            if ((writesDone == 0x1) && (!didSuccessfulRead)) {
+                didSuccessfulRead = true;
+                sd_notify(0, "READY=1");
+            }
+
             // Sleep until the next iteration
-            clock_gettime(CLOCK_REALTIME, &stopTS);
-            useconds_t sleep_us = poll_time_in_us - us_difftime(startTS, stopTS);
+            clock_gettime(CLOCK_REALTIME, &loopStopTS);
+            useconds_t sleep_us = polltime_in_us - us_difftime(loopStartTS, loopStopTS);
             if (sleep_us > 0) {
                 usleep(sleep_us);
             }

@@ -29,7 +29,7 @@
 #define DEFAULT_CONFIG_FILE "/etc/i2c_write_monitor"
 
 // Define defaults for the daemon
-#define DEFAULT_POLLTIME_IN_SECONDS 0.5
+#define DEFAULT_POLLTIME_IN_SECONDS 1
 #define DEFAULT_TIMEOUT_IN_SECONDS 60
 #define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
 #define DEFAULT_RUN_DIR "/opt/address_table/"
@@ -190,9 +190,12 @@ int main(int argc, char** argv) {
             // Timeout, tell systemd that we're done so that the boot sequence
             // is not stuck. Increase sleeping time
             if ((time_since_start > timeout_in_us) && (!notifiedSystemd)) {
+                syslog(LOG_WARNING, "Timed out, notifying systemd READY=1\n");
                 sd_notify(0, "READY=1");
                 notifiedSystemd = true;
-                polltime_in_us *= 10;
+                
+                // Set the new sleeping time to be 1 min.
+                polltime_in_us *= 60 * SEC_IN_US;
             }
 
             // Read the register
@@ -201,12 +204,19 @@ int main(int argc, char** argv) {
             
             uint32_t writesDone = SM->ReadRegister(registerName);
 
+            // Print debugging information to syslog
+            syslog(LOG_DEBUG, "Register " + registerName + "\n");
+            syslog(LOG_DEBUG, "Value read: " + std::to_string(writesDone) + "\n");
+
             // We've read a 0x1, notify systemd that startup is complete
             // Increase the sleeping time so that we won't poll as frequently
             if ((writesDone == 0x1) && (!notifiedSystemd)) {
+                syslog(LOG_INFO, "Read 0x1 for I2C_DONE, notifying systemd READY=1\n");
                 sd_notify(0, "READY=1");
                 notifiedSystemd = true;
-                polltime_in_us *= 10;
+
+                // Set the new sleeping time to be 1 min.
+                polltime_in_us *= 60 * SEC_IN_US;
             }
 
             // Sleep until the next iteration

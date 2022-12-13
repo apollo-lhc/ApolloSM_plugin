@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
     long polltime_in_us = polltime_in_seconds * SEC_IN_US; 
     long timeout_in_us  = timeout_in_seconds * SEC_IN_US; 
 
-    bool didSuccessfulRead = false;
+    bool notifiedSystemd = false;
 
     // Set up ApolloSM instance
     ApolloSM * SM = NULL;
@@ -187,9 +187,12 @@ int main(int argc, char** argv) {
 
             // Check for timeout
             long time_since_start = us_difftime(daemonStartTS, loopStartTS);
-            // Timeout, break out of the loop
-            if (time_since_start > timeout_in_us) {
-                daemon.SetLoop(false);
+            // Timeout, tell systemd that we're done so that the boot sequence
+            // is not stuck. Increase sleeping time
+            if ((time_since_start > timeout_in_us) && (!notifiedSystemd)) {
+                sd_notify(0, "READY=1");
+                notifiedSystemd = true;
+                polltime_in_us *= 10;
             }
 
             // Read the register
@@ -199,9 +202,11 @@ int main(int argc, char** argv) {
             uint32_t writesDone = SM->ReadRegister(registerName);
 
             // We've read a 0x1, notify systemd that startup is complete
-            if ((writesDone == 0x1) && (!didSuccessfulRead)) {
-                didSuccessfulRead = true;
+            // Increase the sleeping time so that we won't poll as frequently
+            if ((writesDone == 0x1) && (!notifiedSystemd)) {
                 sd_notify(0, "READY=1");
+                notifiedSystemd = true;
+                polltime_in_us *= 10;
             }
 
             // Sleep until the next iteration

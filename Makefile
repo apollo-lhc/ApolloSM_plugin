@@ -5,7 +5,7 @@ BUTOOL_PATH?=../../
 UHAL_VER_MAJOR ?= 2
 UHAL_VER_MINOR ?= 8
 
-
+include mk/version.mk
 
 CXX?=g++
 

@@ -35,6 +35,9 @@
 #define DEFAULT_RUN_DIR "/opt/address_table/"
 #define DEFAULT_PID_FILE "/var/run/i2c_write_monitor.pid"
 
+// Register name to read for the I2C write check
+#define DEFAULT_REGISTER_NAME "SLAVE_I2C.S1.SM.STATUS.I2C_DONE"
+
 namespace po = boost::program_options;
 
 
@@ -66,6 +69,11 @@ int main(int argc, char** argv) {
     // Set PID file name
     std::string pidFileName = DEFAULT_PID_FILE;
 
+    // Register to read
+    // If the value read from this register is 0x1, 
+    // we know that I2C writes are complete
+    std::string registerName = DEFAULT_REGISTER_NAME;
+
     /*
      * Set up program options.
      * We'll read options from command line and the configuration file.
@@ -75,11 +83,12 @@ int main(int argc, char** argv) {
     po::options_description cli_options("I2C Write Monitor CLI Options");
     cli_options.add_options()
         ("help,h",    "Help screen")
-        ("POLLTIME_IN_SECONDS,s", po::value<int>(),         "Default polltime in seconds")
-        ("TIMEOUT_IN_SECONDS,s",  po::value<int>(),         "Default timeout in seconds")
+        ("POLLTIME_IN_SECONDS,p", po::value<int>(),         "Default polltime in seconds")
+        ("TIMEOUT_IN_SECONDS,t",  po::value<int>(),         "Default timeout in seconds")
         ("CONN_FILE,c",           po::value<std::string>(), "Path to the default connections file")
-        ("RUN_DIR,r",             po::value<std::string>(), "Run path")
-        ("PID_FILE,p",            po::value<std::string>(), "PID file");
+        ("RUN_DIR,d",             po::value<std::string>(), "Run path")
+        ("PID_FILE,f",            po::value<std::string>(), "PID file")
+        ("REGISTER_NAME,r",       po::value<std::string>(), "Register name to read");
 
     // Define options from the configuration file
     po::options_description cfg_options("I2C Write Monitor Config File Options");
@@ -88,10 +97,13 @@ int main(int argc, char** argv) {
         ("TIMEOUT_IN_SECONDS",  po::value<int>(),         "Default timeout in seconds")
         ("CONN_FILE",           po::value<std::string>(), "Path to the default connections file")
         ("RUN_DIR",             po::value<std::string>(), "Run path")
-        ("PID_FILE",            po::value<std::string>(), "PID file");
+        ("PID_FILE",            po::value<std::string>(), "PID file")
+        ("REGISTER_NAME",       po::value<std::string>(), "Register name to read");
 
 
+    // Map object to store all options from command line and config file
     std::map<std::string,std::vector<std::string> > allOptions;  
+    
     // Parse options from command line
     try { 
         FillOptions(parse_command_line(argc, argv, cli_options),
@@ -131,6 +143,7 @@ int main(int argc, char** argv) {
     connectionFile      = GetFinalParameterValue(std::string("CONN_FILE")          ,allOptions,std::string(DEFAULT_CONN_FILE));
     runPath             = GetFinalParameterValue(std::string("RUN_DIR")            ,allOptions,std::string(DEFAULT_RUN_DIR));
     pidFileName         = GetFinalParameterValue(std::string("PID_FILE")           ,allOptions,std::string(DEFAULT_PID_FILE));
+    registerName        = GetFinalParameterValue(std::string("REGISTER_NAME")      ,allOptions,std::string(DEFAULT_REGISTER_NAME));
 
     /*
      * Initialize and configure the daemon.
@@ -199,9 +212,6 @@ int main(int argc, char** argv) {
             }
 
             // Read the register
-            // If this value is 0x1, we know that I2C writes are complete
-            std::string registerName = "SLAVE_I2C.S1.SM.STATUS.I2C_DONE";
-            
             uint32_t writesDone = SM->ReadRegister(registerName);
 
             // Print debugging information to syslog

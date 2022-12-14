@@ -216,11 +216,8 @@ int main(int argc, char** argv) {
 
             // Print debugging information to syslog
             // Note that syslog expects C-style strings as the second argument 
-            std::string registerMsg = "Register " + registerName + "\n";
-            std::string valueMsg = "Value read: " + std::to_string(writesDone) + "\n";
-            
-            syslog(LOG_DEBUG, registerMsg.c_str());
-            syslog(LOG_DEBUG, valueMsg.c_str());
+            std::string debugMsg = "Register " + registerName + ": 0x" + std::to_string(writesDone) + "\n";
+            syslog(LOG_DEBUG, debugMsg.c_str());
 
             // We've read a 0x1, notify systemd that startup is complete
             // Increase the sleeping time so that we won't poll as frequently

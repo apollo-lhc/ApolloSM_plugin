@@ -208,7 +208,7 @@ int main(int argc, char** argv) {
                 notifiedSystemd = true;
                 
                 // Set the new sleeping time to be 1 min.
-                polltime_in_us *= 60 * SEC_IN_US;
+                polltime_in_us = 60 * SEC_IN_US;
             }
 
             // Read the register
@@ -230,7 +230,7 @@ int main(int argc, char** argv) {
                 notifiedSystemd = true;
 
                 // Set the new sleeping time to be 1 min.
-                polltime_in_us *= 60 * SEC_IN_US;
+                polltime_in_us = 60 * SEC_IN_US;
             }
 
             // Sleep until the next iteration

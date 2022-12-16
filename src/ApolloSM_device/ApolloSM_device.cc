@@ -21,7 +21,19 @@
 #include <stdlib.h> // for strtoul
 #include <deque>
 
+
 using namespace BUTool;
+
+#include <ApolloSM_device/Version.hh>
+  RegisterDevice(ApolloSMDevice,
+		 "ApolloSM",
+		 "file/SM_SN",
+		 "a",
+		 "ApolloSM",
+		 "Connection file for creating an ApolloSM device",
+		 VersionTracker(nVer,std::string(sVer),std::string(uri))
+		 ); //Register ApolloSMDevice with the DeviceFactory  
+
 
 ApolloSMDevice::ApolloSMDevice(std::vector<std::string> arg)
   : CommandList<ApolloSMDevice>("ApolloSM"),

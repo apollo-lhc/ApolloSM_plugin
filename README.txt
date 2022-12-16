@@ -7,7 +7,8 @@ for BUTool that wraps the hw class.
 =================================================================================
 == Basic Build instructions
 =================================================================================
-To build this code, you will need uhal, UIO uHAL,BUTool, and the BUTool IPBUS helpers. 
+To build this code, you will need uhal, UIO uHAL,BUTool, and the BUTool IPBUS helpers.
+You will also needs systemd-devel for the standalone programs.
 
 It is easiest to build this repo when it is in the plugins dir of BUTool.
 

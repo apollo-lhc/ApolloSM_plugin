@@ -25,9 +25,6 @@
 using namespace BUTool;
 
 #include <ApolloSM_device/Version.hh>
-//extern std::vector<uint32_t> nVer;
-//extern char const            sVer[];
-//extern char const            uri[];
   RegisterDevice(ApolloSMDevice,
 		 "ApolloSM",
 		 "file/SM_SN",

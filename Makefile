@@ -207,6 +207,10 @@ bin/htmlStatus : obj/standalone/htmlStatus.o obj/standalone/optionParsing.o obj/
 	mkdir -p bin
 	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml  $(filter-out %.so, $^)  -o $@
 
+bin/i2c_write_monitor : obj/standalone/i2c_write_monitor.o obj/standalone/optionParsing.o obj/standalone/daemon.o ${LIBRARY_APOLLO_SM}
+	mkdir -p bin
+	${CXX} ${LINK_EXE_FLAGS} ${UHAL_LIBRARY_FLAGS} ${UHAL_LIBRARIES} -lBUTool_ApolloSM -lboost_system -lpugixml -lsystemd  $(filter-out %.so, $^)  -o $@
+
 
 -include $(LIBRARY_OBJECT_FILES:.o=.d)
 

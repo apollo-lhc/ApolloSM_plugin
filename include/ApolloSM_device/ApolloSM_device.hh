@@ -18,6 +18,7 @@
 #include <ApolloSM/ApolloSM.hh>
 #include <ApolloSM/eyescan_class.hh>
 
+
 namespace BUTool{
 
   //This holder class is used to force the ApolloSM class that would normally
@@ -97,13 +98,6 @@ namespace BUTool{
     CommandReturn::status DumpDebug(std::vector<std::string>,std::vector<uint64_t>);
 
   };
-  RegisterDevice(ApolloSMDevice,
-		 "ApolloSM",
-		 "file/SM_SN",
-		 "a",
-		 "ApolloSM",
-		 "Connection file for creating an ApolloSM device"
-		 ); //Register ApolloSMDevice with the DeviceFactory  
 }
 
 #endif

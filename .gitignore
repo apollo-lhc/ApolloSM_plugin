@@ -33,3 +33,4 @@ bin
 *.DS_Store
 python/test.png
 python/test.txt
+src/ApolloSM_device/Version.cc

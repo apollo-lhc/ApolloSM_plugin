@@ -1,9 +1,14 @@
 SHELL = bash
 
+defaut:build
+include mk/version.mk
+
+
 BUTOOL_PATH?=../../
 
 UHAL_VER_MAJOR ?= 2
 UHAL_VER_MINOR ?= 8
+
 
 CXX?=g++
 
@@ -11,6 +16,7 @@ IPBUS_REG_HELPER_PATH?=${BUTOOL_PATH}/plugins/BUTool-IPBUS-Helpers
 
 LIBRARY_APOLLO_SM_DEVICE = lib/libBUTool_ApolloSMDevice.so
 LIBRARY_APOLLO_SM_DEVICE_SOURCES = $(wildcard src/ApolloSM_device/*.cc)
+LIBRARY_APOLLO_SM_DEVICE_SOURCES += $(VERSION_FILE)
 LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES = $(patsubst src/%.cc,obj/%.o,${LIBRARY_APOLLO_SM_DEVICE_SOURCES})
 
 LIBRARY_APOLLO_SM = lib/libBUTool_ApolloSM.so
@@ -115,8 +121,7 @@ UHAL_LIBRARY_FLAGS = ${UHAL_LIBRARY_PATH}
 
 .PHONY: all _all clean _cleanall build _buildall _cactus_env
 
-default: build
-clean: _cleanall
+clean: _cleanall clean_version
 _cleanall:
 	rm -rf obj
 	rm -rf bin

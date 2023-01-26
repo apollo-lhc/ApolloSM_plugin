@@ -5,6 +5,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <string.h>
+#include <fcntl.h>
 
 // this allows sig_handler to access the class variable "loop" without being a class function
 bool static volatile * globalLoop;
@@ -58,9 +59,21 @@ void Daemon::daemonizeThisProgram(std::string pidFileName, std::string runPath) 
   syslog(LOG_INFO,"Changed path to \"%s\"\n", runPath.c_str());    
  
   //Everything looks good, close the standard file fds.
+  //Since something might still try to use them, use dup to link them all to /dev/null
+  int nullFD = open("/dev/null",O_RDWR);
+  if(-1 == nullFD){
+    syslog(LOG_ERR,"Failed to open /dev/null for std fd closing");
+    exit(EXIT_FAILURE);
+  }  
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
+
+  //remap the st file descriptors to nullFD
+  dup2(nullFD,STDIN_FILENO);
+  dup2(nullFD,STDOUT_FILENO);
+  dup2(nullFD,STDERR_FILENO);
+  
 }
 
 //void static signal_handler(int const signum) {

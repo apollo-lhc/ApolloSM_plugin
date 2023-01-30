@@ -16,7 +16,7 @@ IPBUS_REG_HELPER_PATH?=${BUTOOL_PATH}/plugins/BUTool-IPBUS-Helpers
 
 LIBRARY_APOLLO_SM_DEVICE = lib/libBUTool_ApolloSMDevice.so
 #make sure version.cc isn't found here in the wildcard, otherwise it might get added twice. 
-LIBRARY_APOLLO_SM_DEVICE_SOURCES = $(patsubst %version.cc,,$(wildcard src/ApolloSM_device/*.cc))
+LIBRARY_APOLLO_SM_DEVICE_SOURCES = $(patsubst $(VERSION_FILE),,$(wildcard src/ApolloSM_device/*.cc))
 #add version.cc
 LIBRARY_APOLLO_SM_DEVICE_SOURCES += $(VERSION_FILE)
 LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES = $(patsubst src/%.cc,obj/%.o,${LIBRARY_APOLLO_SM_DEVICE_SOURCES})

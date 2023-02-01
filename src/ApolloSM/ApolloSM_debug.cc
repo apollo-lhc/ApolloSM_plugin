@@ -20,7 +20,7 @@ void ApolloSM::DebugDump(std::ostream & output){
     try{
       val = ReadRegister(*itReg);
       output << "0x" << std::setfill('0') << std::setw(8) << std::hex << val << std::endl;
-    }catch(uhal::exception::UIOBusError & e){
+    }catch(uhal::exception::SigBusError & e){
       output << "BusErr" << std::endl;
     }catch(BUException::REG_READ_DENIED & e){
       output << "Write Only" << std::endl;
@@ -42,7 +42,7 @@ void ApolloSM::DebugDump(std::ostream & output){
     try{
       val = ReadRegister(*itReg);
       output << "0x" << std::setfill('0') << std::setw(8) << std::hex << val << std::endl;
-    }catch(uhal::exception::UIOBusError & e){
+    }catch(uhal::exception::SigBusError & e){
       output << std::string("BusErr") << std::endl;
     }catch(BUException::REG_READ_DENIED & e){
       output << "Write Only" << std::endl;

@@ -31,6 +31,9 @@ EXE_APOLLO_SM_STANDALONE_BIN = $(patsubst src/standalone/%.cxx,bin/%,${EXE_APOLL
 EXE_APOLLO_SM_STANDALONE_SOURCES = $(wildcard src/standalone/*.cc)
 EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLLO_SM_STANDALONE_SOURCES})
 
+# Python binding related
+SOURCE_APOLLO_SM_PYBIND = python/ApolloSM_PyBind.cpp 
+LIBRARY_APOLLO_SM_PYBIND = lib/libBUTool_ApolloSM_PyBind.$(shell python3-config --extension-suffix)
 
 
 INCLUDE_PATH += \
@@ -133,7 +136,7 @@ _cleanall:
 all: _all
 build: _all
 buildall: _all
-_all: _cactus_env ${LIBRARY_APOLLO_SM_DEVICE} ${LIBRARY_APOLLO_SM} ${EXE_APOLLO_SM_STANDALONE_BIN} #${EXE_APOLLO_SM_STANDALONE}
+_all: _cactus_env ${LIBRARY_APOLLO_SM_DEVICE} ${LIBRARY_APOLLO_SM} ${EXE_APOLLO_SM_STANDALONE_BIN} ${LIBRARY_APOLLO_SM_PYBIND} #${EXE_APOLLO_SM_STANDALONE} 
 
 _cactus_env:
 ifdef IPBUS_PATH
@@ -154,6 +157,12 @@ ${LIBRARY_APOLLO_SM_DEVICE}: ${LIBRARY_APOLLO_SM_DEVICE_OBJECT_FILES}  ${IPBUS_R
 ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}/lib/libBUTool_IPBusIO.so
 	${CXX} ${LINK_LIBRARY_FLAGS}  ${LIBRARY_APOLLO_SM_OBJECT_FILES} -o $@
 
+
+# -----------------------
+# Python binding library for ApolloSM
+# -----------------------
+${LIBRARY_APOLLO_SM_PYBIND}: ${LIBRARY_APOLLO_SM}
+	${CXX} ${CXX_FLAGS} -lBUTool_ApolloSM ${SOURCE_APOLLO_SM_PYBIND} -o $@
 
 # -----------------------
 # install

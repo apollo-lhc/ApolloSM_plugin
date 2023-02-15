@@ -25,7 +25,7 @@ PYBIND11_MODULE(ApolloSM, m) {
         .def("GetSerialNumber",        &ApolloSM::GetSerialNumber)
         .def("GetRevNumber",           &ApolloSM::GetRevNumber)
         .def("GetShelfID",             &ApolloSM::GetShelfID)
-        .def("GetSlot",                &ApolloSM::Slot)
+        .def("GetSlot",                &ApolloSM::GetSlot)
         .def("GetZynqIP",              &ApolloSM::GetZynqIP)
         .def("GetIPMCIP",              &ApolloSM::GetIPMCIP);
 }

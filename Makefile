@@ -33,7 +33,7 @@ EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLL
 
 # Python binding related
 SOURCE_APOLLO_SM_PYBIND = python/ApolloSM_PyBind.cpp 
-LIBRARY_APOLLO_SM_PYBIND = lib/libBUTool_ApolloSM_PyBind$(shell python3-config --extension-suffix)
+LIBRARY_APOLLO_SM_PYBIND = lib/PyApolloSM$(shell python3-config --extension-suffix)
 PYBIND11_PATH=pybind11
 
 INCLUDE_PATH += \
@@ -162,7 +162,7 @@ ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}
 # Python binding library for ApolloSM
 # -----------------------
 ${LIBRARY_APOLLO_SM_PYBIND}: ${LIBRARY_APOLLO_SM}
-	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -I${PYBIND11_PATH}/include -lBUTool_ApolloSM $(shell python3-config --includes) ${SOURCE_APOLLO_SM_PYBIND} -o $@
+	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} ${LINK_LIBRARY_FLAGS} -I${PYBIND11_PATH}/include -lBUTool_ApolloSM $(shell python3-config --includes) ${SOURCE_APOLLO_SM_PYBIND} -o $@
 
 # -----------------------
 # install

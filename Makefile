@@ -33,7 +33,7 @@ EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLL
 
 # Python binding related
 SOURCE_APOLLO_SM_PYBIND = python/ApolloSM_PyBind.cpp 
-LIBRARY_APOLLO_SM_PYBIND = lib/PyApolloSM$(shell python3-config --extension-suffix)
+LIBRARY_APOLLO_SM_PYBIND = lib/ApolloSM$(shell python3-config --extension-suffix)
 PYBIND11_PATH=pybind11
 
 INCLUDE_PATH += \

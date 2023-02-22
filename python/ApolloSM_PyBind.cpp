@@ -10,6 +10,10 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(ApolloSM, m) {
+    py::class_<IPBusConnection>(m, "IPBusConnection")
+        .def(py::init<std::string const &, std::vector<std::string> const &>())
+        .def("Connect",                &IPBusConnection::Connect);
+
     py::class_<IPBusIO>(m, "IPBusIO")
         .def(py::init<std::shared_ptr<uhal::HwInterface>>())
         .def("ReadAddress",            &IPBusIO::ReadAddress)
@@ -20,7 +24,7 @@ PYBIND11_MODULE(ApolloSM, m) {
         .def("WriteAddress",           &IPBusIO::WriteAddress)
         .def("WriteRegister",          &IPBusIO::WriteRegister);
 
-    py::class_<ApolloSM, IPBusIO>(m, "ApolloSM")
+    py::class_<ApolloSM, IPBusConnection, IPBusIO>(m, "ApolloSM")
         .def(py::init<std::vector<std::string> const &>())
         .def("GenerateStatusDisplay",  &ApolloSM::GenerateStatusDisplay)
         .def("GenerateHTMLStatus",     &ApolloSM::GenerateHTMLStatus)

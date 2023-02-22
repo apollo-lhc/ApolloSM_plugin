@@ -9,6 +9,12 @@
 
 namespace py = pybind11;
 
+/*
+ * The following defines the bindings for the IPBusConnection, IPBusIO 
+ * and ApolloSM classes. 
+ * The inheritance is set up such that ApolloSM class inherits from
+ * the IPBusConnection and IPBusIO classes.
+ */
 PYBIND11_MODULE(ApolloSM, m) {
     py::class_<IPBusConnection>(m, "IPBusConnection")
         .def(py::init<std::string const &, std::vector<std::string> const &>())
@@ -30,12 +36,12 @@ PYBIND11_MODULE(ApolloSM, m) {
         .def("GenerateHTMLStatus",     &ApolloSM::GenerateHTMLStatus)
         .def("GenerateGraphiteStatus", &ApolloSM::GenerateGraphiteStatus)
         .def("UART_Terminal",          &ApolloSM::UART_Terminal)
-        .def("UART_CMD",               &ApolloSM::UART_CMD)
-        .def("svfplayer",              &ApolloSM::svfplayer)
-        .def("PowerUpCM",              &ApolloSM::PowerUpCM)
-        .def("PowerDownCM",            &ApolloSM::PowerDownCM)
+        .def("UART_CMD",               &ApolloSM::UART_CMD,      py::arg("promptChar") = '%')
+        .def("svfplayer",              &ApolloSM::svfplayer,     py::arg("displayProgress") = false)
+        .def("PowerUpCM",              &ApolloSM::PowerUpCM,     py::arg("wait") = -1)
+        .def("PowerDownCM",            &ApolloSM::PowerDownCM,   py::arg("wait") = -1)
+        .def("unblockAXI",             &ApolloSM::unblockAXI,    py::arg("name") = "")
         .def("DebugDump",              &ApolloSM::DebugDump)
-        .def("unblockAXI",             &ApolloSM::unblockAXI)
         .def("restartCMuC",            &ApolloSM::restartCMuC)
         .def("GetSerialNumber",        &ApolloSM::GetSerialNumber)
         .def("GetRevNumber",           &ApolloSM::GetRevNumber)

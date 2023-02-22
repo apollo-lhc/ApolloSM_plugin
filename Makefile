@@ -117,7 +117,7 @@ $(error UIO_UHAL_PATH is not set!)
 endif
 
 
-UHAL_CXX_FLAGHS = ${UHAL_INCLUDE_PATH}
+UHAL_CXX_FLAGS = ${UHAL_INCLUDE_PATH}
 
 UHAL_LIBRARY_FLAGS = ${UHAL_LIBRARY_PATH}
 
@@ -162,7 +162,7 @@ ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}
 # Python binding library for ApolloSM
 # -----------------------
 ${LIBRARY_APOLLO_SM_PYBIND}: ${LIBRARY_APOLLO_SM}
-	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} ${LINK_LIBRARY_FLAGS} -I${PYBIND11_PATH}/include -lBUTool_ApolloSM $(shell python3-config --includes) ${SOURCE_APOLLO_SM_PYBIND} -o $@
+	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGS} ${LINK_LIBRARY_FLAGS} -I${PYBIND11_PATH}/include -lBUTool_ApolloSM $(shell python3-config --includes) ${SOURCE_APOLLO_SM_PYBIND} -o $@
 
 # -----------------------
 # install
@@ -180,12 +180,12 @@ install: all
 obj/%.o : src/%.cc
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
-	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
+	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGS} -c $< -o $@
 
 obj/%.o : src/%.cxx 
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
-	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
+	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGS} -c $< -o $@
 
 #specific rule for peek and pokeUIO since we want them free of dynamic linking to other libraries
 bin/peekUIO : src/standalone/peekUIO.cxx

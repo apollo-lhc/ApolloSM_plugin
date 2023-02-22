@@ -24,9 +24,13 @@ PYBIND11_MODULE(ApolloSM, m) {
         .def(py::init<std::shared_ptr<uhal::HwInterface>>())
         .def("ReadAddress",            &IPBusIO::ReadAddress)
         .def("ReadRegister",           &IPBusIO::ReadRegister)
+        .def("GetRegsRegex",           &IPBusIO::GetRegsRegex)
         .def("GetRegAddress",          &IPBusIO::GetRegAddress)
         .def("GetRegMask",             &IPBusIO::GetRegMask)
         .def("GetRegSize",             &IPBusIO::GetRegSize)
+        .def("GetRegPermissions",      &IPBusIO::GetRegPermissions)
+        .def("GetRegDescription",      &IPBusIO::GetRegDescription)
+        .def("GetRegDebug",            &IPBusIO::GetRegDebug)
         .def("WriteAddress",           &IPBusIO::WriteAddress)
         .def("WriteRegister",          &IPBusIO::WriteRegister);
 

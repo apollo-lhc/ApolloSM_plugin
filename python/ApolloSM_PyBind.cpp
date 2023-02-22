@@ -10,7 +10,17 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(ApolloSM, m) {
-    py::class_<ApolloSM>(m, "ApolloSM")
+    py::class_<IPBusIO>(m, "IPBusIO")
+        .def(py::init<std::shared_ptr<uhal::HwInterface>>())
+        .def("ReadAddress",            &IPBusIO::ReadAddress)
+        .def("ReadRegister",           &IPBusIO::ReadRegister)
+        .def("GetRegAddress",          &IPBusIO::GetRegAddress)
+        .def("GetRegMask",             &IPBusIO::GetRegMask)
+        .def("GetRegSize",             &IPBusIO::GetRegSize)
+        .def("WriteAddress",           &IPBusIO::WriteAddress)
+        .def("WriteRegister",          &IPBusIO::WriteRegister);
+
+    py::class_<ApolloSM, IPBusIO>(m, "ApolloSM")
         .def(py::init<std::vector<std::string> const &>())
         .def("GenerateStatusDisplay",  &ApolloSM::GenerateStatusDisplay)
         .def("GenerateHTMLStatus",     &ApolloSM::GenerateHTMLStatus)

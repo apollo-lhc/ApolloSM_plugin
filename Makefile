@@ -33,8 +33,10 @@ EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLL
 
 # Python binding related
 SOURCE_APOLLO_SM_PYBIND = python/ApolloSM_PyBind.cpp 
-LIBRARY_APOLLO_SM_PYBIND = lib/ApolloSM$(shell python3-config --extension-suffix)
+LIBRARY_APOLLO_SM_PYBIND = python/lib/ApolloSM$(shell python3-config --extension-suffix)
 PYBIND11_PATH=pybind11
+# The directory where the Python3 ApolloSM library will be copied to
+PYTHON3_INSTALL_PATH=/usr/local/lib64/python3.6/site-packages/
 
 INCLUDE_PATH += \
 							-Iinclude  \
@@ -174,6 +176,7 @@ install: all
 	 install -b -m 775 ./bin/* ${INSTALL_PATH}/bin
 	 install -m 775 -d ${INSTALL_PATH}/include
 	 cp -r include/* ${INSTALL_PATH}/include
+	 cp -r python/lib/*.so ${PYTHON3_INSTALL_PATH}
 
 
 

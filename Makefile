@@ -133,7 +133,6 @@ _cleanall:
 	rm -rf obj
 	rm -rf bin
 	rm -rf lib
-	rm -rf python/lib
 
 
 all: _all

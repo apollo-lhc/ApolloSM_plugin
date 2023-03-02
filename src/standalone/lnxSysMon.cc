@@ -108,7 +108,7 @@ float CPUUsage(){
 }
 
 
-void Uptime(float & days, float &hours, float & minutes){
+uint32_t Uptime(float & days, float &hours, float & minutes){
   //return the real value, but use reference passes to make human reable values
   float fullValue = 0;
   days = hours = minutes = fullValue;
@@ -124,7 +124,7 @@ void Uptime(float & days, float &hours, float & minutes){
 
   //blank out values that are trivially small
   if(fullValue < 1){
-    return;
+    return 0;
   }
   //Display values in useful units (zero other types)
   if(fullValue < 60*60){
@@ -134,7 +134,7 @@ void Uptime(float & days, float &hours, float & minutes){
   }else{
     days = fullValue/(24*60.0*60);
   }
-  return;
+  return fullValue;
 }
 
 //returns inRate and outRate in bytes/second

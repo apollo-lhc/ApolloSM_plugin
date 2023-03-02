@@ -196,6 +196,8 @@ int main(int argc, char ** argv) {
       int pselRet = pselect(maxFDp1,&readSet_ret,NULL,NULL,&timeout,NULL);
       if(0 == pselRet){
 	//timeout, do CPU/mem monitoring
+
+	//Memory Usage
 	uint32_t mon;
 	mon = MemUsage()*100; //Scale the value by 100 to get two decimal places for reg   
 	try {
@@ -203,12 +205,16 @@ int main(int argc, char ** argv) {
 	}catch(std::exception const & e){
 	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	}
+
+	//CPU usage
 	mon = CPUUsage()*100; //Scale the value by 100 to get two decimal places for reg   
 	try {
 	  SM->WriteRegister("PL_MEM.ARM.CPU_LOAD",mon);
 	}catch(std::exception const & e){
 	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	}
+
+	//Network usage
 	networkMon_return = networkMonitor(inRate, outRate);
 	if(!networkMon_return){ //networkMonitor was successful
 	  try {
@@ -220,18 +226,31 @@ int main(int argc, char ** argv) {
 	} else { //networkMonitor failed
 	  syslog(LOG_ERR, "Error in networkMonitor, return %d\n", networkMon_return);
 	}
-	float days,hours,minutes;
-	Uptime(days,hours,minutes);
+
+	//Uptime
+	float raw_sec,days,hours,minutes;
+	raw_sec = Uptime(days,hours,minutes);
 	try {
 	  SM->WriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.DAYS",uint32_t(100.0*days));
 	  SM->WriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.HOURS",uint32_t(100.0*hours));
 	  SM->WriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.MINS",uint32_t(100.0*minutes));
+	  SM->WriteRegister("PL_MEM.ARM.SYSTEM_UPTIME.RAW",uint32_t(raw_sec));
 	} catch(std::exception const & e){
 	  syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
 	}
+
+	//Zynq temp
+	float tempValue = SM->ReadConvert("MONITOR.TEMP");
+	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.CURRENT",uint8_t(tempValue));
+	tempValue = SM->ReadConvert("MONITOR.TEMP_MAX");
+	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.HIGHEST",uint8_t(tempValue));
+	float tempValue = SM->ReadConvert("MONITOR.TEMP_MIN");
+	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.LOWEST",uint8_t(tempValue));
+
       }else if(pselRet > 0){
 	//a FD is readable. 
 	if(FD_ISSET(fdUserCount,&readSet_ret)){
+	  //User count change
 	  if(uCnt.ProcessWatchEvent()){
 	    uCnt.GetUserCounts(superUsers,normalUsers);
 	    try {

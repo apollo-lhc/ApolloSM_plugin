@@ -116,7 +116,7 @@ uint32_t Uptime(float & days, float &hours, float & minutes){
   //Open uptime file
   FILE * uptimeFile = fopen("/proc/uptime","r");
   if(NULL == uptimeFile){
-    return;
+    return 0;
   }
   //Read in the first entry (number of seconds uptime)
   fscanf(uptimeFile,"%f",&fullValue);

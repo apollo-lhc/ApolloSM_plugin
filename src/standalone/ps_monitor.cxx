@@ -240,11 +240,12 @@ int main(int argc, char ** argv) {
 	}
 
 	//Zynq temp
-	float tempValue = SM->ReadConvert("MONITOR.TEMP");
+	double tempValue = 0;
+	SM->ReadConvert("MONITOR.TEMP",tempValue);
 	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.CURRENT",uint8_t(tempValue));
-	tempValue = SM->ReadConvert("MONITOR.TEMP_MAX");
+	SM->ReadConvert("MONITOR.TEMP_MAX",tempValue);
 	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.HIGHEST",uint8_t(tempValue));
-	float tempValue = SM->ReadConvert("MONITOR.TEMP_MIN");
+	SM->ReadConvert("MONITOR.TEMP_MIN",tempValue);
 	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.LOWEST",uint8_t(tempValue));
 
       }else if(pselRet > 0){

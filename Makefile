@@ -31,7 +31,12 @@ EXE_APOLLO_SM_STANDALONE_BIN = $(patsubst src/standalone/%.cxx,bin/%,${EXE_APOLL
 EXE_APOLLO_SM_STANDALONE_SOURCES = $(wildcard src/standalone/*.cc)
 EXE_APOLLO_SM_STANDALONE_OBJECT_FILES += $(patsubst src/%.cc,obj/%.o,${EXE_APOLLO_SM_STANDALONE_SOURCES})
 
-
+# Python binding related
+SOURCE_APOLLO_SM_PYBIND = python/ApolloSM_PyBind.cpp 
+LIBRARY_APOLLO_SM_PYBIND = lib/ApolloSM$(shell python3-config --extension-suffix)
+PYBIND11_PATH=pybind11
+# The directory where the Python3 ApolloSM library will be copied to
+PYTHON3_INSTALL_PATH=/usr/local/lib64/python3.6/site-packages/
 
 INCLUDE_PATH += \
 							-Iinclude  \
@@ -114,7 +119,7 @@ $(error UIO_UHAL_PATH is not set!)
 endif
 
 
-UHAL_CXX_FLAGHS = ${UHAL_INCLUDE_PATH}
+UHAL_CXX_FLAGS = ${UHAL_INCLUDE_PATH}
 
 UHAL_LIBRARY_FLAGS = ${UHAL_LIBRARY_PATH}
 
@@ -133,7 +138,7 @@ _cleanall:
 all: _all
 build: _all
 buildall: _all
-_all: _cactus_env ${LIBRARY_APOLLO_SM_DEVICE} ${LIBRARY_APOLLO_SM} ${EXE_APOLLO_SM_STANDALONE_BIN} #${EXE_APOLLO_SM_STANDALONE}
+_all: _cactus_env ${LIBRARY_APOLLO_SM_DEVICE} ${LIBRARY_APOLLO_SM} ${EXE_APOLLO_SM_STANDALONE_BIN} ${LIBRARY_APOLLO_SM_PYBIND} #${EXE_APOLLO_SM_STANDALONE} 
 
 _cactus_env:
 ifdef IPBUS_PATH
@@ -156,6 +161,12 @@ ${LIBRARY_APOLLO_SM}: ${LIBRARY_APOLLO_SM_OBJECT_FILES} ${IPBUS_REG_HELPER_PATH}
 
 
 # -----------------------
+# Python binding library for ApolloSM
+# -----------------------
+${LIBRARY_APOLLO_SM_PYBIND}: ${LIBRARY_APOLLO_SM}
+	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGS} ${LINK_LIBRARY_FLAGS} -I${PYBIND11_PATH}/include -lBUTool_ApolloSM $(shell python3-config --includes) ${SOURCE_APOLLO_SM_PYBIND} -o $@
+
+# -----------------------
 # install
 # -----------------------
 install: all
@@ -165,18 +176,19 @@ install: all
 	 install -b -m 775 ./bin/* ${INSTALL_PATH}/bin
 	 install -m 775 -d ${INSTALL_PATH}/include
 	 cp -r include/* ${INSTALL_PATH}/include
+	 cp lib/ApolloSM*.so ${PYTHON3_INSTALL_PATH}
 
 
 
 obj/%.o : src/%.cc
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
-	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
+	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGS} -c $< -o $@
 
 obj/%.o : src/%.cxx 
 	mkdir -p $(dir $@)
 	mkdir -p {lib,obj}
-	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGHS} -c $< -o $@
+	${CXX} ${CXX_FLAGS} ${UHAL_CXX_FLAGS} -c $< -o $@
 
 #specific rule for peek and pokeUIO since we want them free of dynamic linking to other libraries
 bin/peekUIO : src/standalone/peekUIO.cxx

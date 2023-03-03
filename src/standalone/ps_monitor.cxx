@@ -242,11 +242,11 @@ int main(int argc, char ** argv) {
 	//Zynq temp
 	double tempValue = 0;
 	SM->ReadConvert("MONITOR.TEMP",tempValue);
-	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.CURRENT",uint8_t(tempValue));
+	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.TEMP",uint8_t(tempValue));
 	SM->ReadConvert("MONITOR.TEMP_MAX",tempValue);
-	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.HIGHEST",uint8_t(tempValue));
+	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.TEMP_MAX",uint8_t(tempValue));
 	SM->ReadConvert("MONITOR.TEMP_MIN",tempValue);
-	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.LOWEST",uint8_t(tempValue));
+	SM->WriteRegister("SLAVE_I2C.S1.SM.TEMP.TEMP_MIN",uint8_t(tempValue));
 
       }else if(pselRet > 0){
 	//a FD is readable. 

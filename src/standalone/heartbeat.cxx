@@ -29,9 +29,10 @@
 #define DEFAULT_CONFIG_FILE "/etc/heartbeat"
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
-#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
 #define DEFAULT_RUN_DIR "/opt/address_table/"
 #define DEFAULT_PID_FILE "/var/run/heartbeat.pid"
+#define DEFAULT_CONN_FILE "/fw/SM/address_table/connections.xml"
+
 namespace po = boost::program_options;
 
 
@@ -147,7 +148,7 @@ int main(int argc, char** argv) {
     // ==================================
     // Initialize ApolloSM
     std::vector<std::string> arg;
-    arg.push_back("connections.xml");
+    arg.push_back(connectionFile);
     SM = new ApolloSM(arg);
     if(NULL == SM){
       syslog(LOG_ERR,"Failed to create new ApolloSM\n");

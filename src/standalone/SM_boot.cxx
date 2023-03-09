@@ -31,6 +31,7 @@
 // Set up for boost program_options
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
 #define DEFAULT_POLLTIME_IN_SECONDS 10
+#define DEFAULT_CONN_FILE   "/fw/SM/address_table/connections.xml"
 #define DEFAULT_RUN_DIR     "/opt/address_table/"
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
@@ -190,12 +191,13 @@ bool isNumber(std::string const & str){
 int main(int argc, char** argv) { 
 
   // parameters to get from command line or config file (config file itself will not be in the config file, obviously)
-  std::string runPath     = DEFAULT_RUN_DIR;
-  std::string pidFileName = DEFAULT_PID_FILE;
-  int polltime_in_seconds = DEFAULT_POLLTIME_IN_SECONDS;
-  bool powerupCMuC        = DEFAULT_CM_POWERUP;
-  int powerupTime         = DEFAULT_POWERUP_TIME;
-  bool sensorsThroughZynq = DEFAULT_SENSORS_THROUGH_ZYNQ;
+  std::string runPath        = DEFAULT_RUN_DIR;
+  std::string pidFileName    = DEFAULT_PID_FILE;
+  std::string connectionFile = DEFAULT_CONN_FILE;
+  int polltime_in_seconds    = DEFAULT_POLLTIME_IN_SECONDS;
+  bool powerupCMuC           = DEFAULT_CM_POWERUP;
+  int powerupTime            = DEFAULT_POWERUP_TIME;
+  bool sensorsThroughZynq    = DEFAULT_SENSORS_THROUGH_ZYNQ;
 
   //Mikey - finish
   po::options_description cli_options("SM_boot options");
@@ -204,6 +206,7 @@ int main(int argc, char** argv) {
     ("run_path,r",           po::value<std::string>(), "Path to run directory")
     ("pid_file,f",           po::value<std::string>(), "pid file")
     ("polltime,P",           po::value<int>(),         "Polltime in seconds")
+    ("conn_file,c",          po::value<std::string>(), "Path to the default connections file")
     ("cm_powerup,P",         po::value<bool>(),        "Powerup CM")
     ("cm_powerup_time,t",    po::value<int>(),         "Powerup time in seconds")
     ("sensorsThroughZynq,s", po::value<bool>(),        "Read sensors through the Zynq")
@@ -215,6 +218,7 @@ int main(int argc, char** argv) {
     ("run_path",           po::value<std::string>(), "Path to run directory")
     ("pid_file",           po::value<std::string>(), "pid file")
     ("polltime",           po::value<int>(),         "Polltime in seconds")
+    ("conn_file",          po::value<std::string>(), "Path to the default connections file")
     ("cm_powerup",         po::value<bool>(),        "Powerup CM")
     ("cm_powerup_time",    po::value<int>(),         "Powerup time in seconds")
     ("regwrite,w",         po::value<std::string>(), "Reg write to perform on boot")
@@ -253,6 +257,7 @@ int main(int argc, char** argv) {
   
   runPath=             GetFinalParameterValue(std::string("run_path"),          allOptions,std::string(DEFAULT_RUN_DIR));
   pidFileName=         GetFinalParameterValue(std::string("pid_file"),          allOptions,std::string(DEFAULT_PID_FILE));
+  connectionFile=      GetFinalParameterValue(std::string("conn_file"),         allOptions,std::string(DEFAULT_CONN_FILE));
   polltime_in_seconds= GetFinalParameterValue(std::string("polltime"),          allOptions,DEFAULT_POLLTIME_IN_SECONDS);
   powerupCMuC=         GetFinalParameterValue(std::string("cm_powerup"),        allOptions,DEFAULT_CM_POWERUP);
   powerupTime=         GetFinalParameterValue(std::string("cm_powerup_time"),   allOptions,DEFAULT_POWERUP_TIME);
@@ -286,7 +291,7 @@ int main(int argc, char** argv) {
     // ==================================
     // Initialize ApolloSM
     std::vector<std::string> arg;
-    arg.push_back("connections.xml");
+    arg.push_back(connectionFile);
     
     SM = new ApolloSM(arg);
     if(NULL == SM){

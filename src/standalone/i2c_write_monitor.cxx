@@ -31,7 +31,7 @@
 // Define defaults for the daemon
 #define DEFAULT_POLLTIME_IN_SECONDS 1
 #define DEFAULT_TIMEOUT_IN_SECONDS 60
-#define DEFAULT_CONN_FILE "/opt/address_table/connections.xml"
+#define DEFAULT_CONN_FILE "/fw/SM/address_table/connections.xml"
 #define DEFAULT_RUN_DIR "/opt/address_table/"
 #define DEFAULT_PID_FILE "/var/run/i2c_write_monitor.pid"
 
@@ -172,9 +172,14 @@ int main(int argc, char** argv) {
     // Set up ApolloSM instance
     ApolloSM * SM = NULL;
     try {
+        syslog(LOG_INFO, "Starting I2C write monitor\n");
+        syslog(LOG_INFO, "Using connection file: %s\n", connectionFile.c_str());
+        syslog(LOG_INFO, "Setting timeout to: %u seconds\n", timeout_in_seconds);
+        syslog(LOG_INFO, "Will poll %s every %u seconds\n", registerName.c_str(), polltime_in_seconds);
+
         // Initialize ApolloSM
         std::vector<std::string> arg;
-        arg.push_back("connections.xml");
+        arg.push_back(connectionFile);
         SM = new ApolloSM(arg);
         
         // Check if we failed to allocate an ApolloSM
@@ -188,7 +193,6 @@ int main(int argc, char** argv) {
         /*
          * Go into the main daemon loop.
          */
-        syslog(LOG_INFO,"Starting I2C write monitor\n");
 
         // Get initial time
         clock_gettime(CLOCK_REALTIME, &daemonStartTS);

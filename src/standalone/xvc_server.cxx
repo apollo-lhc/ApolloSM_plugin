@@ -52,6 +52,8 @@
 #define DEFAULT_PID_DIR "/var/run/"
 #define DEFAULT_XVCPREFIX " "
 #define DEFAULT_XVCPORT -1
+#define DEFAULT_CONN_FILE "/fw/SM/address_table/connections.xml"
+
 namespace po = boost::program_options;
 
 
@@ -233,14 +235,17 @@ int main(int argc, char **argv) {
     ("help,h",    "Help screen")
     ("RUN_DIR,r",   po::value<std::string>(), "Path to default run directory")
     ("PID_FILE,d",  po::value<std::string>(), "Path to default pid directory")
+    ("CONN_FILE,c", po::value<std::string>(), "Path to the XML connections file")
     ("xvcPrefix,v", po::value<std::string>(), "xvc prefix")
     ("xvcPort,p",   po::value<int>(),         "xvc_port number")
     ("config_file", po::value<std::string>(), "config file");
+  
   //Config File options
   po::options_description cfg_options("XVC options");
   cfg_options.add_options()
     ("RUN_DIR",   po::value<std::string>(), "Path to default run directory")
     ("PID_DIR",   po::value<std::string>(), "Path to default pid directory")
+    ("CONN_FILE", po::value<std::string>(), "Path to the XML connections file")
     ("xvcPrefix", po::value<std::string>(), "xvc prefix")
     ("xvcPort",   po::value<int>(),         "xvc_port number");
 
@@ -283,6 +288,8 @@ int main(int argc, char **argv) {
   std::string PID_DIR = GetFinalParameterValue(std::string("PID_DIR"),  allOptions,std::string(DEFAULT_PID_DIR));
   //Set RUN_DIR
   std::string RUN_DIR = GetFinalParameterValue(std::string("RUN_DIR"),  allOptions,std::string(DEFAULT_RUN_DIR));
+  // Get XML connection file for ApolloSM
+  std::string connectionFile = GetFinalParameterValue(std::string("CONN_FILE"), allOptions, std::string(DEFAULT_CONN_FILE));
 
   //use xvcName to get uiLabel
   std::string uioLabel = xvcName;
@@ -325,7 +332,7 @@ int main(int argc, char **argv) {
 
   //Getting offset
   std::vector<std::string> arg;
-  arg.push_back("connections.xml");
+  arg.push_back(connectionFile);
   ApolloSM * SM = new ApolloSM(arg);
   if(NULL == SM){
     syslog(LOG_ERR,"Failed to create new ApolloSM\n");

@@ -331,6 +331,7 @@ int main(int argc, char **argv) {
   }
 
   //Getting offset
+  syslog(LOG_INFO,"Using connections file: %s\n", connectionFile.c_str());      
   std::vector<std::string> arg;
   arg.push_back(connectionFile);
   ApolloSM * SM = new ApolloSM(arg);

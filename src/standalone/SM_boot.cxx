@@ -290,6 +290,7 @@ int main(int argc, char** argv) {
   try{
     // ==================================
     // Initialize ApolloSM
+    syslog(LOG_INFO,"Using connections file: %s\n", connectionFile.c_str());      
     std::vector<std::string> arg;
     arg.push_back(connectionFile);
     

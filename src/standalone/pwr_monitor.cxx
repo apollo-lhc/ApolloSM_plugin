@@ -122,6 +122,8 @@ void UpdateINA3221Sensor(ApolloSM * sm,
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_RUN_DIR "/opt/address_table"
 #define DEFAULT_PID_FILE "/var/run/pwr_monitor.pid"
+#define DEFAULT_CONN_FILE "/fw/SM/address_table/connections.xml"
+
 namespace po = boost::program_options;
 
 
@@ -143,6 +145,7 @@ int main(int argc, char ** argv) {
     ("help,h",    "Help screen")
     ("POLLTIME_IN_SECONDS,s", po::value<int>(),         "polltime in seconds")
     ("RUN_DIR,r",             po::value<std::string>(), "run path")
+    ("CONN_FILE,c",           po::value<std::string>(), "Path to the XML connections file")
     ("PID_FILE,d",            po::value<std::string>(), "pid file")
     ("config_file",           po::value<std::string>(), "config file");
 
@@ -152,6 +155,7 @@ int main(int argc, char ** argv) {
   cfg_options.add_options()
     ("POLLTIME_IN_SECONDS", po::value<int>(),         "polltime in seconds")
     ("RUN_DIR",             po::value<std::string>(), "run path")
+    ("CONN_FILE",           po::value<std::string>(), "Path to the XML connections file")
     ("PID_FILE",            po::value<std::string>(), "pid file")
     ("SESNOR_NAME",            po::value<std::string>(), "Sensor to read out")
     ("TABLE_PATH_ROOT",            po::value<std::string>(), "Address table path");
@@ -195,7 +199,9 @@ int main(int argc, char ** argv) {
   std::string runPath     = GetFinalParameterValue(std::string("RUN_DIR"),             allOptions, std::string(DEFAULT_RUN_DIR));
   //set pidFileName
   std::string pidFileName = GetFinalParameterValue(std::string("PID_FILE"),            allOptions, std::string(DEFAULT_PID_FILE));
-  
+  // Get XML connection file for ApolloSM
+  std::string connectionFile = GetFinalParameterValue(std::string("CONN_FILE"),        allOptions, std::string(DEFAULT_CONN_FILE));
+
   // ============================================================================
   // Deamon book-keeping
   Daemon daemon;
@@ -260,8 +266,9 @@ int main(int argc, char ** argv) {
   try{
     // ==================================
     // Initialize ApolloSM
+    syslog(LOG_INFO,"Using connections file: %s\n", connectionFile.c_str());      
     std::vector<std::string> arg;
-    arg.push_back("connections.xml");
+    arg.push_back(connectionFile);
     SM = new ApolloSM(arg);
     if(NULL == SM){
       syslog(LOG_ERR,"Failed to create new ApolloSM\n");

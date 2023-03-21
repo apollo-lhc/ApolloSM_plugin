@@ -36,7 +36,7 @@ SOURCE_APOLLO_SM_PYBIND = python/ApolloSM_PyBind.cpp
 LIBRARY_APOLLO_SM_PYBIND = lib/ApolloSM$(shell python3-config --extension-suffix)
 PYBIND11_PATH=pybind11
 # The directory where the Python3 ApolloSM library will be copied to
-PYTHON3_INSTALL_PATH=/usr/local/lib64/python3.6/site-packages/
+PYTHON3_INSTALL_PATH ?= $(shell python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")
 
 INCLUDE_PATH += \
 							-Iinclude  \

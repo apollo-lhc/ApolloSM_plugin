@@ -20,12 +20,12 @@ int ApolloSM::GetRevNumber(){
   }
   return ret;
 };
-int ApolloSM::GetShelfID(){
-  int ret = -1; //default value
+std::string ApolloSM::GetShelfID(){
+  std::string ret = ""; //default value
   try{
-    ret = ReadRegister("SLAVE_I2C.S1.SM.INFO.SLOT");
+    ret = ReadString("SLAVE_I2C.S6.SHELF_ID");
   }catch(BUException::BAD_REG_NAME & e2){
-    //eat this exception and just return -1;
+    //eat this exception and just return an empty string
   }
   return ret;
 };

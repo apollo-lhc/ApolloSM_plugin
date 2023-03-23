@@ -48,7 +48,7 @@
 // ================================================================================
 // Setup for boost program_options
 #define DEFAULT_CONFIG_FILE "/etc/xvc_server"
-#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_RUN_DIR "/fw/SM/address_table"
 #define DEFAULT_PID_DIR "/var/run/"
 #define DEFAULT_XVCPREFIX " "
 #define DEFAULT_XVCPORT -1

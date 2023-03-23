@@ -32,7 +32,7 @@
 #define DEFAULT_POLLTIME_IN_SECONDS 1
 #define DEFAULT_TIMEOUT_IN_SECONDS 60
 #define DEFAULT_CONN_FILE "/fw/SM/address_table/connections.xml"
-#define DEFAULT_RUN_DIR "/opt/address_table/"
+#define DEFAULT_RUN_DIR "/fw/SM/address_table"
 #define DEFAULT_PID_FILE "/var/run/i2c_write_monitor.pid"
 
 // Register name to read for the I2C write check

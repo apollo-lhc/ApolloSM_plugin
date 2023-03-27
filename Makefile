@@ -36,7 +36,7 @@ SOURCE_APOLLO_SM_PYBIND = python/ApolloSM_PyBind.cpp
 LIBRARY_APOLLO_SM_PYBIND = lib/ApolloSM$(shell python3-config --extension-suffix)
 PYBIND11_PATH=pybind11
 # The directory where the Python3 ApolloSM library will be copied to
-PYTHON3_INSTALL_PATH ?= $(shell python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")
+PYTHON3_INSTALL_PATH ?= $(shell python3 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")
 
 INCLUDE_PATH += \
 							-Iinclude  \
@@ -170,13 +170,17 @@ ${LIBRARY_APOLLO_SM_PYBIND}: ${LIBRARY_APOLLO_SM}
 # install
 # -----------------------
 install: all
-	 install -m 775 -d ${INSTALL_PATH}/lib
-	 install -b -m 775 ./lib/* ${INSTALL_PATH}/lib
-	 install -m 775 -d ${INSTALL_PATH}/bin
-	 install -b -m 775 ./bin/* ${INSTALL_PATH}/bin
-	 install -m 775 -d ${INSTALL_PATH}/include
-	 cp -r include/* ${INSTALL_PATH}/include
-	 cp lib/ApolloSM*.so ${PYTHON3_INSTALL_PATH}
+	install -m 775 -d ${INSTALL_PATH}/lib
+	@echo "Installing lib/* to ${INSTALL_PATH}/lib"
+	install -b -m 775 ./lib/* ${INSTALL_PATH}/lib
+	install -m 775 -d ${INSTALL_PATH}/bin
+	@echo "Installing bin/* to ${INSTALL_PATH}/bin"
+	install -b -m 775 ./bin/* ${INSTALL_PATH}/bin
+	install -m 775 -d ${INSTALL_PATH}/include
+	@echo "Installing include/* to ${INSTALL_PATH}/include"
+	cp -r include/* ${INSTALL_PATH}/include
+	@echo "Installing lib/ApolloSM*.so to ${PYTHON3_INSTALL_PATH}"
+	cp lib/ApolloSM*.so ${PYTHON3_INSTALL_PATH}
 
 
 

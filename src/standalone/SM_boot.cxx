@@ -32,7 +32,7 @@
 #define DEFAULT_CONFIG_FILE "/etc/SM_boot"
 #define DEFAULT_POLLTIME_IN_SECONDS 10
 #define DEFAULT_CONN_FILE   "/fw/SM/address_table/connections.xml"
-#define DEFAULT_RUN_DIR     "/opt/address_table/"
+#define DEFAULT_RUN_DIR     "/fw/SM/address_table"
 #define DEFAULT_PID_FILE    "/var/run/sm_boot.pid"
 #define DEFAULT_POWERUP_TIME 5
 #define DEFAULT_SENSORS_THROUGH_ZYNQ false // This means: by default, read the sensors through the zynq

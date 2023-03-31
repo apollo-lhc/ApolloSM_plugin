@@ -120,7 +120,7 @@ void UpdateINA3221Sensor(ApolloSM * sm,
 #define DEFAULT_CONFIG_FILE "/etc/pwr_monitor"
 
 #define DEFAULT_POLLTIME_IN_SECONDS 10
-#define DEFAULT_RUN_DIR "/opt/address_table"
+#define DEFAULT_RUN_DIR "/fw/SM/address_table"
 #define DEFAULT_PID_FILE "/var/run/pwr_monitor.pid"
 #define DEFAULT_CONN_FILE "/fw/SM/address_table/connections.xml"
 

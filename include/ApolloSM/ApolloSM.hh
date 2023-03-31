@@ -45,8 +45,8 @@ public:
 
   int GetSerialNumber();
   int GetRevNumber();
-  int GetShelfID();
   int GetSlot();
+  std::string GetShelfID();
   uint32_t GetZynqIP();
   uint32_t GetIPMCIP();
 

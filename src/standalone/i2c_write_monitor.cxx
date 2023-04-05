@@ -242,10 +242,29 @@ int main(int argc, char** argv) {
             }
         }
 
+    /*
+     * If we catch exceptions, stop trying to do a read of the I2C_DONE register.
+     * Just inform systemd and make it move on to the other services so that the boot continues.
+     */
     } catch (BUException::exBase const & e) {
-        syslog(LOG_ERR,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());          
+        syslog(LOG_WARNING,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());          
+        syslog(LOG_WARNING,"Notifying systemd READY=1\n");          
+        sd_notify(0, "READY=1");
+
+        // Loop around and do nothing
+        while (daemon.GetLoop()) {
+            usleep(sleep_us);
+        }
+
     } catch (std::exception const & e) {
         syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
+        syslog(LOG_WARNING,"Notifying systemd READY=1\n");          
+        sd_notify(0, "READY=1");
+        
+        // Loop around and do nothing
+        while (daemon.GetLoop()) {
+            usleep(sleep_us);
+        }
     }
 
     // If shutting down, clean up

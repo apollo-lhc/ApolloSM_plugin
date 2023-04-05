@@ -248,7 +248,7 @@ int main(int argc, char** argv) {
      */
     } catch (BUException::exBase const & e) {
         syslog(LOG_WARNING,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());          
-        syslog(LOG_WARNING,"Notifying systemd READY=1\n");          
+        syslog(LOG_INFO,"Notifying systemd READY=1\n");          
         sd_notify(0, "READY=1");
 
         // Loop around and do nothing
@@ -257,8 +257,8 @@ int main(int argc, char** argv) {
         }
 
     } catch (std::exception const & e) {
-        syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
-        syslog(LOG_WARNING,"Notifying systemd READY=1\n");          
+        syslog(LOG_WARNING,"Caught std::exception: %s\n",e.what());          
+        syslog(LOG_INFO,"Notifying systemd READY=1\n");          
         sd_notify(0, "READY=1");
         
         // Loop around and do nothing

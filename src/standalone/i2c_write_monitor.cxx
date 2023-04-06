@@ -253,7 +253,7 @@ int main(int argc, char** argv) {
 
         // Loop around and do nothing
         while (daemon.GetLoop()) {
-            usleep(sleep_us);
+            usleep(60 * SEC_IN_US);
         }
 
     } catch (std::exception const & e) {
@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
         
         // Loop around and do nothing
         while (daemon.GetLoop()) {
-            usleep(sleep_us);
+            usleep(60 * SEC_IN_US);
         }
     }
 

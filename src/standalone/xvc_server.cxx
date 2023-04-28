@@ -331,17 +331,29 @@ int main(int argc, char **argv) {
   }
 
   //Getting offset
-  syslog(LOG_INFO,"Using connections file: %s\n", connectionFile.c_str());      
-  std::vector<std::string> arg;
-  arg.push_back(connectionFile);
-  ApolloSM * SM = new ApolloSM(arg);
-  if(NULL == SM){
-    syslog(LOG_ERR,"Failed to create new ApolloSM\n");
-  } else{
-    syslog(LOG_INFO,"Created new ApolloSM\n");
-  }
+  syslog(LOG_INFO,"Using connections file: %s\n", connectionFile.c_str());  
 
-  uint32_t uio_offset = SM->GetRegAddress(xvcName) - SM->GetRegAddress(xvcName.substr(0,xvcName.find('.')));
+  Apollo * SM = NULL; 
+
+  try{
+    std::vector<std::string> arg;
+    arg.push_back(connectionFile);
+    ApolloSM * SM = new ApolloSM(arg);
+    if(NULL == SM){
+      syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+      exit(EXIT_FAILURE);
+    }else{
+      syslog(LOG_INFO,"Created new ApolloSM\n");
+    }
+    uint32_t uio_offset = SM->GetRegAddress(xvcName) - SM->GetRegAddress(xvcName.substr(0,xvcName.find('.')));
+  }catch(BUException::exBase const & e){
+    syslog(LOG_ERR,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
+    exit(EXIT_FAILURE);          
+  }catch(std::exception const & e){
+    syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());
+    exit(EXIT_FAILURE);          
+  }   
+
   if(NULL != SM){
     delete SM;
   }

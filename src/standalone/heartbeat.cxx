@@ -192,15 +192,16 @@ int main(int argc, char** argv) {
     syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());          
   }
   
-  //PS heartbeat
-  SM->ReadRegister("SLAVE_I2C.HB_SET1");
-  SM->ReadRegister("SLAVE_I2C.HB_SET2");
-
-  //Clean up
-  if(NULL != SM) {
+  if(NULL != SM){
+    SM->ReadRegister("SLAVE_I2C.HB_SET1");
+    SM->ReadRegister("SLAVE_I2C.HB_SET2");
     delete SM;
+  }else{
+    syslog(LOG_ERR,"ApolloSM is NULL\n");
   }
   
+  //PS heartbeat
+
   // Restore old action of receiving SIGINT (which is to kill program) before returning 
   sigaction(SIGINT, &old_sa, NULL);
   syslog(LOG_INFO,"heartbeat Daemon ended\n");

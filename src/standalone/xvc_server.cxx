@@ -331,21 +331,33 @@ int main(int argc, char **argv) {
   }
 
   //Getting offset
-  syslog(LOG_INFO,"Using connections file: %s\n", connectionFile.c_str());      
-  std::vector<std::string> arg;
-  arg.push_back(connectionFile);
-  ApolloSM * SM = new ApolloSM(arg);
-  if(NULL == SM){
-    syslog(LOG_ERR,"Failed to create new ApolloSM\n");
-  } else{
-    syslog(LOG_INFO,"Created new ApolloSM\n");
-  }
+  syslog(LOG_INFO,"Using connections file: %s\n", connectionFile.c_str());  
 
-  uint32_t uio_offset = SM->GetRegAddress(xvcName) - SM->GetRegAddress(xvcName.substr(0,xvcName.find('.')));
+  ApolloSM * SM = NULL;
+
+  try{
+    std::vector<std::string> arg;
+    arg.push_back(connectionFile);
+    SM = new ApolloSM(arg);
+    if(NULL == SM){
+      syslog(LOG_ERR,"Failed to create new ApolloSM\n");
+      exit(EXIT_FAILURE);
+    }else{
+      syslog(LOG_INFO,"Created new ApolloSM\n");
+    }
+    uint32_t uio_offset = SM->GetRegAddress(xvcName) - SM->GetRegAddress(xvcName.substr(0,xvcName.find('.')));
+  }catch(BUException::exBase const & e){
+    syslog(LOG_ERR,"Caught BUException: %s\n   Info: %s\n",e.what(),e.Description());
+    exit(EXIT_FAILURE);          
+  }catch(std::exception const & e){
+    syslog(LOG_ERR,"Caught std::exception: %s\n",e.what());
+    exit(EXIT_FAILURE);          
+  }   
+
   if(NULL != SM){
     delete SM;
   }
-   
+
   pXVC = (sXVC volatile*) mmap(NULL, sizeof(sXVC) + uio_offset*sizeof(uint32_t),
              PROT_READ|PROT_WRITE, MAP_SHARED,
              fdUIO, 0x0);// + uio_offset*sizeof(uint32_t));

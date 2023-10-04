@@ -448,46 +448,45 @@ int main(int argc, char** argv) {
   }
 
 
-  //make sure the CM is off
-  //Shutdown the command module (if up)
-  SM->PowerDownCM(1,5);
-  SM->WriteRegister("CM.CM_1.CTRL.ENABLE_UC",0);
-
-  
-  //If we are shutting down, do the handshanking.
-  if(inShutdown){
-    syslog(LOG_INFO,"Tell IPMC we have shut-down\n");
-    //We are no longer booted
-    SM->WriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
-    //we are shut down
-    //    SM->WriteRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN",1);
-    // one last HB
-    //PS heartbeat
-    SM->ReadRegister("SLAVE_I2C.HB_SET1");
-    SM->ReadRegister("SLAVE_I2C.HB_SET2");
-
-  }
-
-  //Dump registers on power down
-  std::stringstream outfileName;
-  outfileName << "/var/log/Apollo_debug_dump_";  
-
-  char buffer[128];
-  time_t unixTime=time(NULL);
-  struct tm * timeinfo = localtime(&unixTime);
-  strftime(buffer,128,"%F-%T-%Z",timeinfo);
-  outfileName << buffer;
-
-  outfileName << ".dat";
-  
-  std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);
-  outfile << outfileName.str() << std::endl;
-  SM->DebugDump(outfile);
-  outfile.close();  
-
-  
-  //Clean up
   if(NULL != SM) {
+    //make sure the CM is off
+    //Shutdown the command module (if up)
+    SM->PowerDownCM(1,5);
+    SM->WriteRegister("CM.CM_1.CTRL.ENABLE_UC",0);
+
+    
+    //If we are shutting down, do the handshanking.
+    if(inShutdown){
+      syslog(LOG_INFO,"Tell IPMC we have shut-down\n");
+      //We are no longer booted
+      SM->WriteRegister("SLAVE_I2C.S1.SM.STATUS.DONE",0);
+      //we are shut down
+      //    SM->WriteRegister("SLAVE_I2C.S1.SM.STATUS.SHUTDOWN",1);
+      // one last HB
+      //PS heartbeat
+      SM->ReadRegister("SLAVE_I2C.HB_SET1");
+      SM->ReadRegister("SLAVE_I2C.HB_SET2");
+
+    }
+
+    //Dump registers on power down
+    std::stringstream outfileName;
+    outfileName << "/var/log/Apollo_debug_dump_";  
+
+    char buffer[128];
+    time_t unixTime=time(NULL);
+    struct tm * timeinfo = localtime(&unixTime);
+    strftime(buffer,128,"%F-%T-%Z",timeinfo);
+    outfileName << buffer;
+
+    outfileName << ".dat";
+    
+    std::ofstream outfile(outfileName.str().c_str(),std::ofstream::out);
+    outfile << outfileName.str() << std::endl;
+    SM->DebugDump(outfile);
+    outfile.close();  
+
+    //Clean up
     delete SM;
   }
 

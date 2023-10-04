@@ -193,12 +193,12 @@ int main(int argc, char** argv) {
   }
   
   //PS heartbeat
-  SM->ReadRegister("SLAVE_I2C.HB_SET1");
-  SM->ReadRegister("SLAVE_I2C.HB_SET2");
-
-  //Clean up
-  if(NULL != SM) {
+  if(NULL != SM){
+    SM->ReadRegister("SLAVE_I2C.HB_SET1");
+    SM->ReadRegister("SLAVE_I2C.HB_SET2");
     delete SM;
+  }else{
+    syslog(LOG_ERR,"ApolloSM is NULL\n");
   }
   
   // Restore old action of receiving SIGINT (which is to kill program) before returning 

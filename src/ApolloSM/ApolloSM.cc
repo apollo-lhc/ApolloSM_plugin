@@ -25,7 +25,8 @@ void ApolloSM::GenerateStatusDisplay(size_t level,
 
 std::string ApolloSM::GenerateHTMLStatus(std::string filename,
 					 size_t level = size_t(1),
-					 std::string type = std::string("HTML")) {
+					 std::string type = std::string("HTML"),
+           std::string table="") {
   statusDisplay.Clear();
   //SETUP
   std::ofstream HTML;
@@ -46,7 +47,7 @@ std::string ApolloSM::GenerateHTMLStatus(std::string filename,
   }
 
   //Get report
-  if (type == "HTML") {statusDisplay.Report(level, HTML, "");}
+  if (type == "HTML") {statusDisplay.Report(level, HTML, table);}
   else {
     BareReport = statusDisplay.ReportBare(level, "");
     HTML.write(BareReport.c_str(),BareReport.size());
